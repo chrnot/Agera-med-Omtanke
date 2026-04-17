@@ -312,25 +312,30 @@ const Dashboard = ({ onNewReport, cases, onOpenCase }: { onNewReport: () => void
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         {[
-          { label: 'Anmälda', value: cases.filter(c => c.status === 'anmäld').length.toString(), icon: AlertCircle, color: 'text-blue-500', bg: 'bg-blue-50' },
-          { label: 'Under utredning', value: cases.filter(c => c.status === 'utredning').length.toString(), icon: FileSearch, color: 'text-amber-500', bg: 'bg-amber-50' },
-          { label: 'Aktiva åtgärder', value: cases.filter(c => c.status === 'åtgärder').length.toString(), icon: Zap, color: 'text-visuera-green', bg: 'bg-visuera-green/5' },
-          { label: 'Avslutade ärenden', value: cases.filter(c => c.status === 'avslutat').length.toString(), icon: CheckCircle2, color: 'text-slate-400', bg: 'bg-slate-50' }
+          { id: 'anmäld', label: 'Anmälda', value: cases.filter(c => c.status === 'anmäld').length.toString(), icon: AlertCircle, color: 'text-blue-500', bg: 'bg-blue-50', border: 'border-blue-100', accent: 'blue' },
+          { id: 'utredning', label: 'Under utredning', value: cases.filter(c => c.status === 'utredning').length.toString(), icon: FileSearch, color: 'text-amber-500', bg: 'bg-amber-50', border: 'border-amber-100', accent: 'amber' },
+          { id: 'åtgärder', label: 'Aktiva åtgärder', value: cases.filter(c => c.status === 'åtgärder').length.toString(), icon: Zap, color: 'text-visuera-green', bg: 'bg-visuera-green/5', border: 'border-visuera-green/10', accent: 'green' },
+          { id: 'avslutat', label: 'Avslutade ärenden', value: cases.filter(c => c.status === 'avslutat').length.toString(), icon: CheckCircle2, color: 'text-slate-400', bg: 'bg-slate-50', border: 'border-slate-100', accent: 'slate' }
         ].map((stat, i) => (
-          <div key={i} className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm space-y-2">
-            <div className={`w-10 h-10 ${stat.bg} ${stat.color} rounded-xl flex items-center justify-center mb-2`}>
-              <stat.icon size={20} />
+          <motion.div 
+            key={i} 
+            whileHover={{ y: -4 }}
+            className={`bg-white p-6 rounded-[32px] border ${stat.border} shadow-sm space-y-3 transition-all hover:shadow-xl hover:shadow-${stat.accent}-500/5`}
+          >
+            <div className={`w-12 h-12 ${stat.bg} ${stat.color} rounded-2xl flex items-center justify-center`}>
+              <stat.icon size={22} />
             </div>
-            <div className="flex items-center gap-2">
-              <div className="text-2xl font-black text-visuera-dark">{stat.value}</div>
-              {(stat.label === 'Nya anmälningar' || stat.label === 'Pågående utredningar') && (
-                <div className={`text-[9px] font-bold px-1.5 py-0.5 rounded flex items-center gap-0.5 ${getTrend(stat.label).up ? 'bg-visuera-green/10 text-visuera-green' : 'bg-red-50 text-red-500'}`}>
+            <div>
+              <div className="text-3xl font-black text-visuera-dark tracking-tight">{stat.value}</div>
+              <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">{stat.label}</div>
+            </div>
+            <div className="pt-2 flex items-center gap-1.5 border-t border-slate-50">
+               <div className={`text-[9px] font-bold px-1.5 py-0.5 rounded flex items-center gap-0.5 ${getTrend(stat.label).up ? 'bg-visuera-green/10 text-visuera-green' : 'bg-red-50 text-red-500'}`}>
                   {getTrend(stat.label).up ? '↑' : '↓'} {getTrend(stat.label).val}
-                </div>
-              )}
+               </div>
+               <span className="text-[9px] text-slate-300 font-medium whitespace-nowrap">vs föreg. månad</span>
             </div>
-            <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{stat.label}</div>
-          </div>
+          </motion.div>
         ))}
       </div>
 
