@@ -312,10 +312,10 @@ const Dashboard = ({ onNewReport, cases, onOpenCase }: { onNewReport: () => void
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         {[
-          { label: 'Nya anmälningar', value: cases.filter(c => c.status === 'anmäld').length.toString(), icon: Clock, color: 'text-blue-500', bg: 'bg-blue-50' },
-          { label: 'Pågående utredningar', value: activeCases.length.toString(), icon: FileSearch, color: 'text-amber-500', bg: 'bg-amber-50' },
+          { label: 'Anmälda', value: cases.filter(c => c.status === 'anmäld').length.toString(), icon: AlertCircle, color: 'text-blue-500', bg: 'bg-blue-50' },
+          { label: 'Under utredning', value: cases.filter(c => c.status === 'utredning').length.toString(), icon: FileSearch, color: 'text-amber-500', bg: 'bg-amber-50' },
           { label: 'Aktiva åtgärder', value: cases.filter(c => c.status === 'åtgärder').length.toString(), icon: Zap, color: 'text-visuera-green', bg: 'bg-visuera-green/5' },
-          { label: 'Avslutade YTD', value: closedCases.length.toString(), icon: CheckCircle2, color: 'text-slate-400', bg: 'bg-slate-50' }
+          { label: 'Avslutade ärenden', value: cases.filter(c => c.status === 'avslutat').length.toString(), icon: CheckCircle2, color: 'text-slate-400', bg: 'bg-slate-50' }
         ].map((stat, i) => (
           <div key={i} className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm space-y-2">
             <div className={`w-10 h-10 ${stat.bg} ${stat.color} rounded-xl flex items-center justify-center mb-2`}>
@@ -461,8 +461,12 @@ const App = () => {
   const [userProfile, setUserProfile] = useState<any>(null);
   const [isAnonymous, setIsAnonymous] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'cases' | 'report' | 'flow' | 'users'>('dashboard');
-  const [selectedCaseId, setSelectedCaseId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'cases' | 'report' | 'flow' | 'users'>(
+    (localStorage.getItem('lastActiveTab') as any) || 'dashboard'
+  );
+  const [selectedCaseId, setSelectedCaseId] = useState<string | null>(
+    localStorage.getItem('lastSelectedCaseId')
+  );
   const [cases, setCases] = useState<any[]>([]);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [authError, setAuthError] = useState<string | null>(null);
@@ -512,6 +516,28 @@ const App = () => {
       setLoading(false);
     }
   };
+
+  // PERSISTENCE LOGIC: Save last state to localStorage
+  useEffect(() => {
+    if (user) {
+      localStorage.setItem('lastActiveTab', activeTab);
+    }
+  }, [activeTab, user]);
+
+  useEffect(() => {
+    if (user && selectedCaseId) {
+      localStorage.setItem('lastSelectedCaseId', selectedCaseId);
+    } else if (user && !selectedCaseId) {
+      localStorage.removeItem('lastSelectedCaseId');
+    }
+  }, [selectedCaseId, user]);
+
+  // Security check: Redirect if user lacks permissions for current tab
+  useEffect(() => {
+    if (userProfile && activeTab === 'users' && userProfile.globalRole !== 'admin' && userProfile.role !== 'admin') {
+      setActiveTab('dashboard');
+    }
+  }, [userProfile, activeTab]);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {

@@ -405,9 +405,42 @@ export const TrygghetsFlow = ({ isQuickReport = false, onSuccess, initialCaseId,
           throw new Error('Vänligen fyll i alla obligatoriska fält (*) inklusive val av skola.');
         }
 
+        let assignedToUid = '';
+        let assignedToName = '';
+
+        // If it's a quick report, we automatically assign to a principal
+        if (isQuickReport) {
+          try {
+            // Try to find a principal for this school
+            // Note: This only works if the user is authenticated, 
+            // but for QuickReport they are often anonymous.
+            // In that case, we fallback to a default.
+            if (auth.currentUser) {
+              const q = query(
+                collection(db, 'users'),
+                where('role', '==', 'principal'),
+                where('school', '==', formData.school)
+              );
+              const snap = await getDocs(q);
+              if (!snap.empty) {
+                assignedToUid = snap.docs[0].id;
+                assignedToName = snap.docs[0].data().name;
+              }
+            }
+          } catch (e) {
+            console.warn('Could not query principals automatically:', e);
+          }
+
+          // Fallback if no specific principal found or if anonymous
+          if (!assignedToUid) {
+            assignedToUid = 'malin-wimby-danderyd-se'; // Default principal derived from enebybergStaff data
+            assignedToName = 'Malin Wimby';
+          }
+        }
+
         const casePayload = {
           title: formData.incidentDescription.substring(0, 50) + (formData.incidentDescription.length > 50 ? '...' : ''),
-          description: formData.incidentDescription, // Mapping incidentDescription to description
+          description: formData.incidentDescription, 
           studentName: formData.studentName,
           incidentDate: formData.incidentDate,
           reporterUid: auth.currentUser?.uid || 'anonymous',
@@ -416,7 +449,9 @@ export const TrygghetsFlow = ({ isQuickReport = false, onSuccess, initialCaseId,
           school: formData.school || userProfile?.school || 'Danderyds Skola',
           status: 'anmäld',
           type: 'trygghet',
-          ...formData, // Spread the rest
+          assignedToUid,
+          assignedToName,
+          ...formData, 
           selectedParticipants,
           selectedActivities,
           completedChecklistItems
@@ -1020,10 +1055,11 @@ export const TrygghetsFlow = ({ isQuickReport = false, onSuccess, initialCaseId,
                         <User className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
                         <input 
                           type="text"
+                          required
                           value={formData.studentName}
                           onChange={(e) => updateFormData('studentName', e.target.value)}
                           placeholder="Elevens namn"
-                          className="w-full pl-12 p-4 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-visuera-green/20 transition-all text-sm"
+                          className={`w-full pl-12 p-4 ${isQuickReport && !formData.studentName ? 'bg-orange-50/50 ring-1 ring-orange-200' : 'bg-slate-50'} rounded-2xl border-none focus:ring-2 focus:ring-visuera-green/20 transition-all text-sm`}
                         />
                       </div>
                     </div>
@@ -1046,9 +1082,10 @@ export const TrygghetsFlow = ({ isQuickReport = false, onSuccess, initialCaseId,
                         <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
                         <input 
                           type="date"
+                          required
                           value={formData.incidentDate}
                           onChange={(e) => updateFormData('incidentDate', e.target.value)}
-                          className="w-full pl-12 p-4 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-visuera-green/20 transition-all text-sm"
+                          className={`w-full pl-12 p-4 ${isQuickReport && !formData.incidentDate ? 'bg-orange-50/50 ring-1 ring-orange-200' : 'bg-slate-50'} rounded-2xl border-none focus:ring-2 focus:ring-visuera-green/20 transition-all text-sm`}
                         />
                       </div>
                     </div>

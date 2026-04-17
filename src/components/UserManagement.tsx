@@ -226,6 +226,15 @@ export const UserManagement = () => {
         if (oldUser.role !== selectedUser.role) {
           changes.role = { from: oldUser.role, to: selectedUser.role };
         }
+        if (oldUser.school !== updates.school) {
+          changes.school = { from: oldUser.school || '', to: updates.school };
+        }
+        if (oldUser.team !== updates.team) {
+          changes.team = { from: oldUser.team || '', to: updates.team };
+        }
+        if (oldUser.personalNumber !== updates.personalNumber) {
+          changes.personalNumber = { from: oldUser.personalNumber || '', to: updates.personalNumber };
+        }
       }
 
       await updateDoc(userRef, updates);
@@ -259,6 +268,16 @@ export const UserManagement = () => {
     try {
       await setupService.seedInitialData();
       await fetchData();
+      
+      // Audit log for bulk sync
+      await addDoc(collection(db, 'AuditLog'), {
+        action: 'BULK_SYNKRONISERING_SKOLOR',
+        changedByUid: auth.currentUser?.uid || 'unknown',
+        changedByName: auth.currentUser?.displayName || auth.currentUser?.email || 'System',
+        details: 'Synkronisering av Danderyds skolor och huvudmän utförd.',
+        timestamp: serverTimestamp()
+      });
+
       setSuccess('Danderyds skolor har synkroniserats!');
       setTimeout(() => setSuccess(null), 3000);
     } catch (e) {
@@ -273,6 +292,16 @@ export const UserManagement = () => {
     try {
       await setupService.provisionEnebybergStaff();
       await fetchData();
+
+      // Audit log for bulk provision
+      await addDoc(collection(db, 'AuditLog'), {
+        action: 'BULK_IMPORT_PERSONAL',
+        changedByUid: auth.currentUser?.uid || 'unknown',
+        changedByName: auth.currentUser?.displayName || auth.currentUser?.email || 'System',
+        details: 'Import av personal för Enebyberg skola utförd.',
+        timestamp: serverTimestamp()
+      });
+
       setSuccess('Personal för Enebyberg har importerats!');
       setTimeout(() => setSuccess(null), 3000);
     } catch (e) {

@@ -91,6 +91,7 @@ export const caseService = {
         school: caseData.school || 'Danderyds Skola',
         message: `Ny anmälan inkommen: ${caseData.title || 'Incident'}`,
         caseId: docRef.id,
+        recipientUid: caseData.assignedToUid || null,
         read: false,
         createdAt: serverTimestamp()
       });
