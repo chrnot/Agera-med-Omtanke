@@ -202,7 +202,9 @@ export const UserManagement = () => {
       const updates = {
         schoolAccess: selectedUser.schoolAccess || {},
         authorityAccess: selectedUser.authorityAccess || {},
-        globalRole: selectedUser.globalRole || 'none'
+        globalRole: selectedUser.globalRole || 'none',
+        school: selectedUser.school || '',
+        team: selectedUser.team || ''
       };
       await updateDoc(userRef, updates);
       
@@ -494,6 +496,34 @@ export const UserManagement = () => {
               </div>
 
               <div className="flex-1 overflow-y-auto p-8 space-y-12">
+                {/* User Info */}
+                <section className="space-y-4">
+                  <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Bas-information</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="bg-slate-50 p-6 rounded-3xl border border-slate-100 flex flex-col gap-2">
+                      <label className="text-[9px] font-bold text-slate-400 uppercase tracking-widest ml-1">Anställning / Primär skola</label>
+                      <select 
+                        value={selectedUser.school}
+                        onChange={(e) => setSelectedUser({ ...selectedUser, school: e.target.value })}
+                        className="w-full bg-white border-2 border-slate-100 rounded-xl p-3 text-sm focus:border-visuera-green transition-all font-bold appearance-none cursor-pointer"
+                      >
+                        <option value="">Välj skola...</option>
+                        {schools.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
+                      </select>
+                    </div>
+                    <div className="bg-slate-50 p-6 rounded-3xl border border-slate-100 flex flex-col gap-2">
+                      <label className="text-[9px] font-bold text-slate-400 uppercase tracking-widest ml-1">Arbetslag</label>
+                      <input 
+                        type="text"
+                        placeholder="t.ex. F-3, Arbetslag 1..."
+                        value={selectedUser.team || ''}
+                        onChange={(e) => setSelectedUser({ ...selectedUser, team: e.target.value })}
+                        className="w-full bg-white border-2 border-slate-100 rounded-xl p-3 text-sm focus:border-visuera-green transition-all font-bold"
+                      />
+                    </div>
+                  </div>
+                </section>
+
                 {/* Global Role */}
                 <section className="space-y-4">
                   <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Global Behörighet</h4>

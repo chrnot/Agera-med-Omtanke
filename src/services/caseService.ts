@@ -170,5 +170,14 @@ export const caseService = {
     } catch (error) {
       handleFirestoreError(error, OperationType.CREATE, path);
     }
+  },
+
+  deleteCase: async (caseId: string) => {
+    const path = `cases/${caseId}`;
+    try {
+      await deleteDoc(doc(db, 'cases', caseId));
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, path);
+    }
   }
 };

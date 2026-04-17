@@ -18,7 +18,8 @@ import {
   FileSearch,
   BookOpen,
   Zap,
-  AlertCircle
+  AlertCircle,
+  Trash2
 } from 'lucide-react';
 import { onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut, User } from 'firebase/auth';
 import { auth, db } from './lib/firebase';
@@ -332,6 +333,18 @@ const App = () => {
   const [selectedCaseId, setSelectedCaseId] = useState<string | null>(null);
   const [cases, setCases] = useState<any[]>([]);
 
+  const handleDeleteCase = async (e: React.MouseEvent, caseId: string) => {
+    e.stopPropagation();
+    if (confirm('Är du säker på att du vill ta bort detta ärende? Detta går inte att ångra.')) {
+      try {
+        await caseService.deleteCase(caseId);
+      } catch (err) {
+        console.error("Error deleting case:", err);
+        alert("Kunde inte ta bort ärendet.");
+      }
+    }
+  };
+
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setUser(user);
@@ -539,7 +552,16 @@ const App = () => {
                               }`}>
                                 {c.status}
                               </span>
-                              <button onClick={() => { setActiveTab('flow'); setSelectedCaseId(c.id); }} className="text-visuera-green font-bold text-xs uppercase hover:underline">Öppna</button>
+                              <div className="flex items-center gap-4">
+                                <button onClick={(e) => { e.stopPropagation(); setActiveTab('flow'); setSelectedCaseId(c.id); }} className="text-visuera-green font-bold text-xs uppercase hover:underline">Öppna</button>
+                                <button 
+                                  onClick={(e) => handleDeleteCase(e, c.id)}
+                                  className="text-slate-300 hover:text-red-500 transition-colors p-2"
+                                  title="Ta bort ärende"
+                                >
+                                  <Trash2 size={16} />
+                                </button>
+                              </div>
                            </div>
                         </div>
                       ))

@@ -69,6 +69,8 @@ service cloud.firestore {
         (resource.data.reporterUid == request.auth.uid && resource.data.status == 'anmäld')
       );
 
+      allow delete: if isAuthenticated() && isGlobalAdmin();
+
       match /audit/{logId} {
         allow read: if isAuthenticated();
         allow create: if isAuthenticated() || (!isAuthenticated() && request.resource.data.userId == 'anonymous');
