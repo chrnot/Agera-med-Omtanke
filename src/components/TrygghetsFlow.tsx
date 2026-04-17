@@ -38,6 +38,18 @@ interface Step {
   status: 'completed' | 'current' | 'upcoming';
 }
 
+enum CaseStatus {
+  Anmald = 'anmäld',
+  Tilldelad = 'tilldelad',
+  Utredning = 'utredning',
+  Utreds = 'utreds',
+  Atgarder = 'åtgärder',
+  Atgardad = 'åtgärdad',
+  Uppfoljd = 'uppföljd',
+  Avslutad = 'avslutad',
+  Avslutat = 'avslutat'
+}
+
 interface TrygghetsFlowProps {
   isQuickReport?: boolean;
   onSuccess?: (caseId: string) => void;
@@ -96,6 +108,7 @@ const DEFAULT_FORM_DATA = {
   followUpDecision: '',
   signatureName: '',
   signatureDate: '',
+  status: CaseStatus.Anmald,
   isClosed: false
 };
 
@@ -535,13 +548,13 @@ export const TrygghetsFlow = ({ isQuickReport = false, onSuccess, initialCaseId,
     setIsProcessing(true);
     setError(null);
     try {
-      const stepStatusMap: Record<number, string> = {
-        0: 'anmäld',
-        1: 'tilldelad',
-        2: 'utredning',
-        3: 'åtgärder',
-        4: 'uppföljning',
-        5: 'avslutat'
+      const stepStatusMap: Record<number, CaseStatus> = {
+        0: CaseStatus.Anmald,
+        1: CaseStatus.Tilldelad,
+        2: CaseStatus.Utreds,
+        3: CaseStatus.Atgardad,
+        4: CaseStatus.Uppfoljd,
+        5: CaseStatus.Avslutat
       };
 
       // If it's the first step (Anmälan) and NO case exists yet, save new
@@ -593,7 +606,7 @@ export const TrygghetsFlow = ({ isQuickReport = false, onSuccess, initialCaseId,
           reporterName: formData.reporterName || auth.currentUser?.displayName || 'Anonym anmälare',
           reporterEmail: formData.reporterEmail || auth.currentUser?.email || '',
           school: formData.school || userProfile?.school || 'Danderyds Skola',
-          status: 'anmäld',
+          status: CaseStatus.Anmald,
           type: 'trygghet',
           assignedToUid,
           assignedToName,

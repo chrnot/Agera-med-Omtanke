@@ -703,6 +703,15 @@ const App = () => {
     }
   };
 
+  const formatDate = (dateValue: any) => {
+    if (!dateValue) return 'N/A';
+    if (dateValue.toDate) return dateValue.toDate().toLocaleString('sv-SE', { dateStyle: 'short', timeStyle: 'short' });
+    if (typeof dateValue.seconds === 'number') return new Date(dateValue.seconds * 1000).toLocaleString('sv-SE', { dateStyle: 'short', timeStyle: 'short' });
+    const date = new Date(dateValue);
+    if (isNaN(date.getTime())) return 'N/A';
+    return date.toLocaleString('sv-SE', { dateStyle: 'short', timeStyle: 'short' });
+  };
+
   const handleBankIDLogin = async (pnr: string) => {
     setLoading(true);
     try {
@@ -811,7 +820,7 @@ const App = () => {
 
   // Compute filtered cases
   const filteredCases = React.useMemo(() => {
-    return cases.filter(c => {
+    const filtered = cases.filter(c => {
       // Status filter
       if (filterStatus !== 'alla' && c.status !== filterStatus) return false;
       
@@ -847,6 +856,13 @@ const App = () => {
       }
       
       return true;
+    });
+
+    // Default sort by anmälningsdatum (createdAt) descending
+    return [...filtered].sort((a, b) => {
+      const timeA = a.createdAt?.seconds ? a.createdAt.seconds : (new Date(a.createdAt).getTime() / 1000 || 0);
+      const timeB = b.createdAt?.seconds ? b.createdAt.seconds : (new Date(b.createdAt).getTime() / 1000 || 0);
+      return timeB - timeA;
     });
   }, [cases, filterStatus, filterSchool, filterDateStart, filterDateEnd, filterQuery]);
 
@@ -1127,9 +1143,15 @@ const App = () => {
                                     <span className="text-[9px] font-black bg-white text-slate-400 px-2 py-0.5 rounded uppercase">ÄRE-{c.id.slice(-4).toUpperCase()}</span>
                                     <h4 className="font-bold text-visuera-dark group-hover:text-visuera-green transition-colors">{c.title}</h4>
                                  </div>
-                                 <div className="text-[10px] text-slate-400 font-medium mt-1 flex gap-3">
-                                    <span>Elev: {c.studentName}</span>
-                                    <span>Skola: {c.school}</span>
+                                 <div className="text-[10px] text-slate-400 font-medium mt-1 flex flex-wrap gap-x-4 gap-y-1">
+                                    <span className="flex items-center gap-1"><UserIcon size={12}/> {c.studentName}</span>
+                                    <span className="flex items-center gap-1"><Building2 size={12}/> {c.school}</span>
+                                    <span className="flex items-center gap-1" title="Anmälningsdatum">
+                                       <Calendar size={12}/> {formatDate(c.createdAt)}
+                                    </span>
+                                    <span className="flex items-center gap-1" title="Senaste uppdatering">
+                                       <Clock size={12}/> {formatDate(c.updatedAt || c.createdAt)}
+                                    </span>
                                  </div>
                               </div>
                            </div>
