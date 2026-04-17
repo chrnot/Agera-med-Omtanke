@@ -29,12 +29,12 @@ service cloud.firestore {
     }
 
     match /authorities/{authId} {
-      allow read: if isAuthenticated();
+      allow read: if true;
       allow write: if isAuthenticated() && isGlobalAdmin();
     }
 
     match /schools/{schoolId} {
-      allow read: if isAuthenticated();
+      allow read: if true;
       allow write: if isAuthenticated() && isGlobalAdmin();
     }
 
@@ -71,18 +71,18 @@ service cloud.firestore {
 
       match /audit/{logId} {
         allow read: if isAuthenticated();
-        allow create: if isAuthenticated();
+        allow create: if isAuthenticated() || (!isAuthenticated() && request.resource.data.userId == 'anonymous');
       }
 
       match /{allSubcollections=**} {
         allow read: if isAuthenticated() && canUserViewCase(get(/databases/$(database)/documents/cases/$(caseId)).data);
-        allow write: if isAuthenticated();
+        allow write: if isAuthenticated() || (!isAuthenticated() && request.resource.data.reporterUid == 'anonymous');
       }
     }
     
     match /notifications/{noteId} {
       allow read: if isAuthenticated();
-      allow create, update: if isAuthenticated();
+      allow create, update: if true; // Allow system/anonymous notifications
     }
   }
 }

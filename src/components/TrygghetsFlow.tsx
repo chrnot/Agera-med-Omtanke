@@ -22,7 +22,8 @@ import {
   PenTool,
   FileCheck,
   ChevronDown,
-  Building2
+  Building2,
+  Layers
 } from 'lucide-react';
 import { caseService } from '../services/caseService';
 import { auth, db } from '../lib/firebase';
@@ -50,6 +51,50 @@ const INITIAL_STEPS: Step[] = [
   { id: 6, title: 'Avslut', status: 'upcoming' },
 ];
 
+const DEFAULT_FORM_DATA = {
+  area: '',
+  school: '',
+  studentName: '',
+  studentClass: '',
+  reportType: [] as string[],
+  incidentDate: '',
+  incidentLocation: '',
+  activeParticipants: '',
+  incidentDescription: '',
+  actionsTaken: [] as string[],
+  actionsTakenOther: '',
+  guardianContacted: '',
+  followUpScheduled: '',
+  reporterName: '',
+  reporterEmail: '',
+  reporterPhone: '',
+  schoolId: '',
+  authorityId: '',
+  // Step 2: Tilldelning
+  assignedTeam: '',
+  assignedTeacher: '',
+  assignedTeacherUid: '',
+  // Step 3 & 4 fields
+  studentSSN: '',
+  guardianContactStatus: '',
+  investigationDate: '',
+  investigationText: '',
+  studentVersion: '',
+  incidentConfirmed: '',
+  discriminationGround: '',
+  actionsText: '',
+  closureDate: '',
+  closureReason: '',
+  // Step 4 fields
+  followUpText: '',
+  followUpClosureDate: '',
+  // Step 5 fields
+  followUpDecision: '',
+  signatureName: '',
+  signatureDate: '',
+  isClosed: false
+};
+
 export const TrygghetsFlow = ({ isQuickReport = false, onSuccess, initialCaseId, cases = [] }: TrygghetsFlowProps) => {
   const [activeCaseId, setActiveCaseId] = React.useState<string | null>(initialCaseId || null);
   const [currentStepIndex, setCurrentStepIndex] = React.useState(0);
@@ -58,50 +103,8 @@ export const TrygghetsFlow = ({ isQuickReport = false, onSuccess, initialCaseId,
   const [error, setError] = React.useState<string | null>(null);
   const [documentation, setDocumentation] = React.useState('');
 
-  // Form State moved up to avoid "used before its declaration"
-  const [formData, setFormData] = React.useState({
-    area: '',
-    school: '',
-    studentName: '',
-    studentClass: '',
-    reportType: [] as string[],
-    incidentDate: '',
-    incidentLocation: '',
-    activeParticipants: '',
-    incidentDescription: '',
-    actionsTaken: [] as string[],
-    actionsTakenOther: '',
-    guardianContacted: '',
-    followUpScheduled: '',
-    reporterName: '',
-    reporterEmail: '',
-    reporterPhone: '',
-    schoolId: '',
-    authorityId: '',
-    // Step 2: Tilldelning
-    assignedTeam: '',
-    assignedTeacher: '',
-    assignedTeacherUid: '',
-    // Step 3 & 4 fields
-    studentSSN: '',
-    guardianContactStatus: '',
-    investigationDate: '',
-    investigationText: '',
-    studentVersion: '',
-    incidentConfirmed: '',
-    discriminationGround: '',
-    actionsText: '',
-    closureDate: '',
-    closureReason: '',
-    // Step 4 fields
-    followUpText: '',
-    followUpClosureDate: '',
-    // Step 5 fields
-    followUpDecision: '',
-    signatureName: '',
-    signatureDate: '',
-    isClosed: false
-  });
+  // Form State
+  const [formData, setFormData] = React.useState(DEFAULT_FORM_DATA);
   const [showLegal, setShowLegal] = React.useState(false);
   const [showInvestigationInfo, setShowInvestigationInfo] = React.useState(false);
   const [showDecisionInfo, setShowDecisionInfo] = React.useState(false);
@@ -113,6 +116,8 @@ export const TrygghetsFlow = ({ isQuickReport = false, onSuccess, initialCaseId,
   const [completedChecklistItems, setCompletedChecklistItems] = React.useState<string[]>([]);
 
   const [userProfile, setUserProfile] = React.useState<any>(null);
+  const [authorities, setAuthorities] = React.useState<any[]>([]);
+  const [selectedAuthority, setSelectedAuthority] = React.useState<string>('');
   const [availableSchools, setAvailableSchools] = React.useState<any[]>([]);
   const [availableStaff, setAvailableStaff] = React.useState<any[]>([]);
   const [availableTeams, setAvailableTeams] = React.useState<string[]>([]);
@@ -125,22 +130,35 @@ export const TrygghetsFlow = ({ isQuickReport = false, onSuccess, initialCaseId,
 
   // Update activeCaseId when initialCaseId changes
   React.useEffect(() => {
-    if (initialCaseId !== undefined) {
-      setActiveCaseId(initialCaseId);
+    setActiveCaseId(initialCaseId || null);
+    // Reset basic state when switching to "new" mode
+    if (!initialCaseId) {
+      setFormData(DEFAULT_FORM_DATA);
+      setCurrentStepIndex(0);
+      setSelectedParticipants([]);
+      setSelectedActivities([]);
+      setCompletedChecklistItems([]);
+      setSelectedAuthority('');
+      setError(null);
+      setIsSubmitted(false);
     }
   }, [initialCaseId]);
 
-  // Fetch school list
+  // Fetch school and authority list
   React.useEffect(() => {
-    const fetchSchools = async () => {
+    const fetchData = async () => {
       try {
         const schoolsSnap = await getDocs(collection(db, 'schools'));
         setAvailableSchools(schoolsSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+        
+        const authoritiesSnap = await getDocs(collection(db, 'authorities'));
+        const authoritiesData = authoritiesSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        setAuthorities(authoritiesData);
       } catch (err) {
-        console.error("Error fetching schools:", err);
+        console.error("Error fetching initial data:", err);
       }
     };
-    fetchSchools();
+    fetchData();
   }, []);
 
   // Fetch staff and extract teams for selected school
@@ -192,7 +210,6 @@ export const TrygghetsFlow = ({ isQuickReport = false, onSuccess, initialCaseId,
     const fetchProfile = async () => {
       if (auth.currentUser) {
         try {
-          // Note: using direct firebase call here for speed, or we could add to caseService
           const userDoc = await getDoc(doc(db, 'users', auth.currentUser.uid));
           if (userDoc.exists()) {
             setUserProfile(userDoc.data());
@@ -215,24 +232,29 @@ export const TrygghetsFlow = ({ isQuickReport = false, onSuccess, initialCaseId,
         const data = await caseService.getCase(activeCaseId);
         if (data) {
           // Map array-like fields correctly
-          setFormData(prev => ({
-            ...prev,
+          setFormData({
+            ...DEFAULT_FORM_DATA, // Use defaults first to clear old state if any fields missing
             ...data,
             reportType: Array.isArray(data.reportType) ? data.reportType : [],
             actionsTaken: Array.isArray(data.actionsTaken) ? data.actionsTaken : [],
             incidentDescription: data.description || data.incidentDescription || '',
-          }));
+          });
 
           if (Array.isArray(data.selectedParticipants)) setSelectedParticipants(data.selectedParticipants);
           if (Array.isArray(data.selectedActivities)) setSelectedActivities(data.selectedActivities);
           if (Array.isArray(data.completedChecklistItems)) setCompletedChecklistItems(data.completedChecklistItems);
+
+          // Update selectedAuthority based on loaded schoolId/authorityId if possible
+          if (data.authorityId) {
+            setSelectedAuthority(data.authorityId);
+          }
 
           // Map status to step index
           const statusMap: Record<string, number> = {
             'anmäld': 0,
             'tilldelad': 1,
             'utredning': 2,
-            'utreds': 2, // Supporting multiple variations
+            'utreds': 2,
             'åtgärder': 3,
             'åtgärdad': 3,
             'uppföljning': 4,
@@ -252,10 +274,9 @@ export const TrygghetsFlow = ({ isQuickReport = false, onSuccess, initialCaseId,
         setIsProcessing(false);
       }
     };
-
     loadCaseData();
   }, [activeCaseId]);
-  
+
   const toggleChecklistItem = (item: string) => {
     setCompletedChecklistItems(prev => 
       prev.includes(item) ? prev.filter(i => i !== item) : [...prev, item]
@@ -864,6 +885,35 @@ export const TrygghetsFlow = ({ isQuickReport = false, onSuccess, initialCaseId,
               )}
             </div>
 
+            {/* Incident Context Summary (Visible for steps 2-6) */}
+            {currentStepIndex > 0 && (
+              <div className="mb-8 p-6 bg-slate-50 rounded-3xl border border-slate-100 space-y-4">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-[10px] font-black text-visuera-dark uppercase tracking-widest flex items-center gap-2">
+                    <Info size={14} className="text-visuera-green" />
+                    Händelseinfo från anmälan
+                  </h4>
+                  <span className="text-[10px] font-bold text-slate-400">{formData.incidentDate}</span>
+                </div>
+                <div className="grid grid-cols-2 gap-4 text-xs">
+                  <div>
+                    <span className="text-slate-400 block font-medium uppercase text-[9px]">Elev</span>
+                    <span className="font-bold text-visuera-dark truncate block">{formData.studentName} {formData.studentClass && `(${formData.studentClass})`}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 block font-medium uppercase text-[9px]">Plats</span>
+                    <span className="font-bold text-visuera-dark truncate block">{formData.incidentLocation || 'Ej angiven'}</span>
+                  </div>
+                </div>
+                <div>
+                  <span className="text-slate-400 block text-[9px] font-bold uppercase mb-1">Beskrivning</span>
+                  <p className="text-xs text-slate-600 italic leading-relaxed bg-white/50 p-4 rounded-2xl border border-white max-h-32 overflow-y-auto">
+                    "{formData.incidentDescription}"
+                  </p>
+                </div>
+              </div>
+            )}
+
             {error && (
               <div className="mb-6 p-4 bg-red-50 text-red-600 rounded-2xl flex items-center gap-2 text-sm font-bold animate-in fade-in zoom-in duration-300">
                 <AlertCircle size={18} />
@@ -883,31 +933,88 @@ export const TrygghetsFlow = ({ isQuickReport = false, onSuccess, initialCaseId,
                     <p className="text-[10px] text-visuera-green font-bold mt-4 uppercase tracking-widest">* Obligatoriskt fält</p>
                   </div>
 
-                  {/* School Selection */}
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Välj skola/enhet *</label>
-                    <div className="relative">
-                      <Building2 className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none" size={18} />
-                      <select 
-                        value={formData.school}
-                        onChange={(e) => {
-                          const school = availableSchools.find(s => s.name === e.target.value);
-                          updateFormData('school', e.target.value);
-                          if (school) {
-                            updateFormData('schoolId', school.id);
-                            updateFormData('authorityId', school.authorityId);
-                          }
-                        }}
-                        className="w-full pl-12 p-4 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-visuera-green/20 transition-all text-sm appearance-none cursor-pointer"
-                      >
-                        <option value="">Välj en skola...</option>
-                        {availableSchools.map(s => (
-                          <option key={s.id} value={s.name}>{s.name}</option>
-                        ))}
-                      </select>
-                      <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-300">
-                        <ChevronDown size={18} />
+                  {/* Authority Selection */}
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Välj huvudman (Kommun/Fristående) *</label>
+                      <div className="relative">
+                        <Layers className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none" size={18} />
+                        <select 
+                          value={selectedAuthority}
+                          onChange={(e) => {
+                            setSelectedAuthority(e.target.value);
+                            updateFormData('school', '');
+                            updateFormData('schoolId', '');
+                            updateFormData('authorityId', e.target.value);
+                          }}
+                          className="w-full pl-12 p-4 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-visuera-green/20 transition-all text-sm appearance-none cursor-pointer"
+                        >
+                          <option value="">Välj huvudman...</option>
+                          {authorities.map(auth => (
+                            <option key={auth.id} value={auth.id}>{auth.name}</option>
+                          ))}
+                        </select>
+                        <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-300">
+                          <ChevronDown size={18} />
+                        </div>
                       </div>
+                    </div>
+
+                    {/* School Selection */}
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Välj skola/enhet *</label>
+                      <div className="relative">
+                        <Building2 className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none" size={18} />
+                        <select 
+                          value={formData.school}
+                          disabled={!selectedAuthority}
+                          onChange={(e) => {
+                            const school = availableSchools.find(s => s.name === e.target.value);
+                            updateFormData('school', e.target.value);
+                            if (school) {
+                              updateFormData('schoolId', school.id);
+                              updateFormData('authorityId', school.authorityId);
+                            }
+                          }}
+                          className={`w-full pl-12 p-4 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-visuera-green/20 transition-all text-sm appearance-none cursor-pointer ${!selectedAuthority ? 'opacity-50 grayscale' : ''}`}
+                        >
+                          <option value="">{selectedAuthority ? 'Välj en skola...' : 'Välj huvudman först...'}</option>
+                          {availableSchools
+                            .filter(s => s.authorityId === selectedAuthority)
+                            .map(s => (
+                              <option key={s.id} value={s.name}>{s.name}</option>
+                            ))}
+                        </select>
+                        <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-300">
+                          <ChevronDown size={18} />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Namn på berörd elev *</label>
+                      <div className="relative">
+                        <User className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
+                        <input 
+                          type="text"
+                          value={formData.studentName}
+                          onChange={(e) => updateFormData('studentName', e.target.value)}
+                          placeholder="Elevens namn"
+                          className="w-full pl-12 p-4 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-visuera-green/20 transition-all text-sm"
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Klass/Grupp</label>
+                      <input 
+                        type="text"
+                        value={formData.studentClass}
+                        onChange={(e) => updateFormData('studentClass', e.target.value)}
+                        placeholder="t.ex. 4B"
+                        className="w-full p-4 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-visuera-green/20 transition-all text-sm font-medium"
+                      />
                     </div>
                   </div>
 
@@ -925,14 +1032,14 @@ export const TrygghetsFlow = ({ isQuickReport = false, onSuccess, initialCaseId,
                       </div>
                     </div>
                     <div className="space-y-2">
-                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Namn på berörd elev *</label>
+                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Plats för händelsen</label>
                       <div className="relative">
-                        <User className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
+                        <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
                         <input 
                           type="text"
-                          value={formData.studentName}
-                          onChange={(e) => updateFormData('studentName', e.target.value)}
-                          placeholder="Elevens namn"
+                          value={formData.incidentLocation}
+                          onChange={(e) => updateFormData('incidentLocation', e.target.value)}
+                          placeholder="t.ex. Skolgården, matsalen"
                           className="w-full pl-12 p-4 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-visuera-green/20 transition-all text-sm"
                         />
                       </div>

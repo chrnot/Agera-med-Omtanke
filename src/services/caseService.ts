@@ -56,15 +56,15 @@ function handleFirestoreError(error: unknown, operationType: OperationType, path
     operationType,
     path
   };
-  console.error('Firestore Error: ', JSON.stringify(errInfo));
+  console.error('Firestore Error at ' + path + ': ', JSON.stringify(errInfo));
   throw new Error(JSON.stringify(errInfo));
 }
 
 export const caseService = {
   createCase: async (caseData: any) => {
-    const path = 'cases';
+    let currentPath = 'cases';
     try {
-      const docRef = await addDoc(collection(db, path), {
+      const docRef = await addDoc(collection(db, currentPath), {
         ...caseData,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
@@ -72,16 +72,21 @@ export const caseService = {
       });
       
       // Initial Audit Log
-      await addDoc(collection(db, `cases/${docRef.id}/audit`), {
+      currentPath = `cases/${docRef.id}/audit`;
+      await addDoc(collection(db, currentPath), {
         caseId: docRef.id,
         userId: auth.currentUser?.uid || 'anonymous',
         userName: auth.currentUser?.displayName || 'Anonym anmälare',
         action: 'Created',
         timestamp: serverTimestamp()
       });
-
+      
+      // Secondary Audit info
+      currentPath = `cases/${docRef.id}/audit`;
+      
       // Automated Notification for Principal
-      await addDoc(collection(db, 'notifications'), {
+      currentPath = 'notifications';
+      await addDoc(collection(db, currentPath), {
         type: 'new_case',
         school: caseData.school || 'Danderyds Skola',
         message: `Ny anmälan inkommen: ${caseData.title || 'Incident'}`,
@@ -92,7 +97,7 @@ export const caseService = {
 
       return docRef.id;
     } catch (error) {
-      handleFirestoreError(error, OperationType.CREATE, path);
+      handleFirestoreError(error, OperationType.CREATE, currentPath);
     }
   },
 
