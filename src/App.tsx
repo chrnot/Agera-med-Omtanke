@@ -19,20 +19,142 @@ import {
   BookOpen,
   Zap,
   AlertCircle,
-  Trash2
+  Trash2,
+  X,
+  Smartphone,
+  Fingerprint
 } from 'lucide-react';
 import { onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut, User } from 'firebase/auth';
 import { auth, db } from './lib/firebase';
+import { motion, AnimatePresence } from 'motion/react';
 import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 import { TrygghetsFlow } from './components/TrygghetsFlow';
 import { UserManagement } from './components/UserManagement';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { caseService } from './services/caseService';
 import { setupService } from './services/setupService';
-import { onSnapshot, collection, query, orderBy, limit } from 'firebase/firestore';
+import { onSnapshot, collection, query, orderBy, limit, where, getDocs } from 'firebase/firestore';
 
-const Login = ({ onQuickReport }: { onQuickReport: () => void }) => {
+interface UserProfile {
+  uid: string;
+  name: string;
+  email: string;
+  role: string;
+  school: string;
+  team?: string;
+  personalNumber?: string;
+  globalRole?: string;
+  schoolAccess?: Record<string, string[]>;
+  authorityAccess?: Record<string, string>;
+  createdAt: string;
+}
+
+const BankIDModal = ({ isOpen, onClose, onAuthenticated }: { isOpen: boolean, onClose: () => void, onAuthenticated: (pnr: string) => void }) => {
+  const [step, setStep] = useState<'input' | 'waiting' | 'success'>('input');
+  const [pnr, setPnr] = useState('');
+  const [error, setError] = useState('');
+
+  const handleStart = () => {
+    if (pnr.length !== 12 && pnr.length !== 13) {
+      setError('Vänligen ange ett giltigt personnummer (ÅÅÅÅMMDD-XXXX)');
+      return;
+    }
+    setStep('waiting');
+    // Simulate BankID process
+    setTimeout(() => {
+      setStep('success');
+      setTimeout(() => {
+        onAuthenticated(pnr);
+      }, 1500);
+    }, 3000);
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 backdrop-blur-md bg-visuera-dark/40">
+      <motion.div 
+        initial={{ opacity: 0, scale: 0.9, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        className="bg-white w-full max-w-sm rounded-[40px] overflow-hidden shadow-2xl"
+      >
+        <div className="p-8 text-center space-y-6">
+          <div className="w-20 h-20 bg-[#003da5] rounded-3xl flex items-center justify-center mx-auto shadow-xl shadow-[#003da5]/20">
+            <Smartphone size={40} className="text-white" />
+          </div>
+          
+          <div className="space-y-2">
+            <h2 className="text-2xl font-black text-[#003da5]">BankID</h2>
+            <p className="text-slate-500 text-sm font-medium">Säker inloggning med e-legitimation</p>
+          </div>
+
+          <div className="py-2">
+            {step === 'input' && (
+              <div className="space-y-4">
+                <div className="text-left space-y-2">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Personnummer</label>
+                  <input 
+                    type="text"
+                    placeholder="ÅÅÅÅMMDD-XXXX"
+                    value={pnr}
+                    onChange={(e) => {
+                      setPnr(e.target.value);
+                      setError('');
+                    }}
+                    className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl p-4 text-center text-lg font-black tracking-widest focus:border-[#003da5] transition-all outline-none"
+                  />
+                  {error && <p className="text-red-500 text-[10px] font-bold text-center mt-2">{error}</p>}
+                </div>
+                <button 
+                  onClick={handleStart}
+                  className="w-full py-4 bg-[#003da5] text-white rounded-2xl font-bold text-lg hover:bg-[#002d7a] transition-all shadow-lg shadow-[#003da5]/20"
+                >
+                  Starta BankID
+                </button>
+              </div>
+            )}
+
+            {step === 'waiting' && (
+              <div className="py-8 space-y-6">
+                <div className="relative w-16 h-16 mx-auto">
+                   <div className="absolute inset-0 border-4 border-[#003da5]/10 rounded-full"></div>
+                   <div className="absolute inset-0 border-4 border-[#003da5] border-t-transparent rounded-full animate-spin"></div>
+                </div>
+                <div className="space-y-2">
+                  <p className="font-bold text-visuera-dark">Starta BankID-appen</p>
+                  <p className="text-xs text-slate-400">Väntar på att du ska signera i din BankID-app...</p>
+                </div>
+              </div>
+            )}
+
+            {step === 'success' && (
+              <div className="py-8 space-y-6">
+                <div className="w-16 h-16 bg-visuera-green rounded-full flex items-center justify-center mx-auto text-white">
+                  <CheckCircle2 size={32} />
+                </div>
+                <div className="space-y-1">
+                  <p className="font-bold text-visuera-dark">Legitimering klar</p>
+                  <p className="text-xs text-slate-400">Du skickas nu vidare...</p>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <button 
+            onClick={onClose}
+            className="text-slate-400 text-xs font-bold hover:text-slate-600 transition-all uppercase tracking-widest"
+          >
+            Avbryt
+          </button>
+        </div>
+      </motion.div>
+    </div>
+  );
+};
+
+const Login = ({ onQuickReport, onBankIDLogin }: { onQuickReport: () => void, onBankIDLogin: (pnr: string) => void }) => {
   const [loading, setLoading] = useState(false);
+  const [showBankID, setShowBankID] = useState(false);
 
   const handleLogin = async () => {
     setLoading(true);
@@ -52,6 +174,7 @@ const Login = ({ onQuickReport }: { onQuickReport: () => void }) => {
           email: user.email,
           name: user.displayName,
           role: isAdminEmail ? 'admin' : 'staff', // Assign admin to owner email
+          globalRole: isAdminEmail ? 'admin' : 'none',
           school: 'Danderyds Skola',
           createdAt: new Date().toISOString()
         });
@@ -75,22 +198,12 @@ const Login = ({ onQuickReport }: { onQuickReport: () => void }) => {
           <p className="text-slate-500 font-medium mt-2">Trygghetshantering i Danderyds Kommun</p>
         </div>
         
-        <div className="py-8 space-y-4">
-          <p className="text-sm text-slate-600 leading-relaxed px-8">
-            En säker plattform för anmälan, utredning och uppföljning av kränkande behandling enligt Skollagen 6 kap.
-          </p>
-          <div className="flex justify-center gap-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-            <span className="flex items-center gap-1"><Lock size={12}/> GDPR Säkrad</span>
-            <span className="flex items-center gap-1"><ShieldCheck size={12}/> Laglig efterlevnad</span>
-          </div>
-        </div>
-
         <div className="py-4 space-y-4">
           <button 
             onClick={onQuickReport}
-            className="w-full py-4 bg-white text-visuera-green border-2 border-visuera-green rounded-2xl font-bold text-lg hover:bg-visuera-green/5 transition-all flex items-center justify-center gap-3"
+            className="w-full py-4 bg-white text-visuera-green border-2 border-visuera-green rounded-2xl font-bold text-base hover:bg-visuera-green/5 transition-all flex items-center justify-center gap-3"
           >
-            <PlusCircle size={22} />
+            <PlusCircle size={20} />
             Snabb-anmälan (Utan inloggning)
           </button>
 
@@ -100,26 +213,45 @@ const Login = ({ onQuickReport }: { onQuickReport: () => void }) => {
             <div className="flex-1 h-px bg-slate-100"></div>
           </div>
 
-          <button 
-            onClick={handleLogin}
-            disabled={loading}
-            className="w-full py-5 bg-visuera-green text-white rounded-2xl font-bold text-lg hover:bg-visuera-light-green transition-all shadow-lg shadow-visuera-green/20 flex items-center justify-center gap-3 disabled:opacity-50"
-          >
-            {loading ? (
-              <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-            ) : (
-              <>
-                <img src="https://www.google.com/favicon.ico" alt="Google" className="w-6 h-6" referrerPolicy="no-referrer" />
-                Logga in med Google
-              </>
-            )}
-          </button>
+          <div className="grid grid-cols-1 gap-4">
+            <button 
+              onClick={() => setShowBankID(true)}
+              className="w-full py-5 bg-[#003da5] text-white rounded-2xl font-bold text-lg hover:bg-[#002d7a] transition-all shadow-lg shadow-[#003da5]/20 flex items-center justify-center gap-3"
+            >
+              <Smartphone size={22} />
+              Logga in med BankID
+            </button>
+
+            <button 
+              onClick={handleLogin}
+              disabled={loading}
+              className="w-full py-4 bg-slate-50 text-slate-600 border border-slate-200 rounded-2xl font-bold text-base hover:bg-slate-100 transition-all flex items-center justify-center gap-3 disabled:opacity-50"
+            >
+              {loading ? (
+                <div className="w-6 h-6 border-2 border-slate-300 border-t-slate-600 rounded-full animate-spin"></div>
+              ) : (
+                <>
+                  <img src="https://www.google.com/favicon.ico" alt="Google" className="w-5 h-5" referrerPolicy="no-referrer" />
+                  Logga in med Google
+                </>
+              )}
+            </button>
+          </div>
         </div>
         
-        <p className="text-[10px] text-slate-400">
-          Genom att logga in godkänner du hantering av personuppgifter enligt kommunens riktlinjer.
+        <p className="text-[10px] text-slate-400 max-w-xs mx-auto">
+          Genom att använda CRID-Safe godkänner du hantering av personuppgifter enligt GDPR och Danderyds kommuns riktlinjer.
         </p>
       </div>
+
+      <BankIDModal 
+        isOpen={showBankID} 
+        onClose={() => setShowBankID(false)} 
+        onAuthenticated={(pnr) => {
+          setShowBankID(false);
+          onBankIDLogin(pnr);
+        }}
+      />
     </div>
   );
 };
@@ -332,16 +464,52 @@ const App = () => {
   const [activeTab, setActiveTab] = useState<'dashboard' | 'cases' | 'report' | 'flow' | 'users'>('dashboard');
   const [selectedCaseId, setSelectedCaseId] = useState<string | null>(null);
   const [cases, setCases] = useState<any[]>([]);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [authError, setAuthError] = useState<string | null>(null);
 
   const handleDeleteCase = async (e: React.MouseEvent, caseId: string) => {
     e.stopPropagation();
-    if (confirm('Är du säker på att du vill ta bort detta ärende? Detta går inte att ångra.')) {
-      try {
-        await caseService.deleteCase(caseId);
-      } catch (err) {
-        console.error("Error deleting case:", err);
-        alert("Kunde inte ta bort ärendet.");
+    try {
+      await caseService.deleteCase(caseId);
+      setConfirmDeleteId(null);
+    } catch (err) {
+      console.error("Error deleting case:", err);
+      setConfirmDeleteId(null);
+      // We'll show the error in the console or maybe a fleeting toast if needed
+    }
+  };
+
+  const handleBankIDLogin = async (pnr: string) => {
+    setLoading(true);
+    try {
+      const usersRef = collection(db, 'users');
+      const q = query(usersRef, where('personalNumber', '==', pnr));
+      const querySnapshot = await getDocs(q);
+      
+      if (!querySnapshot.empty) {
+        const userDoc = querySnapshot.docs[0];
+        const userData = userDoc.data() as UserProfile;
+        
+        // Mock a Firebase user object for the session
+        const mockUser = {
+          uid: userData.uid,
+          email: userData.email,
+          displayName: userData.name,
+          photoURL: null,
+          isBankID: true
+        } as any;
+        
+        setUser(mockUser);
+        setUserProfile(userData);
+        setAuthError(null);
+      } else {
+        setAuthError('Ingen användare hittades med detta personnummer. Kontakta en administratör.');
       }
+    } catch (err) {
+      console.error("BankID login error:", err);
+      setAuthError('Ett fel uppstod vid BankID-inloggning.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -421,7 +589,22 @@ const App = () => {
     );
   }
 
-  if (!user) return <Login onQuickReport={() => setIsAnonymous(true)} />;
+  if (!user) {
+    return (
+      <>
+        <Login onQuickReport={() => setIsAnonymous(true)} onBankIDLogin={handleBankIDLogin} />
+        {authError && (
+          <div className="fixed bottom-12 left-1/2 -translate-x-1/2 z-[100] bg-red-600 text-white px-8 py-4 rounded-3xl shadow-2xl flex items-center gap-3 animate-in slide-in-from-bottom-4">
+            <AlertCircle size={20} />
+            <span className="font-bold text-sm text-center">{authError}</span>
+            <button onClick={() => setAuthError(null)} className="ml-4 p-1 hover:bg-white/20 rounded-lg transition-all">
+              <X size={18} />
+            </button>
+          </div>
+        )}
+      </>
+    );
+  }
 
   return (
     <ErrorBoundary>
@@ -445,7 +628,10 @@ const App = () => {
             ].map((item) => (
               <button
                 key={item.id}
-                onClick={() => setActiveTab(item.id as any)}
+                onClick={() => {
+                  setActiveTab(item.id as any);
+                  if (item.id === 'report') setSelectedCaseId(null);
+                }}
                 className={`w-full flex items-center gap-4 p-4 rounded-2xl transition-all group ${
                   activeTab === item.id 
                     ? 'bg-visuera-green text-white shadow-xl shadow-visuera-green/20' 
@@ -554,13 +740,33 @@ const App = () => {
                               </span>
                               <div className="flex items-center gap-4">
                                 <button onClick={(e) => { e.stopPropagation(); setActiveTab('flow'); setSelectedCaseId(c.id); }} className="text-visuera-green font-bold text-xs uppercase hover:underline">Öppna</button>
-                                <button 
-                                  onClick={(e) => handleDeleteCase(e, c.id)}
-                                  className="text-slate-300 hover:text-red-500 transition-colors p-2"
-                                  title="Ta bort ärende"
-                                >
-                                  <Trash2 size={16} />
-                                </button>
+                                
+                                <div className="flex items-center gap-1">
+                                  {confirmDeleteId === c.id ? (
+                                    <div className="flex items-center bg-red-50 rounded-xl overflow-hidden border border-red-100">
+                                      <button 
+                                        onClick={(e) => handleDeleteCase(e, c.id)}
+                                        className="px-3 py-1.5 bg-red-500 text-white text-[10px] font-black uppercase tracking-widest hover:bg-red-600 transition-colors"
+                                      >
+                                        Radera?
+                                      </button>
+                                      <button 
+                                        onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(null); }}
+                                        className="px-2 py-1.5 text-slate-400 hover:text-slate-600 transition-colors"
+                                      >
+                                        <X size={14} />
+                                      </button>
+                                    </div>
+                                  ) : (
+                                    <button 
+                                      onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(c.id); }}
+                                      className="text-slate-300 hover:text-red-500 transition-colors p-2"
+                                      title="Ta bort ärende"
+                                    >
+                                      <Trash2 size={16} />
+                                    </button>
+                                  )}
+                                </div>
                               </div>
                            </div>
                         </div>

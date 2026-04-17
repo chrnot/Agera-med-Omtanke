@@ -119,6 +119,7 @@
         "school": { "type": "string", "description": "Primary school (legacy/default)." },
         "globalRole": { "type": "string", "enum": ["admin", "none"] },
         "team": { "type": "string", "description": "The workgroup/team (e.g., '1', '2', 'F', 'Övriga')." },
+        "personalNumber": { "type": "string", "description": "Swedish personal identity number (YYYYMMDD-XXXX)." },
         "schoolAccess": { 
           "type": "object", 
           "description": "Map of schoolId to array of roles. e.g. { 'schoolA': ['principal', 'teacher'] }" 
@@ -139,6 +140,7 @@
     "/notifications/{noteId}": { "schema": "Notification", "description": "System alerts." },
     "/users/{uid}": { "schema": "User", "description": "Profiles." },
     "/authorities/{authId}": { "schema": "Authority", "description": "Authorities." },
-    "/schools/{schoolId}": { "schema": "School", "description": "Schools." }
+    "/schools/{schoolId}": { "schema": "School", "description": "Schools." },
+    "/AuditLog/{logId}": { "schema": "AuditLog", "description": "System-wide audit trail." }
   }
 }

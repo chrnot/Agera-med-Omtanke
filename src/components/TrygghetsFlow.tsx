@@ -320,9 +320,30 @@ export const TrygghetsFlow = ({ isQuickReport = false, onSuccess, initialCaseId,
   };
 
   const toggleActivity = (activity: string) => {
-    setSelectedActivities(prev => 
-      prev.includes(activity) ? prev.filter(a => a !== activity) : [...prev, activity]
-    );
+    setSelectedActivities(prev => {
+      const isAdding = !prev.includes(activity);
+      const nextActivities = isAdding ? [...prev, activity] : prev.filter(a => a !== activity);
+      
+      // Update the actionsText textarea automatically
+      setFormData(fPrev => {
+        let currentText = fPrev.actionsText || '';
+        if (isAdding) {
+          // Add activity to text if not already present in some form
+          if (!currentText.includes(activity)) {
+            const separator = currentText.length > 0 ? '\n' : '';
+            currentText = `${currentText}${separator}- ${activity}`;
+          }
+        } else {
+          // Attempt to remove the activity line if it was added automatically
+          const lines = currentText.split('\n');
+          const filteredLines = lines.filter(line => line.trim() !== `- ${activity}` && line.trim() !== activity);
+          currentText = filteredLines.join('\n');
+        }
+        return { ...fPrev, actionsText: currentText };
+      });
+
+      return nextActivities;
+    });
   };
 
   const steps = INITIAL_STEPS.map((step, index) => {

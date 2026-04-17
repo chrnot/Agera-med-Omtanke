@@ -86,5 +86,10 @@ service cloud.firestore {
       allow read: if isAuthenticated();
       allow create, update: if true; // Allow system/anonymous notifications
     }
+
+    match /AuditLog/{logId} {
+      allow read: if isAuthenticated() && isGlobalAdmin();
+      allow create: if isAuthenticated();
+    }
   }
 }

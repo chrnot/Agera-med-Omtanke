@@ -24,9 +24,10 @@ import {
   addDoc,
   deleteDoc,
   setDoc,
-  serverTimestamp
+  serverTimestamp,
+  Timestamp
 } from 'firebase/firestore';
-import { db } from '../lib/firebase';
+import { db, auth } from '../lib/firebase';
 import { setupService } from '../services/setupService';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -53,6 +54,7 @@ interface UserProfile {
   authorityAccess?: Record<string, string>;
   school: string; // Legacy
   team?: string;
+  personalNumber?: string;
   createdAt: string;
 }
 
@@ -198,15 +200,48 @@ export const UserManagement = () => {
     if (!selectedUser) return;
     setIsUpdating(true);
     try {
+      const oldUser = users.find(u => u.uid === selectedUser.uid);
       const userRef = doc(db, 'users', selectedUser.uid);
       const updates = {
         schoolAccess: selectedUser.schoolAccess || {},
         authorityAccess: selectedUser.authorityAccess || {},
         globalRole: selectedUser.globalRole || 'none',
         school: selectedUser.school || '',
-        team: selectedUser.team || ''
+        team: selectedUser.team || '',
+        personalNumber: selectedUser.personalNumber || ''
       };
+
+      // Calculate changes for AuditLog
+      const changes: Record<string, any> = {};
+      if (oldUser) {
+        if (JSON.stringify(oldUser.schoolAccess) !== JSON.stringify(updates.schoolAccess)) {
+          changes.schoolAccess = { from: oldUser.schoolAccess || {}, to: updates.schoolAccess };
+        }
+        if (JSON.stringify(oldUser.authorityAccess) !== JSON.stringify(updates.authorityAccess)) {
+          changes.authorityAccess = { from: oldUser.authorityAccess || {}, to: updates.authorityAccess };
+        }
+        if (oldUser.globalRole !== updates.globalRole) {
+          changes.globalRole = { from: oldUser.globalRole || 'none', to: updates.globalRole };
+        }
+        if (oldUser.role !== selectedUser.role) {
+          changes.role = { from: oldUser.role, to: selectedUser.role };
+        }
+      }
+
       await updateDoc(userRef, updates);
+
+      // Create Audit Log
+      if (Object.keys(changes).length > 0) {
+        await addDoc(collection(db, 'AuditLog'), {
+          action: 'UPPDATERING_BEHÖRIGHET',
+          targetUserId: selectedUser.uid,
+          targetUserName: selectedUser.name,
+          changedByUid: auth.currentUser?.uid || 'unknown',
+          changedByName: auth.currentUser?.displayName || auth.currentUser?.email || 'System',
+          changes,
+          timestamp: serverTimestamp()
+        });
+      }
       
       setUsers(prev => prev.map(u => u.uid === selectedUser.uid ? { ...u, ...updates } : u));
       setSuccess(`Behörigheter sparade för ${selectedUser.name}`);
@@ -316,7 +351,12 @@ export const UserManagement = () => {
                         <tr key={user.uid} className="hover:bg-slate-50/50 transition-all group">
                           <td className="px-6 py-4">
                             <div className="font-bold text-visuera-dark">{user.name}</div>
-                            <div className="text-[10px] text-slate-400">{user.email}</div>
+                            <div className="flex flex-col">
+                              <div className="text-[10px] text-slate-400">{user.email}</div>
+                              {user.personalNumber && (
+                                <div className="text-[10px] text-visuera-green font-bold">{user.personalNumber}</div>
+                              )}
+                            </div>
                           </td>
                           <td className="px-6 py-4">
                             <div className="text-sm font-medium text-slate-500">{user.school}</div>
@@ -521,6 +561,16 @@ export const UserManagement = () => {
                         className="w-full bg-white border-2 border-slate-100 rounded-xl p-3 text-sm focus:border-visuera-green transition-all font-bold"
                       />
                     </div>
+                  </div>
+                  <div className="bg-slate-50 p-6 rounded-3xl border border-slate-100 flex flex-col gap-2">
+                    <label className="text-[9px] font-bold text-slate-400 uppercase tracking-widest ml-1">Personnummer</label>
+                    <input 
+                      type="text"
+                      placeholder="YYYYMMDD-XXXX"
+                      value={selectedUser.personalNumber || ''}
+                      onChange={(e) => setSelectedUser({ ...selectedUser, personalNumber: e.target.value })}
+                      className="w-full bg-white border-2 border-slate-100 rounded-xl p-3 text-sm focus:border-visuera-green transition-all font-bold"
+                    />
                   </div>
                 </section>
 
