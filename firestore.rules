@@ -1,0 +1,88 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isGlobalAdmin() {
+      return isAuthenticated() && (
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('globalRole', 'none') == 'admin' ||
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('role', 'none') == 'admin'
+      );
+    }
+
+    function hasSchoolRole(schoolId, role) {
+      return isAuthenticated() && 
+             role in get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('schoolAccess', {}).get(schoolId, []);
+    }
+
+    function hasAuthorityRole(authorityId, role) {
+      return isAuthenticated() && 
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('authorityAccess', {}).get(authorityId, 'none') == role;
+    }
+
+    match /users/{uid} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && (request.auth.uid == uid || isGlobalAdmin());
+    }
+
+    match /authorities/{authId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && isGlobalAdmin();
+    }
+
+    match /schools/{schoolId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && isGlobalAdmin();
+    }
+
+    match /cases/{caseId} {
+      function canUserViewCase(caseData) {
+        return isGlobalAdmin() ||
+               (caseData.get('authorityId', '') != '' && hasAuthorityRole(caseData.authorityId, 'authority')) ||
+               (caseData.get('schoolId', '') != '' && (
+                 hasSchoolRole(caseData.schoolId, 'principal') ||
+                 (hasSchoolRole(caseData.schoolId, 'teacher') && caseData.assignedToUid == request.auth.uid) ||
+                 (hasSchoolRole(caseData.schoolId, 'staff') && caseData.reporterUid == request.auth.uid)
+               )) ||
+               // Legacy
+               get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'authority' ||
+               (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'principal' && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.school == caseData.school) ||
+               caseData.reporterUid == request.auth.uid || 
+               caseData.assignedToUid == request.auth.uid;
+      }
+      
+      allow read: if isAuthenticated() && canUserViewCase(resource.data);
+      
+      allow create: if (
+        (isAuthenticated() && request.resource.data.reporterUid == request.auth.uid) ||
+        (!isAuthenticated() && request.resource.data.reporterUid == 'anonymous')
+      );
+      
+      allow update: if isAuthenticated() && (
+        isGlobalAdmin() ||
+        (resource.data.get('schoolId', '') != '' && hasSchoolRole(resource.data.schoolId, 'principal')) ||
+        (resource.data.get('authorityId', '') != '' && hasAuthorityRole(resource.data.authorityId, 'authority')) ||
+        resource.data.assignedToUid == request.auth.uid ||
+        (resource.data.reporterUid == request.auth.uid && resource.data.status == 'anmäld')
+      );
+
+      match /audit/{logId} {
+        allow read: if isAuthenticated();
+        allow create: if isAuthenticated();
+      }
+
+      match /{allSubcollections=**} {
+        allow read: if isAuthenticated() && canUserViewCase(get(/databases/$(database)/documents/cases/$(caseId)).data);
+        allow write: if isAuthenticated();
+      }
+    }
+    
+    match /notifications/{noteId} {
+      allow read: if isAuthenticated();
+      allow create, update: if isAuthenticated();
+    }
+  }
+}

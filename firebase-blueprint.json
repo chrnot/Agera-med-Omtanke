@@ -1,0 +1,144 @@
+{
+  "entities": {
+    "Case": {
+      "title": "Case (Ärende)",
+      "description": "Represents a reported incident of kränkande behandling in Danderyds school system.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique identifier for the case." },
+        "status": {
+          "type": "string",
+          "enum": ["anmäld", "tilldelad", "utredning", "utreds", "åtgärder", "åtgärdad", "uppföljd", "avslutad", "avslutat"],
+          "description": "Current status in the workflow."
+        },
+        "incidentDate": { "type": "string", "format": "date-time", "description": "When the incident occurred." },
+        "studentName": { "type": "string", "description": "Name of the student affected (subject to GDPR)." },
+        "studentSSN": { "type": "string", "description": "Social security number (encrypted or restricted)." },
+        "studentClass": { "type": "string", "description": "Class of the student." },
+        "description": { "type": "string", "description": "Detailed description of the incident." },
+        "location": { "type": "string", "description": "Where the incident took place (e.g., corridor, playground)." },
+        "school": { "type": "string", "description": "The school where the incident occurred." },
+        "reporterUid": { "type": "string", "description": "Firebase Auth UID of the reporter (or 'anonymous')." },
+        "reporterName": { "type": "string", "description": "Name of the person who reported the case." },
+        "assignedToUid": { "type": "string", "description": "UID of the investigator assigned by the principal." },
+        "assignedTeacher": { "type": "string", "description": "Name of the investigator for display." },
+        "principalUid": { "type": "string", "description": "UID of the principal responsible for the case." },
+        "isRestricted": { "type": "boolean", "description": "If true, only rectors and specific investigators see the case." },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" },
+        "investigationStartedAt": { "type": "string", "format": "date-time" },
+        "closureDate": { "type": "string", "format": "date-time" }
+      },
+      "required": ["status", "incidentDate", "studentName", "description", "reporterUid", "createdAt", "school"]
+    },
+    "Actor": {
+      "title": "Actor (Aktör)",
+      "description": "A person involved in a specific case.",
+      "type": "object",
+      "properties": {
+        "caseId": { "type": "string" },
+        "name": { "type": "string" },
+        "type": { "type": "string", "enum": ["utsatt", "den som utsatt", "vittne"] },
+        "interviewSummary": { "type": "string" },
+        "interviewDate": { "type": "string", "format": "date-time" }
+      },
+      "required": ["caseId", "name", "type"]
+    },
+    "Action": {
+      "title": "Action (Åtgärd)",
+      "description": "A planned or implemented action to address the incident.",
+      "type": "object",
+      "properties": {
+        "caseId": { "type": "string" },
+        "description": { "type": "string" },
+        "status": { "type": "string", "enum": ["planned", "active", "completed"] },
+        "deadline": { "type": "string", "format": "date-time" },
+        "assignedToUid": { "type": "string" }
+      },
+      "required": ["caseId", "description", "status"]
+    },
+    "AuditLog": {
+      "title": "Audit Log",
+      "description": "Logs all changes to an ärende for legal tracking.",
+      "type": "object",
+      "properties": {
+        "caseId": { "type": "string" },
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "action": { "type": "string", "description": "Viewed, Updated, Created, Signed" },
+        "changes": { "type": "object", "description": "Difference map of changed fields." },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["caseId", "userId", "action", "timestamp"]
+    },
+    "Notification": {
+      "title": "Notification",
+      "description": "Alerts for rectors and staff.",
+      "type": "object",
+      "properties": {
+        "recipientUid": { "type": "string" },
+        "school": { "type": "string" },
+        "type": { "type": "string", "enum": ["new_case", "deadline", "reminder"] },
+        "message": { "type": "string" },
+        "caseId": { "type": "string" },
+        "read": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["type", "message", "createdAt"]
+    },
+    "Authority": {
+      "title": "Authority (Huvudman)",
+      "description": "An organization that manages multiple schools.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" }
+      },
+      "required": ["name"]
+    },
+    "School": {
+      "title": "School (Enhet)",
+      "description": "An individual school belonging to an authority.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "authorityId": { "type": "string" }
+      },
+      "required": ["name", "authorityId"]
+    },
+    "User": {
+      "title": "User",
+      "description": "System user with multi-school and multi-role capabilities.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "name": { "type": "string" },
+        "role": { "type": "string", "description": "Global or primary role." },
+        "school": { "type": "string", "description": "Primary school (legacy/default)." },
+        "globalRole": { "type": "string", "enum": ["admin", "none"] },
+        "team": { "type": "string", "description": "The workgroup/team (e.g., '1', '2', 'F', 'Övriga')." },
+        "schoolAccess": { 
+          "type": "object", 
+          "description": "Map of schoolId to array of roles. e.g. { 'schoolA': ['principal', 'teacher'] }" 
+        },
+        "authorityAccess": {
+          "type": "object",
+          "description": "Map of authorityId to role. e.g. { 'auth1': 'authority' }"
+        }
+      },
+      "required": ["uid", "email"]
+    }
+  },
+  "firestore": {
+    "/cases/{caseId}": { "schema": "Case", "description": "Main incident reports." },
+    "/cases/{caseId}/actors/{actorId}": { "schema": "Actor", "description": "People in interviews." },
+    "/cases/{caseId}/actions/{actionId}": { "schema": "Action", "description": "Corrective steps." },
+    "/cases/{caseId}/audit/{logId}": { "schema": "AuditLog", "description": "Change history." },
+    "/notifications/{noteId}": { "schema": "Notification", "description": "System alerts." },
+    "/users/{uid}": { "schema": "User", "description": "Profiles." },
+    "/authorities/{authId}": { "schema": "Authority", "description": "Authorities." },
+    "/schools/{schoolId}": { "schema": "School", "description": "Schools." }
+  }
+}
