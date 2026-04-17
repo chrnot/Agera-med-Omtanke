@@ -11,6 +11,7 @@ import {
   Plus, 
   Trash2,
   ChevronRight,
+  ChevronDown,
   ShieldAlert,
   GraduationCap
 } from 'lucide-react';
@@ -97,6 +98,7 @@ export const UserManagement = () => {
   
   // User Edit State
   const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
+  const [isEditorCollapsed, setIsEditorCollapsed] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const [success, setSuccess] = useState<string | null>(null);
 
@@ -354,6 +356,210 @@ export const UserManagement = () => {
                 exit={{ opacity: 0, x: 10 }}
                 className="space-y-6"
               >
+                {/* Collapsible User Permission Editor */}
+                <AnimatePresence>
+                  {selectedUser && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -20, height: 0 }}
+                      animate={{ opacity: 1, y: 0, height: 'auto' }}
+                      exit={{ opacity: 0, y: -20, height: 0 }}
+                      className="mb-8 border border-visuera-green/20 rounded-[32px] overflow-hidden bg-white shadow-xl shadow-visuera-green/5"
+                    >
+                      <div 
+                        onClick={() => setIsEditorCollapsed(!isEditorCollapsed)}
+                        className="p-6 bg-slate-50/50 border-b border-slate-100 flex justify-between items-center cursor-pointer hover:bg-slate-50 transition-all"
+                      >
+                        <div className="flex items-center gap-4">
+                          <div className="w-12 h-12 bg-visuera-green/10 rounded-2xl flex items-center justify-center text-visuera-green">
+                            <ShieldAlert size={24} />
+                          </div>
+                          <div>
+                            <h3 className="text-lg font-black text-visuera-dark tracking-tight">Access Control: {selectedUser.name}</h3>
+                            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">
+                              {isEditorCollapsed ? 'Klicka för att expandera' : 'Klicka för att minimera sektionen'}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-4">
+                          <div className="flex items-center gap-2 px-3 py-1.5 bg-white rounded-lg border border-slate-100">
+                             {isEditorCollapsed ? <ChevronRight size={16} className="text-slate-400" /> : <ChevronDown size={16} className="text-visuera-green" />}
+                          </div>
+                          <button 
+                            onClick={(e) => { e.stopPropagation(); setSelectedUser(null); }}
+                            className="p-2 hover:bg-white rounded-xl transition-all border border-transparent hover:border-slate-200"
+                          >
+                            <X size={20} className="text-slate-300" />
+                          </button>
+                        </div>
+                      </div>
+
+                      <AnimatePresence initial={false}>
+                        {!isEditorCollapsed && (
+                          <motion.div
+                            initial={{ height: 0 }}
+                            animate={{ height: 'auto' }}
+                            exit={{ height: 0 }}
+                            className="overflow-hidden"
+                          >
+                            <div className="p-8 space-y-12">
+                              {/* Bas-information */}
+                              <section className="space-y-4">
+                                <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Bas-information</h4>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                  <div className="bg-slate-50 p-6 rounded-3xl border border-slate-100 flex flex-col gap-2">
+                                    <label className="text-[9px] font-bold text-slate-400 uppercase tracking-widest ml-1">Anställning / Primär skola</label>
+                                    <select 
+                                      value={selectedUser.school}
+                                      onChange={(e) => setSelectedUser({ ...selectedUser, school: e.target.value })}
+                                      className="w-full bg-white border-2 border-slate-100 rounded-xl p-3 text-sm focus:border-visuera-green transition-all font-bold appearance-none cursor-pointer"
+                                    >
+                                      <option value="">Välj skola...</option>
+                                      {schools.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
+                                    </select>
+                                  </div>
+                                  <div className="bg-slate-50 p-6 rounded-3xl border border-slate-100 flex flex-col gap-2">
+                                    <label className="text-[9px] font-bold text-slate-400 uppercase tracking-widest ml-1">Arbetslag</label>
+                                    <input 
+                                      type="text"
+                                      placeholder="t.ex. F-3, Arbetslag 1..."
+                                      value={selectedUser.team || ''}
+                                      onChange={(e) => setSelectedUser({ ...selectedUser, team: e.target.value })}
+                                      className="w-full bg-white border-2 border-slate-100 rounded-xl p-3 text-sm focus:border-visuera-green transition-all font-bold"
+                                    />
+                                  </div>
+                                </div>
+                                <div className="bg-slate-50 p-6 rounded-3xl border border-slate-100 flex flex-col gap-2">
+                                  <label className="text-[9px] font-bold text-slate-400 uppercase tracking-widest ml-1">Personnummer</label>
+                                  <input 
+                                    type="text"
+                                    placeholder="YYYYMMDD-XXXX"
+                                    value={selectedUser.personalNumber || ''}
+                                    onChange={(e) => setSelectedUser({ ...selectedUser, personalNumber: e.target.value })}
+                                    className="w-full bg-white border-2 border-slate-100 rounded-xl p-3 text-sm focus:border-visuera-green transition-all font-bold"
+                                  />
+                                </div>
+                              </section>
+
+                              {/* Global Role */}
+                              <section className="space-y-4">
+                                <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Global Behörighet</h4>
+                                <div className="flex gap-4">
+                                  <button
+                                    onClick={() => setSelectedUser({ ...selectedUser, globalRole: selectedUser.globalRole === 'admin' ? 'none' : 'admin' })}
+                                    className={`flex-1 p-6 rounded-3xl border-2 transition-all flex items-center justify-between group ${
+                                      selectedUser.globalRole === 'admin' 
+                                        ? 'border-red-200 bg-red-50/50' 
+                                        : 'border-slate-100 hover:border-slate-200 bg-white'
+                                    }`}
+                                  >
+                                    <div className="flex items-center gap-4">
+                                       <div className={`p-3 rounded-xl ${selectedUser.globalRole === 'admin' ? 'bg-red-500 text-white' : 'bg-slate-100 text-slate-300'}`}>
+                                          <Shield size={20} />
+                                       </div>
+                                       <div className="text-left">
+                                          <div className="font-bold text-visuera-dark">Systemadministratör</div>
+                                          <div className="text-[10px] text-slate-500">Full access till arkiv, inställningar och roller.</div>
+                                       </div>
+                                    </div>
+                                    <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${
+                                      selectedUser.globalRole === 'admin' ? 'bg-red-500 border-red-500 text-white' : 'border-slate-200'
+                                    }`}>
+                                       {selectedUser.globalRole === 'admin' && <CheckCircle2 size={14} />}
+                                    </div>
+                                  </button>
+                                </div>
+                              </section>
+
+                              {/* Authority Level */}
+                              <section className="space-y-4">
+                                <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Huvudmanna-åtkomst</h4>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                  {authorities.map(auth => (
+                                    <button
+                                      key={auth.id}
+                                      onClick={() => toggleUserAuthority(auth.id)}
+                                      className={`p-4 rounded-2xl border-2 transition-all flex items-center justify-between ${
+                                        selectedUser.authorityAccess?.[auth.id] === 'authority'
+                                          ? 'border-purple-200 bg-purple-50/30'
+                                          : 'border-slate-50 hover:border-slate-100 bg-slate-50/20'
+                                      }`}
+                                    >
+                                      <div className="flex items-center gap-3">
+                                         <Building size={16} className={selectedUser.authorityAccess?.[auth.id] ? 'text-purple-600' : 'text-slate-300'} />
+                                         <span className={`text-sm font-bold ${selectedUser.authorityAccess?.[auth.id] ? 'text-purple-600' : 'text-slate-600'}`}>
+                                           {auth.name}
+                                         </span>
+                                      </div>
+                                      <div className={`w-4 h-4 rounded border flex items-center justify-center ${
+                                        selectedUser.authorityAccess?.[auth.id] ? 'bg-purple-600 border-purple-600 text-white' : 'border-slate-200'
+                                      }`}>
+                                         {selectedUser.authorityAccess?.[auth.id] && <Plus size={12} className="rotate-45" />}
+                                      </div>
+                                    </button>
+                                  ))}
+                                </div>
+                              </section>
+
+                              {/* School-specific roles */}
+                              <section className="space-y-4">
+                                <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Skol-specifika Roller</h4>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                  {schools.map(school => (
+                                    <div key={school.id} className="bg-slate-50/50 p-6 rounded-[32px] border border-slate-100">
+                                      <div className="flex justify-between items-start mb-6">
+                                         <div>
+                                            <h5 className="font-bold text-visuera-dark">{school.name}</h5>
+                                            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">
+                                              {authorities.find(a => a.id === school.authorityId)?.name}
+                                            </p>
+                                         </div>
+                                         {(selectedUser.schoolAccess?.[school.id]?.length || 0) > 0 && (
+                                           <span className="bg-visuera-green text-white text-[9px] font-black px-2 py-0.5 rounded uppercase">Aktiv</span>
+                                         )}
+                                      </div>
+                                      <div className="flex flex-wrap gap-2 text-center items-center">
+                                         {ROLE_OPTIONS.map(role => (
+                                           <button
+                                              key={role.id}
+                                              onClick={() => toggleUserSchoolRole(school.id, role.id)}
+                                              className={`px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all ${
+                                                selectedUser.schoolAccess?.[school.id]?.includes(role.id)
+                                                  ? 'bg-visuera-green text-white shadow-lg shadow-visuera-green/20 scale-105'
+                                                  : 'bg-white text-slate-400 border border-slate-100 hover:border-visuera-green/30'
+                                              }`}
+                                           >
+                                             {role.label}
+                                           </button>
+                                         ))}
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </section>
+                              
+                              <div className="pt-8 bg-slate-50/80 -mx-8 -mb-8 p-8 flex gap-4 border-t border-slate-100">
+                                <button onClick={() => setSelectedUser(null)} className="flex-1 bg-white border border-slate-200 text-slate-600 font-black py-4 rounded-2xl hover:bg-slate-50 transition-all">AVBRYT</button>
+                                <button 
+                                  onClick={handleSavePermissions}
+                                  disabled={isUpdating}
+                                  className="flex-[2] bg-visuera-green text-white font-black py-4 rounded-2xl shadow-xl shadow-visuera-green/20 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+                                >
+                                  {isUpdating ? 'SPARAR...' : (
+                                    <>
+                                      <Save size={20} />
+                                      UPPDATERA BEHÖRIGHETER
+                                    </>
+                                  )}
+                                </button>
+                              </div>
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
                 <div className="relative">
                   <input 
                     type="text" 
@@ -543,184 +749,7 @@ export const UserManagement = () => {
         </div>
       </div>
 
-      {/* Advanced Permission Modal */}
-      <AnimatePresence>
-        {selectedUser && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-6">
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setSelectedUser(null)} className="absolute inset-0 bg-visuera-dark/40 backdrop-blur-sm" />
-            <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }} className="relative w-full max-w-4xl bg-white rounded-[40px] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
-              <div className="p-8 border-b border-slate-100 flex justify-between items-center">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 bg-visuera-green/10 rounded-2xl flex items-center justify-center text-visuera-green">
-                    <ShieldAlert size={24} />
-                  </div>
-                  <div>
-                    <h3 className="text-xl font-black text-visuera-dark tracking-tight">Access Control</h3>
-                    <p className="text-sm text-slate-500 font-medium">Behörighet för <span className="text-visuera-green">{selectedUser.name}</span></p>
-                  </div>
-                </div>
-                <button onClick={() => setSelectedUser(null)} className="p-2 hover:bg-slate-50 rounded-xl transition-all">
-                  <X size={24} className="text-slate-300" />
-                </button>
-              </div>
-
-              <div className="flex-1 overflow-y-auto p-8 space-y-12">
-                {/* User Info */}
-                <section className="space-y-4">
-                  <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Bas-information</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="bg-slate-50 p-6 rounded-3xl border border-slate-100 flex flex-col gap-2">
-                      <label className="text-[9px] font-bold text-slate-400 uppercase tracking-widest ml-1">Anställning / Primär skola</label>
-                      <select 
-                        value={selectedUser.school}
-                        onChange={(e) => setSelectedUser({ ...selectedUser, school: e.target.value })}
-                        className="w-full bg-white border-2 border-slate-100 rounded-xl p-3 text-sm focus:border-visuera-green transition-all font-bold appearance-none cursor-pointer"
-                      >
-                        <option value="">Välj skola...</option>
-                        {schools.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
-                      </select>
-                    </div>
-                    <div className="bg-slate-50 p-6 rounded-3xl border border-slate-100 flex flex-col gap-2">
-                      <label className="text-[9px] font-bold text-slate-400 uppercase tracking-widest ml-1">Arbetslag</label>
-                      <input 
-                        type="text"
-                        placeholder="t.ex. F-3, Arbetslag 1..."
-                        value={selectedUser.team || ''}
-                        onChange={(e) => setSelectedUser({ ...selectedUser, team: e.target.value })}
-                        className="w-full bg-white border-2 border-slate-100 rounded-xl p-3 text-sm focus:border-visuera-green transition-all font-bold"
-                      />
-                    </div>
-                  </div>
-                  <div className="bg-slate-50 p-6 rounded-3xl border border-slate-100 flex flex-col gap-2">
-                    <label className="text-[9px] font-bold text-slate-400 uppercase tracking-widest ml-1">Personnummer</label>
-                    <input 
-                      type="text"
-                      placeholder="YYYYMMDD-XXXX"
-                      value={selectedUser.personalNumber || ''}
-                      onChange={(e) => setSelectedUser({ ...selectedUser, personalNumber: e.target.value })}
-                      className="w-full bg-white border-2 border-slate-100 rounded-xl p-3 text-sm focus:border-visuera-green transition-all font-bold"
-                    />
-                  </div>
-                </section>
-
-                {/* Global Role */}
-                <section className="space-y-4">
-                  <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Global Behörighet</h4>
-                  <div className="flex gap-4">
-                    <button
-                      onClick={() => setSelectedUser({ ...selectedUser, globalRole: selectedUser.globalRole === 'admin' ? 'none' : 'admin' })}
-                      className={`flex-1 p-6 rounded-3xl border-2 transition-all flex items-center justify-between group ${
-                        selectedUser.globalRole === 'admin' 
-                          ? 'border-red-200 bg-red-50/50' 
-                          : 'border-slate-100 hover:border-slate-200 bg-white'
-                      }`}
-                    >
-                      <div className="flex items-center gap-4">
-                         <div className={`p-3 rounded-xl ${selectedUser.globalRole === 'admin' ? 'bg-red-500 text-white' : 'bg-slate-100 text-slate-300'}`}>
-                            <Shield size={20} />
-                         </div>
-                         <div className="text-left">
-                            <div className="font-bold text-visuera-dark">Systemadministratör</div>
-                            <div className="text-[10px] text-slate-500">Full access till arkiv, inställningar och roller.</div>
-                         </div>
-                      </div>
-                      <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${
-                        selectedUser.globalRole === 'admin' ? 'bg-red-500 border-red-500 text-white' : 'border-slate-200'
-                      }`}>
-                         {selectedUser.globalRole === 'admin' && <CheckCircle2 size={14} />}
-                      </div>
-                    </button>
-                  </div>
-                </section>
-
-                {/* Authority Level */}
-                <section className="space-y-4">
-                  <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Huvudmanna-åtkomst</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    {authorities.map(auth => (
-                      <button
-                        key={auth.id}
-                        onClick={() => toggleUserAuthority(auth.id)}
-                        className={`p-4 rounded-2xl border-2 transition-all flex items-center justify-between ${
-                          selectedUser.authorityAccess?.[auth.id] === 'authority'
-                            ? 'border-purple-200 bg-purple-50/30'
-                            : 'border-slate-50 hover:border-slate-100 bg-slate-50/20'
-                        }`}
-                      >
-                        <div className="flex items-center gap-3">
-                           <Building size={16} className={selectedUser.authorityAccess?.[auth.id] ? 'text-purple-600' : 'text-slate-300'} />
-                           <span className={`text-sm font-bold ${selectedUser.authorityAccess?.[auth.id] ? 'text-purple-600' : 'text-slate-600'}`}>
-                             {auth.name}
-                           </span>
-                        </div>
-                        <div className={`w-4 h-4 rounded border flex items-center justify-center ${
-                          selectedUser.authorityAccess?.[auth.id] ? 'bg-purple-600 border-purple-600 text-white' : 'border-slate-200'
-                        }`}>
-                           {selectedUser.authorityAccess?.[auth.id] && <Plus size={12} className="rotate-45" />}
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                </section>
-
-                {/* School-specific roles */}
-                <section className="space-y-4">
-                  <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Skol-specifika Roller</h4>
-                  <div className="space-y-4">
-                    {schools.map(school => (
-                      <div key={school.id} className="bg-slate-50/50 p-6 rounded-[32px] border border-slate-100">
-                        <div className="flex justify-between items-start mb-6">
-                           <div>
-                              <h5 className="font-bold text-visuera-dark">{school.name}</h5>
-                              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">
-                                {authorities.find(a => a.id === school.authorityId)?.name}
-                              </p>
-                           </div>
-                           {(selectedUser.schoolAccess?.[school.id]?.length || 0) > 0 && (
-                             <span className="bg-visuera-green text-white text-[9px] font-black px-2 py-0.5 rounded uppercase">Aktiv</span>
-                           )}
-                        </div>
-                        <div className="flex flex-wrap gap-2 text-center items-center">
-                           {ROLE_OPTIONS.map(role => (
-                             <button
-                                key={role.id}
-                                onClick={() => toggleUserSchoolRole(school.id, role.id)}
-                                className={`px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all ${
-                                  selectedUser.schoolAccess?.[school.id]?.includes(role.id)
-                                    ? 'bg-visuera-green text-white shadow-lg shadow-visuera-green/20 scale-105'
-                                    : 'bg-white text-slate-400 border border-slate-100 hover:border-visuera-green/30'
-                                }`}
-                             >
-                               {role.label}
-                             </button>
-                           ))}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </section>
-              </div>
-
-              <div className="p-8 bg-slate-50/80 border-t border-slate-100 flex gap-4">
-                <button onClick={() => setSelectedUser(null)} className="flex-1 bg-white border border-slate-200 text-slate-600 font-black py-4 rounded-2xl hover:bg-slate-50 transition-all">AVBRYT</button>
-                <button 
-                  onClick={handleSavePermissions}
-                  disabled={isUpdating}
-                  className="flex-[2] bg-visuera-green text-white font-black py-4 rounded-2xl shadow-xl shadow-visuera-green/20 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2"
-                >
-                  {isUpdating ? 'SPARAR...' : (
-                    <>
-                      <Save size={20} />
-                      UPPDATERA BEHÖRIGHETER
-                    </>
-                  )}
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
+      {/* Audit Log / Sync Success Toast */}
       <AnimatePresence>
         {success && (
           <motion.div initial={{ opacity: 0, y: 50 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 50 }} className="fixed bottom-12 right-12 z-[100] bg-visuera-dark text-white px-8 py-4 rounded-3xl shadow-2xl flex items-center gap-3">

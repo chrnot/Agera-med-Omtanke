@@ -22,8 +22,26 @@ import {
   Trash2,
   X,
   Smartphone,
-  Fingerprint
+  Fingerprint,
+  Filter,
+  Calendar,
+  Search,
+  TrendingUp,
+  PieChart as PieChartIcon,
+  MapPin
 } from 'lucide-react';
+import { 
+  LineChart, 
+  Line, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip, 
+  ResponsiveContainer,
+  PieChart, 
+  Pie, 
+  Cell
+} from 'recharts';
 import { onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut, User } from 'firebase/auth';
 import { auth, db } from './lib/firebase';
 import { motion, AnimatePresence } from 'motion/react';
@@ -191,11 +209,11 @@ const Login = ({ onQuickReport, onBankIDLogin }: { onQuickReport: () => void, on
       <div className="absolute inset-0 bg-visuera-green/10 backdrop-blur-[2px]"></div>
       <div className="bg-white p-12 rounded-[40px] shadow-2xl border border-white/50 w-full max-w-xl relative z-10 text-center space-y-8">
         <div className="w-20 h-20 bg-visuera-green rounded-[24px] flex items-center justify-center mx-auto shadow-xl shadow-visuera-green/20">
-          <span className="text-white font-bold text-4xl">C</span>
+          <span className="text-white font-bold text-3xl">AmO</span>
         </div>
         <div>
-          <h1 className="text-4xl font-black text-visuera-dark tracking-tight">CRID-Safe</h1>
-          <p className="text-slate-500 font-medium mt-2">Trygghetshantering i Danderyds Kommun</p>
+          <h1 className="text-4xl font-black text-visuera-dark tracking-tight">Agera med Omtanke</h1>
+          <p className="text-slate-500 font-medium mt-2">Trygghetsärenden i Danderyds Kommun</p>
         </div>
         
         <div className="py-4 space-y-4">
@@ -240,7 +258,7 @@ const Login = ({ onQuickReport, onBankIDLogin }: { onQuickReport: () => void, on
         </div>
         
         <p className="text-[10px] text-slate-400 max-w-xs mx-auto">
-          Genom att använda CRID-Safe godkänner du hantering av personuppgifter enligt GDPR och Danderyds kommuns riktlinjer.
+          Genom att använda Agera med Omtanke godkänner du hantering av personuppgifter enligt GDPR och Danderyds kommuns riktlinjer.
         </p>
       </div>
 
@@ -264,10 +282,56 @@ const ROLE_LABELS: Record<string, string> = {
   'admin': 'Systemadministratör'
 };
 
-const Dashboard = ({ onNewReport, cases, onOpenCase }: { onNewReport: () => void, cases: any[], onOpenCase: (id: string) => void }) => {
+const Dashboard = ({ onNewReport, cases, onOpenCase, onNavigate }: { onNewReport: () => void, cases: any[], onOpenCase: (id: string) => void, onNavigate: (tab: any) => void }) => {
   const activeCases = cases.filter(c => c.status !== 'avslutat');
   const closedCases = cases.filter(c => c.status === 'avslutat');
   const recentCases = [...cases].sort((a,b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)).slice(0, 5);
+
+  // Data for Trend Analysis (Monthly)
+  const trendData = React.useMemo(() => {
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Maj', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dec'];
+    const currentYear = new Date().getFullYear();
+    
+    return months.map((month, index) => {
+      const count = cases.filter(c => {
+        const date = c.createdAt?.toDate ? c.createdAt.toDate() : new Date(c.createdAt);
+        return date.getMonth() === index && date.getFullYear() === currentYear;
+      }).length;
+      return { name: month, antal: count };
+    });
+  }, [cases]);
+
+  // Data for Category Distribution (Donut)
+  const categoryData = React.useMemo(() => {
+    const categories: Record<string, number> = {};
+    cases.forEach(c => {
+      const types = Array.isArray(c.reportType) ? c.reportType : [];
+      types.forEach((t: string) => {
+        categories[t] = (categories[t] || 0) + 1;
+      });
+    });
+    
+    return Object.entries(categories)
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 4);
+  }, [cases]);
+
+  // Data for Hotspot Analysis (Detailed)
+  const hotspotData = React.useMemo(() => {
+    const locations: Record<string, number> = {};
+    cases.forEach(c => {
+      const loc = c.incidentLocation || 'Ospecificerat';
+      locations[loc] = (locations[loc] || 0) + 1;
+    });
+
+    return Object.entries(locations)
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 5);
+  }, [cases]);
+
+  const COLORS = ['#10B981', '#3B82F6', '#F59E0B', '#EF4444', '#8B5CF6'];
 
   const getTrend = (label: string) => {
     const now = new Date();
@@ -339,14 +403,153 @@ const Dashboard = ({ onNewReport, cases, onOpenCase }: { onNewReport: () => void
         ))}
       </div>
 
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* Trend Analysis Chart */}
+        <div className="bg-white rounded-[32px] p-8 border border-slate-100 shadow-sm space-y-6">
+          <div className="flex justify-between items-center">
+            <div>
+              <h3 className="font-bold text-visuera-dark flex items-center gap-2">
+                <TrendingUp size={18} className="text-visuera-green" />
+                Anmälningsfrekvens
+              </h3>
+              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Trendanalys 2026</p>
+            </div>
+          </div>
+          <div className="h-[300px] w-full mt-4">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={trendData}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F1F5F9" />
+                <XAxis 
+                  dataKey="name" 
+                  axisLine={false} 
+                  tickLine={false} 
+                  tick={{ fontSize: 10, fill: '#94A3B8', fontWeight: 600 }}
+                  dy={10}
+                />
+                <YAxis 
+                  axisLine={false} 
+                  tickLine={false} 
+                  tick={{ fontSize: 10, fill: '#94A3B8', fontWeight: 600 }}
+                />
+                <Tooltip 
+                  contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)', padding: '12px' }}
+                  itemStyle={{ fontSize: '12px', fontWeight: '800', color: '#1F2937' }}
+                />
+                <Line 
+                  type="monotone" 
+                  dataKey="antal" 
+                  stroke="#10B981" 
+                  strokeWidth={4} 
+                  dot={{ r: 6, fill: '#10B981', strokeWidth: 2, stroke: '#fff' }}
+                  activeDot={{ r: 8, strokeWidth: 0 }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* Category & Hotspot Section */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          {/* Incident Categories (Donut) */}
+          <div className="bg-white rounded-[32px] p-8 border border-slate-100 shadow-sm space-y-6">
+            <div>
+              <h3 className="font-bold text-visuera-dark flex items-center gap-2">
+                <PieChartIcon size={18} className="text-visuera-green" />
+                Ärendetyper
+              </h3>
+              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Kategorisering</p>
+            </div>
+            <div className="h-[180px] w-full relative">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={categoryData.length > 0 ? categoryData : [{ name: 'Inga data', value: 1 }]}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={60}
+                    outerRadius={80}
+                    paddingAngle={5}
+                    dataKey="value"
+                  >
+                    {(categoryData.length > 0 ? categoryData : [{ name: 'Inga data', value: 1 }]).map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={categoryData.length > 0 ? COLORS[index % COLORS.length] : '#F1F5F9'} />
+                    ))}
+                  </Pie>
+                  <Tooltip 
+                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                <div className="text-center">
+                  <div className="text-xl font-black text-visuera-dark">{cases.length}</div>
+                  <div className="text-[8px] font-bold text-slate-300 uppercase">Totalt</div>
+                </div>
+              </div>
+            </div>
+            <div className="space-y-2">
+              {categoryData.map((item, i) => (
+                <div key={i} className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: COLORS[i] }}></div>
+                    <span className="text-[10px] font-bold text-slate-500 truncate max-w-[100px]">{item.name}</span>
+                  </div>
+                  <span className="text-[10px] font-black text-visuera-dark">{item.value}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Hotspot Analysis (Bar) */}
+          <div className="bg-white rounded-[32px] p-8 border border-slate-100 shadow-sm space-y-6">
+            <div>
+              <h3 className="font-bold text-visuera-dark flex items-center gap-2">
+                <MapPin size={18} className="text-visuera-green" />
+                Hotspots
+              </h3>
+              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Platsanalys</p>
+            </div>
+            <div className="space-y-4">
+              {hotspotData.map((item, i) => {
+                const percentage = Math.round((item.value / cases.length) * 100) || 0;
+                return (
+                  <div key={i} className="space-y-1.5">
+                    <div className="flex justify-between text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                      <span className="truncate max-w-[120px]">{item.name}</span>
+                      <span className="text-visuera-green">{percentage}%</span>
+                    </div>
+                    <div className="h-2 bg-slate-50 rounded-full overflow-hidden">
+                      <motion.div 
+                        initial={{ width: 0 }}
+                        animate={{ width: `${percentage}%` }}
+                        transition={{ duration: 1, delay: i * 0.1 }}
+                        className="h-full bg-visuera-green rounded-full"
+                      ></motion.div>
+                    </div>
+                  </div>
+                );
+              })}
+              {hotspotData.length === 0 && (
+                <div className="text-center py-8 text-slate-300 italic text-xs">Ingen platsdata tillgänglig</div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 bg-white rounded-[32px] border border-slate-100 shadow-sm overflow-hidden">
           <div className="p-8 border-b border-slate-50 flex justify-between items-center">
             <h3 className="font-bold text-visuera-dark flex items-center gap-2">
               <Clock size={18} className="text-visuera-green" />
-              Aktuella händelser
+              Senast anmälda ärenden
             </h3>
-            <button className="text-[10px] font-bold text-slate-400 uppercase tracking-widest hover:text-visuera-green transition-colors">Se alla</button>
+            <button 
+              onClick={() => onNavigate('cases')}
+              className="text-[10px] font-bold text-slate-400 uppercase tracking-widest hover:text-visuera-green transition-colors"
+            >
+              Se alla
+            </button>
           </div>
           <div className="divide-y divide-slate-50">
             {recentCases.length === 0 ? (
@@ -379,10 +582,13 @@ const Dashboard = ({ onNewReport, cases, onOpenCase }: { onNewReport: () => void
                       {item.status}
                     </span>
                   </div>
-                  <div className="flex items-center gap-4 text-[10px] text-slate-400 font-medium">
+                  <div className="flex items-center gap-4 text-[10px] text-slate-400 font-medium pt-2">
                     <span className="flex items-center gap-1"><Building2 size={12}/> {item.school || 'Danderyds Skola'}</span>
-                    <span className="flex items-center gap-1"><UserIcon size={12}/> {item.studentName}</span>
-                    <span className="flex items-center gap-1"><Clock size={12}/> {item.incidentDate}</span>
+                    <span className="flex items-center gap-1"><UserIcon size={12}/> Anmälare: {item.reporterName || 'Anonym'}</span>
+                    <span className="flex items-center gap-1" title="Anmälningsdatum">
+                      <Calendar size={12}/> 
+                      {item.createdAt?.toDate ? item.createdAt.toDate().toLocaleString('sv-SE', { dateStyle: 'short', timeStyle: 'short' }) : 'Nyss'}
+                    </span>
                   </div>
                 </div>
               ))
@@ -473,6 +679,15 @@ const App = () => {
     localStorage.getItem('lastSelectedCaseId')
   );
   const [cases, setCases] = useState<any[]>([]);
+  const [schools, setSchools] = useState<any[]>([]);
+  
+  // Filtering States
+  const [filterStatus, setFilterStatus] = useState<string>('alla');
+  const [filterSchool, setFilterSchool] = useState<string>('alla');
+  const [filterDateStart, setFilterDateStart] = useState<string>('');
+  const [filterDateEnd, setFilterDateEnd] = useState<string>('');
+  const [filterQuery, setFilterQuery] = useState<string>('');
+  const [isFilterExpanded, setIsFilterExpanded] = useState(false);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [authError, setAuthError] = useState<string | null>(null);
 
@@ -583,6 +798,58 @@ const App = () => {
     }
   }, [user]);
 
+  // Fetch schools for filtering
+  useEffect(() => {
+    if (user) {
+      const fetchSchools = async () => {
+        const schoolsSnap = await getDocs(query(collection(db, 'schools'), orderBy('name', 'asc')));
+        setSchools(schoolsSnap.docs.map(d => ({ ...d.data(), id: d.id })));
+      };
+      fetchSchools();
+    }
+  }, [user]);
+
+  // Compute filtered cases
+  const filteredCases = React.useMemo(() => {
+    return cases.filter(c => {
+      // Status filter
+      if (filterStatus !== 'alla' && c.status !== filterStatus) return false;
+      
+      // School filter
+      if (filterSchool !== 'alla' && c.school !== filterSchool) return false;
+      
+      // Search query filter
+      if (filterQuery) {
+        const q = filterQuery.toLowerCase();
+        const matchesQuery = 
+          c.title?.toLowerCase().includes(q) || 
+          c.studentName?.toLowerCase().includes(q) || 
+          c.id?.toLowerCase().includes(q);
+        if (!matchesQuery) return false;
+      }
+      
+      // Date range filter
+      if (filterDateStart || filterDateEnd) {
+        const caseDate = c.createdAt?.seconds ? new Date(c.createdAt.seconds * 1000) : null;
+        if (!caseDate) return false;
+        
+        if (filterDateStart) {
+          const start = new Date(filterDateStart);
+          start.setHours(0, 0, 0, 0);
+          if (caseDate < start) return false;
+        }
+        
+        if (filterDateEnd) {
+          const end = new Date(filterDateEnd);
+          end.setHours(23, 59, 59, 999);
+          if (caseDate > end) return false;
+        }
+      }
+      
+      return true;
+    });
+  }, [cases, filterStatus, filterSchool, filterDateStart, filterDateEnd, filterQuery]);
+
   if (loading) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
@@ -597,8 +864,8 @@ const App = () => {
         <div className="max-w-4xl mx-auto space-y-8">
           <div className="flex justify-between items-center">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-visuera-green rounded-xl flex items-center justify-center text-white font-bold">C</div>
-              <h1 className="text-2xl font-black text-visuera-dark">CRID-Safe</h1>
+              <div className="w-12 h-10 bg-visuera-green rounded-xl flex items-center justify-center text-white font-bold text-sm px-2">AmO</div>
+              <h1 className="text-2xl font-black text-visuera-dark">Agera med Omtanke</h1>
             </div>
             <button 
               onClick={() => setIsAnonymous(false)}
@@ -644,9 +911,9 @@ const App = () => {
         <aside className="w-20 lg:w-64 bg-white border-r border-slate-100 flex flex-col items-center lg:items-stretch py-8 px-4 lg:px-6 fixed h-full z-20">
           <div className="flex items-center gap-3 px-2 mb-12">
             <div className="w-10 h-10 bg-visuera-green rounded-[14px] flex items-center justify-center shrink-0 shadow-lg shadow-visuera-green/20">
-              <span className="text-white font-bold text-xl">C</span>
+              <span className="text-white font-bold text-xs">AmO</span>
             </div>
-            <span className="text-xl font-extrabold text-visuera-dark tracking-tight hidden lg:block">CRID-Safe</span>
+            <span className="text-xl font-extrabold text-visuera-dark tracking-tight hidden lg:block">Agera med Omtanke</span>
           </div>
 
           <nav className="space-y-2 flex-1">
@@ -729,22 +996,127 @@ const App = () => {
                   setSelectedCaseId(id);
                   setActiveTab('flow');
                 }}
+                onNavigate={setActiveTab}
               />
             )}
             {activeTab === 'cases' && (
-              <div className="bg-white rounded-[32px] p-8 border border-slate-100 shadow-sm">
-                <div className="flex justify-between items-center mb-8">
-                   <div>
-                      <h2 className="text-2xl font-black text-visuera-dark tracking-tight">Ärendehantering</h2>
-                      <p className="text-sm text-slate-500 mt-1">Här visas alla ärenden på din skola.</p>
-                   </div>
-                </div>
-                
-                <div className="grid grid-cols-1 gap-4">
-                   {cases.length === 0 ? (
-                      <div className="py-20 text-center text-slate-400 italic">Inga ärenden hittades.</div>
-                   ) : (
-                      cases.map(c => (
+              <div className="space-y-6">
+                <div className="bg-white rounded-[32px] p-8 border border-slate-100 shadow-sm">
+                  <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+                     <div>
+                        <h2 className="text-2xl font-black text-visuera-dark tracking-tight">Ärendehantering</h2>
+                        <p className="text-sm text-slate-500 mt-1">Här visas alla ärenden på din skola.</p>
+                     </div>
+                     <div className="flex items-center gap-3">
+                        <div className="relative">
+                          <input 
+                            type="text" 
+                            placeholder="Sök ärende..." 
+                            value={filterQuery}
+                            onChange={(e) => setFilterQuery(e.target.value)}
+                            className="bg-slate-50 border-none rounded-xl pl-10 pr-4 py-2.5 text-xs w-64 focus:ring-2 focus:ring-visuera-green/20 transition-all font-bold"
+                          />
+                          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300" size={16} />
+                        </div>
+                        <button 
+                          onClick={() => setIsFilterExpanded(!isFilterExpanded)}
+                          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${
+                            isFilterExpanded || filterStatus !== 'alla' || filterSchool !== 'alla' || filterDateStart || filterDateEnd
+                              ? 'bg-visuera-green text-white shadow-lg shadow-visuera-green/20' 
+                              : 'bg-slate-50 text-slate-500 hover:bg-slate-100'
+                          }`}
+                        >
+                          <Filter size={14} />
+                          Filter
+                          {(filterStatus !== 'alla' || filterSchool !== 'alla' || filterDateStart || filterDateEnd) && (
+                            <span className="w-2 h-2 bg-white rounded-full"></span>
+                          )}
+                        </button>
+                     </div>
+                  </div>
+
+                  <AnimatePresence>
+                    {isFilterExpanded && (
+                      <motion.div 
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        className="overflow-hidden mb-8"
+                      >
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 p-6 bg-slate-50 rounded-2xl border border-slate-100">
+                          <div className="space-y-1.5">
+                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Status</label>
+                            <select 
+                              value={filterStatus}
+                              onChange={(e) => setFilterStatus(e.target.value)}
+                              className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold focus:ring-2 focus:ring-visuera-green/20 transition-all appearance-none cursor-pointer"
+                            >
+                              <option value="alla">Alla statusar</option>
+                              <option value="anmäld">Anmälda</option>
+                              <option value="utredning">Under utredning</option>
+                              <option value="åtgärder">Aktiva åtgärder</option>
+                              <option value="avslutad">Avslutade</option>
+                            </select>
+                          </div>
+
+                          <div className="space-y-1.5">
+                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Skola</label>
+                            <select 
+                              value={filterSchool}
+                              onChange={(e) => setFilterSchool(e.target.value)}
+                              className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold focus:ring-2 focus:ring-visuera-green/20 transition-all appearance-none cursor-pointer"
+                            >
+                              <option value="alla">Alla skolor</option>
+                              {schools.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
+                            </select>
+                          </div>
+
+                          <div className="space-y-1.5">
+                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Från datum</label>
+                            <div className="relative">
+                              <input 
+                                type="date" 
+                                value={filterDateStart}
+                                onChange={(e) => setFilterDateStart(e.target.value)}
+                                className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold focus:ring-2 focus:ring-visuera-green/20 transition-all appearance-none"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="space-y-1.5">
+                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Till datum</label>
+                            <input 
+                              type="date" 
+                              value={filterDateEnd}
+                              onChange={(e) => setFilterDateEnd(e.target.value)}
+                              className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold focus:ring-2 focus:ring-visuera-green/20 transition-all appearance-none"
+                            />
+                          </div>
+
+                          <div className="md:col-span-4 flex justify-end gap-2 pt-2">
+                             <button 
+                               onClick={() => {
+                                 setFilterStatus('alla');
+                                 setFilterSchool('alla');
+                                 setFilterDateStart('');
+                                 setFilterDateEnd('');
+                                 setFilterQuery('');
+                               }}
+                               className="text-[10px] font-bold text-slate-400 hover:text-visuera-green uppercase tracking-widest"
+                             >
+                               Rensa alla
+                             </button>
+                          </div>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                  
+                  <div className="grid grid-cols-1 gap-4">
+                     {filteredCases.length === 0 ? (
+                        <div className="py-20 text-center text-slate-400 italic">Inga ärenden hittades som matchar dina filter.</div>
+                     ) : (
+                        filteredCases.map(c => (
                         <div key={c.id} className="p-6 bg-slate-50 rounded-2xl border border-slate-100 flex items-center justify-between hover:border-visuera-green/30 transition-all cursor-pointer group">
                            <div className="flex items-center gap-4">
                               <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-visuera-green shadow-sm">
@@ -805,7 +1177,8 @@ const App = () => {
                    )}
                 </div>
               </div>
-            )}
+            </div>
+          )}
             {activeTab === 'report' && (
               <div className="max-w-2xl mx-auto">
                 <div className="text-center mb-12">

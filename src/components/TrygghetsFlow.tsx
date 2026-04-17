@@ -23,8 +23,11 @@ import {
   FileCheck,
   ChevronDown,
   Building2,
-  Layers
+  Layers,
+  FileDown
 } from 'lucide-react';
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import { caseService } from '../services/caseService';
 import { auth, db } from '../lib/firebase';
 import { doc, getDoc, collection, getDocs, query, where } from 'firebase/firestore';
@@ -59,6 +62,7 @@ const DEFAULT_FORM_DATA = {
   reportType: [] as string[],
   incidentDate: '',
   incidentLocation: '',
+  incidentLocationOther: '',
   activeParticipants: '',
   incidentDescription: '',
   actionsTaken: [] as string[],
@@ -355,6 +359,143 @@ export const TrygghetsFlow = ({ isQuickReport = false, onSuccess, initialCaseId,
   const currentStep = steps[currentStepIndex];
 
   const [showClosingSummary, setShowClosingSummary] = React.useState(false);
+  const [isGeneratingPDF, setIsGeneratingPDF] = React.useState(false);
+
+  const generatePDF = async () => {
+    setIsGeneratingPDF(true);
+    try {
+      const doc = new jsPDF();
+      const pageWidth = doc.internal.pageSize.getWidth();
+      
+      // Header
+      doc.setFillColor(31, 41, 55); // visuera-dark
+      doc.rect(0, 0, pageWidth, 40, 'F');
+      
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(22);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Agera med omtanke', 20, 25);
+      
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      doc.text('Ärenderapport - Trygghet & Studiero', pageWidth - 20, 25, { align: 'right' });
+
+      // Title Section
+      doc.setTextColor(31, 41, 55);
+      doc.setFontSize(16);
+      doc.setFont('helvetica', 'bold');
+      doc.text(`Ärende: ${formData.studentName || 'Oidentifierad'}`, 20, 55);
+      
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`Skapad: ${new Date().toLocaleDateString('sv-SE')}`, 20, 62);
+      doc.text(`Status: ${steps[currentStepIndex].title}`, pageWidth - 20, 62, { align: 'right' });
+
+      // Horizontal Line
+      doc.setDrawColor(229, 231, 235);
+      doc.line(20, 68, pageWidth - 20, 68);
+
+      // Data Sections
+      const sections = [
+        {
+          title: 'Händelseinformation',
+          data: [
+            ['Elev', formData.studentName || 'Ej angivet'],
+            ['Klass', formData.studentClass || 'Ej angivet'],
+            ['Datum', formData.incidentDate || 'Ej angivet'],
+            ['Plats', formData.incidentLocation === 'Annan plats' && formData.incidentLocationOther ? `Annan plats (${formData.incidentLocationOther})` : (formData.incidentLocation || 'Ej angivet')],
+            ['Typ av händelse', formData.reportType?.join(', ') || 'Ej angivet'],
+          ]
+        },
+        {
+          title: 'Beskrivning',
+          data: [
+            ['Händelseförlopp', formData.incidentDescription || 'Ingen beskrivning angiven'],
+          ]
+        }
+      ];
+
+      if (currentStepIndex >= 1) {
+        sections.push({
+          title: 'Tilldelning & Ansvar',
+          data: [
+            ['Arbetslag', formData.assignedTeam || 'Ej angivet'],
+            ['Ansvarig utredare', formData.assignedTeacher || 'Ej angivet'],
+          ]
+        });
+      }
+
+      if (currentStepIndex >= 2) {
+        sections.push({
+          title: 'Utredning',
+          data: [
+            ['Utredningsdatum', formData.investigationDate || 'Ej angivet'],
+            ['Resultat', formData.investigationText || 'Ej angivet'],
+            ['Elevens version', formData.studentVersion || 'Ej angivet'],
+            ['Diskrimineringsgrund', formData.discriminationGround || 'Ej angivet'],
+          ]
+        });
+      }
+
+      if (currentStepIndex >= 3) {
+        sections.push({
+          title: 'Åtgärder & Uppföljning',
+          data: [
+            ['Beslutade åtgärder', formData.actionsText || 'Ej angivet'],
+            ['Planerad uppföljning', formData.followUpScheduled || 'Ej angivet'],
+          ]
+        });
+      }
+
+      let currentY = 75;
+
+      sections.forEach(section => {
+        doc.setFontSize(12);
+        doc.setFont('helvetica', 'bold');
+        doc.text(section.title, 20, currentY);
+        
+        autoTable(doc, {
+          startY: currentY + 5,
+          head: [],
+          body: section.data,
+          theme: 'plain',
+          styles: { fontSize: 9, cellPadding: 2 },
+          columnStyles: { 0: { fontStyle: 'bold', cellWidth: 40 } },
+          margin: { left: 20 },
+          didDrawPage: (data) => {
+            currentY = data.cursor?.y || currentY;
+          }
+        });
+        
+        currentY += (section.data.length * 8) + 15;
+        if (currentY > 260) {
+          doc.addPage();
+          currentY = 20;
+        }
+      });
+
+      // Footer
+      const pageCount = (doc as any).internal.pages.length - 1;
+      for (let i = 1; i <= pageCount; i++) {
+        doc.setPage(i);
+        doc.setFontSize(8);
+        doc.setTextColor(156, 163, 175);
+        doc.text(
+          `Sida ${i} av ${pageCount} - Genererad via Agera med omtanke`,
+          pageWidth / 2,
+          doc.internal.pageSize.getHeight() - 10,
+          { align: 'center' }
+        );
+      }
+
+      doc.save(`Agera_Rapport_${formData.studentName || 'Handelse'}_${new Date().toISOString().split('T')[0]}.pdf`);
+    } catch (err) {
+      console.error('PDF generation failed:', err);
+      setError('Misslyckades att generera PDF-rapport.');
+    } finally {
+      setIsGeneratingPDF(false);
+    }
+  };
 
   const isStepValid = () => {
     switch (currentStepIndex) {
@@ -912,8 +1053,23 @@ export const TrygghetsFlow = ({ isQuickReport = false, onSuccess, initialCaseId,
                   <p className="text-xs text-slate-400">Uppdateras i realtid till huvudman och skolledning</p>
                 </div>
               </div>
-              {!isQuickReport && (
-                <div className="flex -space-x-2">
+
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={generatePDF}
+                  disabled={isGeneratingPDF}
+                  className="flex items-center gap-2 px-4 py-2 bg-slate-50 hover:bg-slate-100 text-slate-600 rounded-xl text-xs font-bold transition-all border border-slate-200"
+                >
+                  {isGeneratingPDF ? (
+                    <div className="w-4 h-4 border-2 border-visuera-green border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <FileDown size={16} className="text-visuera-green" />
+                  )}
+                  PDF-Rapport
+                </button>
+
+                {!isQuickReport && (
+                  <div className="flex -space-x-2">
                   {selectedParticipants.length === 0 ? (
                     <div className="w-8 h-8 rounded-full border-2 border-white bg-slate-100 flex items-center justify-center text-[10px] font-bold text-slate-300 italic">
                       Inga
@@ -940,8 +1096,9 @@ export const TrygghetsFlow = ({ isQuickReport = false, onSuccess, initialCaseId,
                 </div>
               )}
             </div>
+          </div>
 
-            {/* Incident Context Summary (Visible for steps 2-6) */}
+          {/* Incident Context Summary (Visible for steps 2-6) */}
             {currentStepIndex > 0 && (
               <div className="mb-8 p-6 bg-slate-50 rounded-3xl border border-slate-100 space-y-4">
                 <div className="flex items-center justify-between">
@@ -958,7 +1115,11 @@ export const TrygghetsFlow = ({ isQuickReport = false, onSuccess, initialCaseId,
                   </div>
                   <div>
                     <span className="text-slate-400 block font-medium uppercase text-[9px]">Plats</span>
-                    <span className="font-bold text-visuera-dark truncate block">{formData.incidentLocation || 'Ej angiven'}</span>
+                    <span className="font-bold text-visuera-dark truncate block">
+                      {formData.incidentLocation === 'Annan plats' && formData.incidentLocationOther 
+                        ? `Annan plats (${formData.incidentLocationOther})` 
+                        : (formData.incidentLocation || 'Ej angiven')}
+                    </span>
                   </div>
                 </div>
                 <div>
@@ -1093,15 +1254,40 @@ export const TrygghetsFlow = ({ isQuickReport = false, onSuccess, initialCaseId,
                       <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Plats för händelsen</label>
                       <div className="relative">
                         <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
-                        <input 
-                          type="text"
+                        <select 
                           value={formData.incidentLocation}
                           onChange={(e) => updateFormData('incidentLocation', e.target.value)}
-                          placeholder="t.ex. Skolgården, matsalen"
-                          className="w-full pl-12 p-4 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-visuera-green/20 transition-all text-sm"
-                        />
+                          className="w-full pl-12 p-4 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-visuera-green/20 transition-all text-sm appearance-none cursor-pointer"
+                        >
+                          <option value="">Välj plats...</option>
+                          <option value="Skolgården">Skolgården</option>
+                          <option value="Matsalen">Matsalen</option>
+                          <option value="Korridoren">Korridoren</option>
+                          <option value="Idrotten">Idrotten</option>
+                          <option value="Klassrummet">Klassrummet</option>
+                          <option value="Utanför skolan">Utanför skolan</option>
+                          <option value="Annan plats">Annan plats</option>
+                        </select>
+                        <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none" size={16} />
                       </div>
                     </div>
+
+                    {formData.incidentLocation === 'Annan plats' && (
+                      <motion.div 
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        className="space-y-2 mt-2"
+                      >
+                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Beskriv annan plats</label>
+                        <input 
+                          type="text"
+                          value={formData.incidentLocationOther || ''}
+                          onChange={(e) => updateFormData('incidentLocationOther', e.target.value)}
+                          placeholder="Ange plats..."
+                          className="w-full p-4 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-visuera-green/20 transition-all text-sm"
+                        />
+                      </motion.div>
+                    )}
                   </div>
 
                   <div className="space-y-2">
