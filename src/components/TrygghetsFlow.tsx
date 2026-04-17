@@ -504,10 +504,15 @@ export const TrygghetsFlow = ({ isQuickReport = false, onSuccess, initialCaseId,
       case 1: // Tilldelning
         return !!formData.assignedTeacherUid;
       case 2: // Utredning
-        return !!(formData.investigationText && formData.studentVersion);
+        return !!(formData.investigationText && formData.studentVersion && formData.incidentConfirmed);
       case 3: // Åtgärder
+        if (formData.incidentConfirmed === 'Nej' || formData.incidentConfirmed === 'Kränkning kan ej konstateras') return true;
         return !!(formData.actionsText && formData.followUpScheduled);
       case 4: // Uppföljning
+        if (formData.incidentConfirmed === 'Nej' || formData.incidentConfirmed === 'Kränkning kan ej konstateras') return true;
+        if (formData.followUpDecision === 'Problemet har upphört - avsluta ärendet') {
+          return !!(formData.followUpText && formData.followUpDecision && formData.signatureName && formData.signatureDate);
+        }
         return !!(formData.followUpText && formData.followUpDecision);
       case 5: // Avslut
         return !!(formData.signatureName && formData.signatureDate);
@@ -610,11 +615,14 @@ export const TrygghetsFlow = ({ isQuickReport = false, onSuccess, initialCaseId,
         }
       } else if (activeCaseId) {
         // Update existing case with current data and next status
-        const nextStepIndex = Math.min(currentStepIndex + 1, steps.length - 1);
+        let actualNextIndex = Math.min(currentStepIndex + 1, steps.length - 1);
         
-        // Custom logic for Step 5 (index 4)
-        const actualNextIndex = (currentStepIndex === 4 && formData.followUpDecision === 'Problemet kvarstår - nya åtgärder och nytt datum för uppföljning')
-          ? 3 : nextStepIndex;
+        // Custom logic for skipping steps or going back
+        if (currentStepIndex === 2 && (formData.incidentConfirmed === 'Nej' || formData.incidentConfirmed === 'Kränkning kan ej konstateras')) {
+          actualNextIndex = 5; // Skip directly to Avslut
+        } else if (currentStepIndex === 4 && formData.followUpDecision === 'Problemet kvarstår - nya åtgärder och nytt datum för uppföljning') {
+          actualNextIndex = 3; // Go back to Step 4: Åtgärder
+        }
 
         const newStatus = stepStatusMap[actualNextIndex];
 
@@ -633,8 +641,10 @@ export const TrygghetsFlow = ({ isQuickReport = false, onSuccess, initialCaseId,
       setShowClosingSummary(false);
 
       if (currentStepIndex < steps.length - 1) {
-        // Custom logic for Step 5 (index 4) navigation
-        if (currentStepIndex === 4 && formData.followUpDecision === 'Problemet kvarstår - nya åtgärder och nytt datum för uppföljning') {
+        // Custom logic for navigation
+        if (currentStepIndex === 2 && (formData.incidentConfirmed === 'Nej' || formData.incidentConfirmed === 'Kränkning kan ej konstateras')) {
+          setCurrentStepIndex(5); // Skip to Avslut
+        } else if (currentStepIndex === 4 && formData.followUpDecision === 'Problemet kvarstår - nya åtgärder och nytt datum för uppföljning') {
           setCurrentStepIndex(3); // Go back to Step 4: Åtgärder
         } else {
           setCurrentStepIndex(prev => prev + 1);
@@ -1778,6 +1788,43 @@ export const TrygghetsFlow = ({ isQuickReport = false, onSuccess, initialCaseId,
                       ))}
                     </div>
                   </div>
+
+                  {formData.followUpDecision === 'Problemet har upphört - avsluta ärendet' && (
+                    <motion.div 
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="p-8 bg-visuera-green/5 border-2 border-visuera-green/20 rounded-3xl space-y-6"
+                    >
+                      <div className="flex items-center gap-4 text-visuera-green">
+                        <ShieldCheck size={32} />
+                        <div>
+                          <h4 className="text-lg font-bold">Signering (Slutför uppföljning)</h4>
+                          <p className="text-xs opacity-80 font-medium">Jag intygar att uppföljning genomförts och att kränkningarna upphört.</p>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+                        <div className="space-y-2">
+                          <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Signatur (Namn) *</label>
+                          <input 
+                            type="text"
+                            value={formData.signatureName}
+                            onChange={(e) => updateFormData('signatureName', e.target.value)}
+                            placeholder="Ditt fullständiga namn..."
+                            className="w-full p-4 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-visuera-green/20 transition-all text-sm"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Datum *</label>
+                          <input 
+                            type="date"
+                            value={formData.signatureDate}
+                            onChange={(e) => updateFormData('signatureDate', e.target.value)}
+                            className="w-full p-4 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-visuera-green/20 transition-all text-sm"
+                          />
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
                 </div>
               ) : currentStep.id === 6 ? (
                 showClosingSummary ? (

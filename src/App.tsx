@@ -233,14 +233,6 @@ const Login = ({ onQuickReport, onBankIDLogin }: { onQuickReport: () => void, on
 
           <div className="grid grid-cols-1 gap-4">
             <button 
-              onClick={() => setShowBankID(true)}
-              className="w-full py-5 bg-[#003da5] text-white rounded-2xl font-bold text-lg hover:bg-[#002d7a] transition-all shadow-lg shadow-[#003da5]/20 flex items-center justify-center gap-3"
-            >
-              <Smartphone size={22} />
-              Logga in med BankID
-            </button>
-
-            <button 
               onClick={handleLogin}
               disabled={loading}
               className="w-full py-4 bg-slate-50 text-slate-600 border border-slate-200 rounded-2xl font-bold text-base hover:bg-slate-100 transition-all flex items-center justify-center gap-3 disabled:opacity-50"
@@ -253,6 +245,14 @@ const Login = ({ onQuickReport, onBankIDLogin }: { onQuickReport: () => void, on
                   Logga in med Google
                 </>
               )}
+            </button>
+
+            <button 
+              onClick={() => setShowBankID(true)}
+              className="w-full py-5 bg-[#003da5] text-white rounded-2xl font-bold text-lg hover:bg-[#002d7a] transition-all shadow-lg shadow-[#003da5]/20 flex items-center justify-center gap-3"
+            >
+              <Smartphone size={22} />
+              Logga in med BankID
             </button>
           </div>
         </div>
