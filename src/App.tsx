@@ -28,7 +28,9 @@ import {
   Search,
   TrendingUp,
   PieChart as PieChartIcon,
-  MapPin
+  MapPin,
+  Bell,
+  MessageSquare
 } from 'lucide-react';
 import { 
   LineChart, 
@@ -49,6 +51,7 @@ import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 import { TrygghetsFlow } from './components/TrygghetsFlow';
 import { UserManagement } from './components/UserManagement';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { NotificationInbox } from './components/NotificationInbox';
 import { caseService } from './services/caseService';
 import { setupService } from './services/setupService';
 import { onSnapshot, collection, query, orderBy, limit, where, getDocs } from 'firebase/firestore';
@@ -65,6 +68,7 @@ interface UserProfile {
   schoolAccess?: Record<string, string[]>;
   authorityAccess?: Record<string, string>;
   createdAt: string;
+  isActive?: boolean;
 }
 
 const BankIDModal = ({ isOpen, onClose, onAuthenticated }: { isOpen: boolean, onClose: () => void, onAuthenticated: (pnr: string) => void }) => {
@@ -173,9 +177,11 @@ const BankIDModal = ({ isOpen, onClose, onAuthenticated }: { isOpen: boolean, on
 const Login = ({ onQuickReport, onBankIDLogin }: { onQuickReport: () => void, onBankIDLogin: (pnr: string) => void }) => {
   const [loading, setLoading] = useState(false);
   const [showBankID, setShowBankID] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleLogin = async () => {
     setLoading(true);
+    setError(null);
     try {
       const provider = new GoogleAuthProvider();
       const result = await signInWithPopup(auth, provider);
@@ -185,7 +191,14 @@ const Login = ({ onQuickReport, onBankIDLogin }: { onQuickReport: () => void, on
       const userRef = doc(db, 'users', user.uid);
       const userSnap = await getDoc(userRef);
       
-      if (!userSnap.exists()) {
+      if (userSnap.exists()) {
+        const userData = userSnap.data();
+        if (userData.isActive === false) {
+          await signOut(auth);
+          setError('Ditt konto har avaktiverats. Kontakta en administratör vid frågor.');
+          return;
+        }
+      } else {
         const isAdminEmail = user.email === 'christopher.nottberg@gmail.com';
         await setDoc(userRef, {
           uid: user.uid,
@@ -194,11 +207,13 @@ const Login = ({ onQuickReport, onBankIDLogin }: { onQuickReport: () => void, on
           role: isAdminEmail ? 'admin' : 'staff', // Assign admin to owner email
           globalRole: isAdminEmail ? 'admin' : 'none',
           school: 'Danderyds Skola',
+          isActive: true,
           createdAt: new Date().toISOString()
         });
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Login failed:', error);
+      setError('Inloggningen misslyckades. Försök igen.');
     } finally {
       setLoading(false);
     }
@@ -216,6 +231,16 @@ const Login = ({ onQuickReport, onBankIDLogin }: { onQuickReport: () => void, on
           <p className="text-slate-500 font-medium mt-2">Trygghetsärenden i Danderyds Kommun</p>
         </div>
         
+        {error && (
+          <motion.div 
+            initial={{ opacity: 0, y: -10 }} 
+            animate={{ opacity: 1, y: 0 }}
+            className="p-4 bg-red-50 border border-red-100 rounded-2xl text-red-600 text-sm font-bold flex items-center gap-3"
+          >
+            <AlertCircle size={18} />
+            {error}
+          </motion.div>
+        )}
         <div className="py-4 space-y-4">
           <button 
             onClick={onQuickReport}
@@ -282,7 +307,7 @@ const ROLE_LABELS: Record<string, string> = {
   'admin': 'Systemadministratör'
 };
 
-const Dashboard = ({ onNewReport, cases, onOpenCase, onNavigate }: { onNewReport: () => void, cases: any[], onOpenCase: (id: string) => void, onNavigate: (tab: any) => void }) => {
+const Dashboard = ({ onNewReport, cases, onOpenCase, onNavigate, caseQuestions }: { onNewReport: () => void, cases: any[], onOpenCase: (id: string) => void, onNavigate: (tab: any) => void, caseQuestions: string[] }) => {
   const activeCases = cases.filter(c => c.status !== 'avslutat');
   const closedCases = cases.filter(c => c.status === 'avslutat');
   const recentCases = [...cases].sort((a,b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)).slice(0, 5);
@@ -567,6 +592,12 @@ const Dashboard = ({ onNewReport, cases, onOpenCase, onNavigate }: { onNewReport
                     <div className="flex items-center gap-2">
                       <span className="text-[9px] font-black bg-slate-100 text-slate-500 px-2 py-0.5 rounded tracking-wider uppercase">ÄRE-{item.id.slice(-4).toUpperCase()}</span>
                       <h4 className="font-bold text-visuera-dark group-hover:text-visuera-green transition-colors">{item.title}</h4>
+                      {caseQuestions.includes(item.id) && (
+                        <div className="flex items-center gap-1 text-blue-500" title="Väntande fråga från rektor">
+                          <MessageSquare size={14} />
+                          <span className="text-[8px] font-black uppercase">Fråga</span>
+                        </div>
+                      )}
                       {item.status === 'anmäld' && (Date.now() - (item.createdAt?.seconds * 1000 || Date.now())) > (48 * 60 * 60 * 1000) && (
                         <div className="flex items-center gap-1 text-red-500 animate-pulse" title="SLA Överskriden (>48h utan utredare)">
                           <AlertCircle size={14} />
@@ -690,6 +721,9 @@ const App = () => {
   const [isFilterExpanded, setIsFilterExpanded] = useState(false);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [authError, setAuthError] = useState<string | null>(null);
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [caseQuestions, setCaseQuestions] = useState<string[]>([]);
 
   const handleDeleteCase = async (e: React.MouseEvent, caseId: string) => {
     e.stopPropagation();
@@ -723,6 +757,11 @@ const App = () => {
         const userDoc = querySnapshot.docs[0];
         const userData = userDoc.data() as UserProfile;
         
+        if (userData.isActive === false) {
+          setAuthError('Ditt konto har avaktiverats. Kontakta en administratör vid frågor.');
+          return;
+        }
+
         // Mock a Firebase user object for the session
         const mockUser = {
           uid: userData.uid,
@@ -776,6 +815,15 @@ const App = () => {
         const userSnap = await getDoc(userRef);
         if (userSnap.exists()) {
           const data = userSnap.data();
+          
+          if (data.isActive === false) {
+            await signOut(auth);
+            setUser(null);
+            setUserProfile(null);
+            setLoading(false);
+            return;
+          }
+
           // Ensure the primary user becomes admin if they aren't already
           if (user.email === 'christopher.nottberg@gmail.com' && data.role !== 'admin') {
             await updateDoc(userRef, { role: 'admin', globalRole: 'admin' });
@@ -806,6 +854,72 @@ const App = () => {
       return unsubscribe;
     }
   }, [user]);
+
+  // Subscribe to notifications for unread count
+  useEffect(() => {
+    if (user) {
+      const q = query(
+        collection(db, 'notifications'), 
+        where('recipientUid', '==', user.uid),
+        where('read', '==', false)
+      );
+      const unsubscribe = onSnapshot(q, (snapshot) => {
+        setUnreadCount(snapshot.size);
+        const questions = snapshot.docs
+          .filter(doc => doc.data().type === 'DIRECT_MESSAGE')
+          .map(doc => doc.data().caseId);
+        setCaseQuestions(Array.from(new Set(questions)));
+      });
+      return unsubscribe;
+    }
+  }, [user]);
+
+  // SLA REMINDER TRIGGER (Client-side simulation)
+  useEffect(() => {
+    if (userProfile?.role === 'principal' && user) {
+      const checkSLA = async () => {
+        const threshold = Date.now() - (48 * 60 * 60 * 1000);
+        // Find all cases in 'anmäld' status older than 48h for this school
+        const q = query(
+          collection(db, 'cases'), 
+          where('status', '==', 'anmäld'),
+          where('school', '==', userProfile.school)
+        );
+        
+        const snap = await getDocs(q);
+        for (const d of snap.docs) {
+          const data = d.data();
+          const createdAt = data.createdAt?.seconds ? data.createdAt.seconds * 1000 : new Date(data.createdAt).getTime();
+          
+          if (createdAt < threshold) {
+            // Check if we already sent an SLA reminder for this case in the last 24h
+            const notifCheck = query(
+              collection(db, 'notifications'),
+              where('caseId', '==', d.id),
+              where('type', '==', 'REMINDER'),
+              where('recipientUid', '==', user.uid)
+            );
+            const notifSnap = await getDocs(notifCheck);
+            
+            if (notifSnap.empty) {
+              const template = caseService.getNotificationTemplate('sla_reminder', { 
+                caseId: d.id, 
+                schoolName: userProfile.school 
+              });
+              await caseService.sendNotification({
+                ...template,
+                caseId: d.id,
+                recipientUid: user.uid,
+                school: userProfile.school
+              });
+            }
+          }
+        }
+      };
+      
+      checkSLA();
+    }
+  }, [userProfile, user]);
 
   // Fetch schools for filtering
   useEffect(() => {
@@ -969,6 +1083,37 @@ const App = () => {
 
         {/* Main Content Area */}
         <main className="flex-1 ml-20 lg:ml-64 p-6 lg:p-12">
+          {/* Notification Sidebar / Overlay */}
+          <AnimatePresence>
+            {isNotificationsOpen && (
+              <>
+                <motion.div 
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  onClick={() => setIsNotificationsOpen(false)}
+                  className="fixed inset-0 bg-visuera-dark/40 backdrop-blur-sm z-[60]"
+                />
+                <motion.div 
+                  initial={{ x: '100%' }}
+                  animate={{ x: 0 }}
+                  exit={{ x: '100%' }}
+                  transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                  className="fixed right-0 top-0 bottom-0 w-full max-w-sm bg-white shadow-2xl z-[70] border-l border-slate-100"
+                >
+                  <NotificationInbox 
+                    userId={user.uid} 
+                    onOpenCase={(id) => {
+                      setSelectedCaseId(id);
+                      setActiveTab('flow');
+                    }}
+                    onClose={() => setIsNotificationsOpen(false)}
+                  />
+                </motion.div>
+              </>
+            )}
+          </AnimatePresence>
+
           <header className="flex justify-between items-center mb-12">
             <div className="hidden lg:flex items-center gap-4">
               <div className="relative">
@@ -982,6 +1127,19 @@ const App = () => {
             </div>
             
             <div className="flex items-center gap-4">
+              <button 
+                onClick={() => setIsNotificationsOpen(true)}
+                className="relative p-3 bg-white hover:bg-slate-50 border border-slate-100 rounded-2xl shadow-sm transition-all group"
+                title="Notifieringar"
+              >
+                <Bell size={20} className="text-slate-400 group-hover:text-visuera-green transition-colors" />
+                {unreadCount > 0 && (
+                  <span className="absolute top-2 right-2 w-4 h-4 bg-red-500 border-2 border-white rounded-full flex items-center justify-center animate-bounce">
+                    <span className="text-[7px] text-white font-black">{unreadCount}</span>
+                  </span>
+                )}
+              </button>
+
               <div className="text-right hidden sm:block">
                 <div className="text-sm font-bold text-visuera-dark">{user.displayName}</div>
                 <div className="text-[10px] font-bold text-visuera-green uppercase tracking-widest">
@@ -1013,6 +1171,7 @@ const App = () => {
                   setActiveTab('flow');
                 }}
                 onNavigate={setActiveTab}
+                caseQuestions={caseQuestions}
               />
             )}
             {activeTab === 'cases' && (
@@ -1142,6 +1301,12 @@ const App = () => {
                                  <div className="flex items-center gap-2">
                                     <span className="text-[9px] font-black bg-white text-slate-400 px-2 py-0.5 rounded uppercase">ÄRE-{c.id.slice(-4).toUpperCase()}</span>
                                     <h4 className="font-bold text-visuera-dark group-hover:text-visuera-green transition-colors">{c.title}</h4>
+                                    {caseQuestions.includes(c.id) && (
+                                       <div className="flex items-center gap-1 text-blue-500" title="Väntande fråga från rektor">
+                                         <MessageSquare size={12} />
+                                         <span className="text-[8px] font-black uppercase tracking-wider">Fråga</span>
+                                       </div>
+                                    )}
                                  </div>
                                  <div className="text-[10px] text-slate-400 font-medium mt-1 flex flex-wrap gap-x-4 gap-y-1">
                                     <span className="flex items-center gap-1"><UserIcon size={12}/> {c.studentName}</span>

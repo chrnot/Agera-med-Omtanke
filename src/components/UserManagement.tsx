@@ -57,6 +57,7 @@ interface UserProfile {
   team?: string;
   personalNumber?: string;
   createdAt: string;
+  isActive?: boolean;
 }
 
 const ROLE_OPTIONS = [
@@ -101,6 +102,7 @@ export const UserManagement = () => {
   const [isEditorCollapsed, setIsEditorCollapsed] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const [success, setSuccess] = useState<string | null>(null);
+  const [confirmDeleteUserId, setConfirmDeleteUserId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchData();
@@ -313,9 +315,43 @@ export const UserManagement = () => {
     }
   };
 
+  const handleDeleteUser = async (userId: string, userName: string) => {
+    setIsUpdating(true);
+    try {
+      const userRef = doc(db, 'users', userId);
+      await updateDoc(userRef, {
+        isActive: false,
+        role: 'none',
+        globalRole: 'none',
+        updatedAt: serverTimestamp()
+      });
+
+      // Audit log for user "deletion"
+      await addDoc(collection(db, 'AuditLog'), {
+        action: 'ANVÄNDARE_BORTTAGEN',
+        targetUserId: userId,
+        targetUserName: userName,
+        changedByUid: auth.currentUser?.uid || 'unknown',
+        changedByName: auth.currentUser?.displayName || auth.currentUser?.email || 'System',
+        timestamp: serverTimestamp()
+      });
+
+      setUsers(prev => prev.filter(u => u.uid !== userId));
+      setSuccess(`Användare ${userName} har raderats.`);
+      setConfirmDeleteUserId(null);
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (e) {
+      console.error('Error deleting user:', e);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
   const filteredUsers = users.filter(u => 
-    u.name.toLowerCase().includes(search.toLowerCase()) || 
-    u.email.toLowerCase().includes(search.toLowerCase())
+    (u.isActive !== false) && (
+      u.name.toLowerCase().includes(search.toLowerCase()) || 
+      u.email.toLowerCase().includes(search.toLowerCase())
+    )
   );
 
   return (
@@ -620,12 +656,41 @@ export const UserManagement = () => {
                             </div>
                           </td>
                           <td className="px-6 py-4 text-right">
-                            <button 
-                              onClick={() => setSelectedUser(user)}
-                              className="w-full md:w-auto px-4 py-2 bg-slate-100 hover:bg-visuera-green hover:text-white rounded-xl text-xs font-bold transition-all"
-                            >
-                              Hantera Access
-                            </button>
+                            <div className="flex items-center justify-end gap-3">
+                              <button 
+                                onClick={() => setSelectedUser(user)}
+                                className="px-4 py-2 bg-slate-100 hover:bg-visuera-green hover:text-white rounded-xl text-xs font-bold transition-all"
+                              >
+                                Hantera Access
+                              </button>
+                              
+                              <div className="relative">
+                                {confirmDeleteUserId === user.uid ? (
+                                  <div className="flex items-center bg-red-50 rounded-xl overflow-hidden border border-red-100">
+                                    <button 
+                                      onClick={() => handleDeleteUser(user.uid, user.name)}
+                                      className="px-3 py-2 bg-red-500 text-white text-[10px] font-black uppercase tracking-widest hover:bg-red-600 transition-colors"
+                                    >
+                                      Ta bort?
+                                    </button>
+                                    <button 
+                                      onClick={() => setConfirmDeleteUserId(null)}
+                                      className="px-2 py-2 text-slate-400 hover:text-slate-600 transition-colors"
+                                    >
+                                      <X size={14} />
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <button 
+                                    onClick={() => setConfirmDeleteUserId(user.uid)}
+                                    className="p-3 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"
+                                    title="Radera användare"
+                                  >
+                                    <Trash2 size={16} />
+                                  </button>
+                                )}
+                              </div>
+                            </div>
                           </td>
                         </tr>
                       ))}

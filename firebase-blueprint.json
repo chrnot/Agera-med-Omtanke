@@ -78,13 +78,14 @@
       "properties": {
         "recipientUid": { "type": "string" },
         "school": { "type": "string" },
-        "type": { "type": "string", "enum": ["new_case", "deadline", "reminder"] },
+        "type": { "type": "string", "enum": ["ACTION_REQUIRED", "INFO", "REMINDER"] },
+        "title": { "type": "string" },
         "message": { "type": "string" },
         "caseId": { "type": "string" },
         "read": { "type": "boolean" },
         "createdAt": { "type": "string", "format": "date-time" }
       },
-      "required": ["type", "message", "createdAt"]
+      "required": ["recipientUid", "type", "title", "message", "createdAt"]
     },
     "Authority": {
       "title": "Authority (Huvudman)",

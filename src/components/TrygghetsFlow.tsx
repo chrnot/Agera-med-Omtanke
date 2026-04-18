@@ -24,7 +24,10 @@ import {
   ChevronDown,
   Building2,
   Layers,
-  FileDown
+  FileDown,
+  X,
+  MessageSquare,
+  Send
 } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -90,6 +93,7 @@ const DEFAULT_FORM_DATA = {
   assignedTeam: '',
   assignedTeacher: '',
   assignedTeacherUid: '',
+  assignedToUid: '',
   // Step 3 & 4 fields
   studentSSN: '',
   guardianContactStatus: '',
@@ -131,6 +135,7 @@ export const TrygghetsFlow = ({ isQuickReport = false, onSuccess, initialCaseId,
   const [selectedParticipants, setSelectedParticipants] = React.useState<string[]>([]);
   const [selectedActivities, setSelectedActivities] = React.useState<string[]>([]);
   const [completedChecklistItems, setCompletedChecklistItems] = React.useState<string[]>([]);
+  const [successToast, setSuccessToast] = React.useState<{message: string, visible: boolean}>({ message: '', visible: false });
 
   const [userProfile, setUserProfile] = React.useState<any>(null);
   const [authorities, setAuthorities] = React.useState<any[]>([]);
@@ -373,6 +378,8 @@ export const TrygghetsFlow = ({ isQuickReport = false, onSuccess, initialCaseId,
 
   const [showClosingSummary, setShowClosingSummary] = React.useState(false);
   const [isGeneratingPDF, setIsGeneratingPDF] = React.useState(false);
+  const [isNudging, setIsNudging] = React.useState(false);
+  const [quickMessage, setQuickMessage] = React.useState('');
 
   const generatePDF = async () => {
     setIsGeneratingPDF(true);
@@ -507,6 +514,35 @@ export const TrygghetsFlow = ({ isQuickReport = false, onSuccess, initialCaseId,
       setError('Misslyckades att generera PDF-rapport.');
     } finally {
       setIsGeneratingPDF(false);
+    }
+  };
+
+  const handleNudge = async () => {
+    if (!activeCaseId) return;
+    setIsNudging(true);
+    try {
+      await caseService.requestClarification(activeCaseId);
+      setSuccessToast({ message: "Förtydligande begärt. Notifiering skickad till utredare.", visible: true });
+      setTimeout(() => setSuccessToast(prev => ({ ...prev, visible: false })), 5000);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setIsNudging(false);
+    }
+  };
+
+  const handleSendQuickMessage = async (text: string) => {
+    if (!activeCaseId || !text.trim()) return;
+    setIsProcessing(true);
+    try {
+      await caseService.sendDirectMessage(activeCaseId, text.trim());
+      setQuickMessage('');
+      setSuccessToast({ message: "Meddelande skickat till utredaren.", visible: true });
+      setTimeout(() => setSuccessToast(prev => ({ ...prev, visible: false })), 5000);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setIsProcessing(false);
     }
   };
 
@@ -649,6 +685,17 @@ export const TrygghetsFlow = ({ isQuickReport = false, onSuccess, initialCaseId,
           completedChecklistItems,
           updatedAt: new Date().toISOString()
         });
+
+        // TRIGGER SUCCESS TOAST
+        if (newStatus === CaseStatus.Tilldelad) {
+          setSuccessToast({ message: "Anmälan sparad. Notifiering skickad till rektor och huvudman.", visible: true });
+        } else if (newStatus === CaseStatus.Uppfoljd || newStatus === CaseStatus.Avslutat) {
+          setSuccessToast({ message: "Utredning färdigställd. Notifiering skickad till rektor för granskning.", visible: true });
+        } else {
+          setSuccessToast({ message: "Framsteg sparade i ärendet.", visible: true });
+        }
+        
+        setTimeout(() => setSuccessToast(prev => ({ ...prev, visible: false })), 5000);
       }
 
       setShowClosingSummary(false);
@@ -1091,6 +1138,22 @@ export const TrygghetsFlow = ({ isQuickReport = false, onSuccess, initialCaseId,
                   PDF-Rapport
                 </button>
 
+                {activeCaseId && userProfile?.role === 'principal' && (formData.assignedToUid || formData.assignedTeacherUid) && currentStepIndex >= 2 && currentStepIndex <= 4 && (
+                   <button
+                    onClick={handleNudge}
+                    disabled={isNudging}
+                    title="Begär skyndsamt förtydligande eller uppdatering från utredaren"
+                    className="flex items-center gap-2 px-4 py-2 bg-visuera-green/5 hover:bg-visuera-green/10 text-visuera-green rounded-xl text-xs font-bold transition-all border border-visuera-green/20"
+                  >
+                    {isNudging ? (
+                      <div className="w-4 h-4 border-2 border-visuera-green border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <Zap size={16} />
+                    )}
+                    Begär uppdatering
+                  </button>
+                )}
+
                 {!isQuickReport && (
                   <div className="flex -space-x-2">
                   {selectedParticipants.length === 0 ? (
@@ -1434,6 +1497,57 @@ export const TrygghetsFlow = ({ isQuickReport = false, onSuccess, initialCaseId,
                       <strong> Samtliga inblandades versioner ska finnas med.</strong> Endast saklig beskrivning, inga egna värderingar.
                     </p>
                   </div>
+
+                  {/* Manual Communication Panel (Principal only) */}
+                  {userProfile?.role === 'principal' && (
+                    <motion.div 
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="p-6 bg-visuera-green/5 border border-visuera-green/20 rounded-3xl space-y-4"
+                    >
+                      <div className="flex items-center gap-3 text-visuera-green mb-2">
+                        <MessageSquare size={20} />
+                        <h5 className="text-xs font-bold uppercase tracking-widest">Snabba meddelanden (Fråga utredaren)</h5>
+                      </div>
+                      
+                      <div className="relative">
+                        <textarea 
+                          value={quickMessage}
+                          onChange={(e) => setQuickMessage(e.target.value.slice(0, 280))}
+                          placeholder="Skriv ett kort direktmeddelande till utredaren..."
+                          className="w-full h-24 p-4 bg-white rounded-xl border border-slate-100 focus:ring-2 focus:ring-visuera-green/20 transition-all resize-none text-xs"
+                        />
+                        <div className="absolute bottom-3 right-3 text-[10px] text-slate-400">
+                          {quickMessage.length}/280
+                        </div>
+                      </div>
+
+                      <div className="flex flex-wrap gap-2">
+                        {[
+                          "Behöver förtydligande kring intervjun.",
+                          "Saknas dokumentation om elevens version.",
+                          "När beräknas åtgärdsplanen vara klar?"
+                        ].map(template => (
+                          <button
+                            key={template}
+                            onClick={() => setQuickMessage(template)}
+                            className="px-3 py-1.5 bg-white border border-slate-100 rounded-lg text-[10px] text-slate-500 hover:border-visuera-green/30 hover:text-visuera-green transition-all"
+                          >
+                            {template}
+                          </button>
+                        ))}
+                      </div>
+
+                      <button
+                        onClick={() => handleSendQuickMessage(quickMessage)}
+                        disabled={!quickMessage.trim() || isProcessing}
+                        className="w-full flex items-center justify-center gap-2 p-3 bg-visuera-green text-white rounded-xl text-xs font-bold hover:shadow-lg hover:shadow-visuera-green/20 disabled:opacity-50 disabled:grayscale transition-all"
+                      >
+                        <Send size={14} />
+                        Skicka meddelande
+                      </button>
+                    </motion.div>
+                  )}
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-2">
@@ -2115,6 +2229,31 @@ export const TrygghetsFlow = ({ isQuickReport = false, onSuccess, initialCaseId,
           </div>
         </motion.div>
       </div>
+
+      <AnimatePresence>
+        {successToast.visible && (
+          <motion.div 
+            initial={{ opacity: 0, y: 50, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 50, scale: 0.9 }}
+            className="fixed bottom-12 left-1/2 -translate-x-1/2 z-[150] bg-visuera-dark text-white px-8 py-5 rounded-[30px] shadow-2xl flex items-center gap-4 border border-white/10"
+          >
+            <div className="w-10 h-10 bg-visuera-green rounded-full flex items-center justify-center shrink-0">
+              <CheckCircle2 size={20} />
+            </div>
+            <div className="flex flex-col">
+              <span className="font-black text-sm uppercase tracking-wider">Klart!</span>
+              <span className="text-xs text-slate-300 font-medium">{successToast.message}</span>
+            </div>
+            <button 
+              onClick={() => setSuccessToast(prev => ({ ...prev, visible: false }))}
+              className="ml-4 p-2 hover:bg-white/10 rounded-xl transition-all"
+            >
+              <X size={16} />
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

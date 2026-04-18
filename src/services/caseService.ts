@@ -10,9 +10,24 @@ import {
   where, 
   onSnapshot,
   serverTimestamp,
-  Timestamp
+  Timestamp,
+  type FieldValue
 } from 'firebase/firestore';
 import { db, auth } from '../lib/firebase';
+
+export interface Notification {
+  id?: string;
+  type: 'ACTION_REQUIRED' | 'INFO' | 'REMINDER' | 'DIRECT_MESSAGE';
+  title: string;
+  message: string;
+  caseId?: string;
+  recipientUid: string;
+  read: boolean;
+  createdAt: FieldValue;
+  school?: string;
+  actionUrl?: string;
+  senderName?: string;
+}
 
 export enum OperationType {
   CREATE = 'create',
@@ -61,6 +76,77 @@ function handleFirestoreError(error: unknown, operationType: OperationType, path
 }
 
 export const caseService = {
+  getNotificationTemplate: (type: 'new_case' | 'assigned' | 'finished' | 'sla_reminder' | 'follow_up' | 'manual_request', data: { caseId: string, schoolName: string }) => {
+    const idDisplay = `ÄRE-${data.caseId.slice(-4).toUpperCase()}`;
+    const actionUrl = `/cases/${data.caseId}`;
+    
+    switch (type) {
+      case 'new_case':
+        return {
+          type: 'ACTION_REQUIRED' as const,
+          title: 'Ny trygghetsanmälan inkommen',
+          message: `En ny anmälan om misstänkt kränkande behandling har registrerats på ${data.schoolName}. Ärende-ID: ${idDisplay}. Vänligen logga in för att utse utredare.`,
+          actionUrl
+        };
+      case 'assigned':
+        return {
+          type: 'ACTION_REQUIRED' as const,
+          title: 'Nytt utredningsuppdrag',
+          message: `Du har blivit tilldelad som utredare i ett trygghetsärende (ID: ${idDisplay}). Dokumentera dina steg och analys i utredningsmodulen.`,
+          actionUrl
+        };
+      case 'finished':
+        return {
+          type: 'ACTION_REQUIRED' as const,
+          title: 'Utredning klar för granskning',
+          message: `Utredningen för ärende ${idDisplay} är nu färdigställd. Vänligen granska dokumentationen och åtgärdsplanen inför signering.`,
+          actionUrl
+        };
+      case 'sla_reminder':
+        return {
+          type: 'REMINDER' as const,
+          title: 'PÅMINNELSE: Obehandlat ärende',
+          message: `En anmälan (ID: ${idDisplay}) har väntat på åtgärd i mer än 48 timmar. Vänligen tilldela en utredare för att säkerställa skyndsam hantering enligt skollagen.`,
+          actionUrl
+        };
+      case 'follow_up':
+        return {
+          type: 'REMINDER' as const,
+          title: 'Dags för uppföljning',
+          message: `Det är nu dags att följa upp de insatta åtgärderna för ärende ${idDisplay} för att utvärdera om kränkningarna har upphört.`,
+          actionUrl
+        };
+      case 'manual_request':
+        return {
+          type: 'ACTION_REQUIRED' as const,
+          title: 'Begäran om förtydligande',
+          message: `Rektor på ${data.schoolName} ber om ett snabbt förtydligande eller komplettering i ärende ${idDisplay}.`,
+          actionUrl
+        };
+    }
+  },
+
+  sendNotification: async (notif: Omit<Notification, 'id' | 'createdAt' | 'read'>) => {
+    try {
+      await addDoc(collection(db, 'notifications'), {
+        ...notif,
+        read: false,
+        createdAt: serverTimestamp()
+      });
+
+      // Audit Log for notification
+      await addDoc(collection(db, 'AuditLog'), {
+        action: 'NOTIFIERING_SKICKAD',
+        type: notif.type,
+        caseId: notif.caseId || null,
+        recipientUid: notif.recipientUid,
+        timestamp: serverTimestamp()
+      });
+    } catch (e) {
+      console.error('Error sending notification:', e);
+    }
+  },
+
   createCase: async (caseData: any) => {
     let currentPath = 'cases';
     try {
@@ -71,32 +157,45 @@ export const caseService = {
         status: 'anmäld'
       });
       
-      // Initial Audit Log
-      currentPath = `cases/${docRef.id}/audit`;
-      await addDoc(collection(db, currentPath), {
-        caseId: docRef.id,
+      const caseId = docRef.id;
+
+      // Audit Log
+      await addDoc(collection(db, `cases/${caseId}/audit`), {
+        caseId,
         userId: auth.currentUser?.uid || 'anonymous',
         userName: auth.currentUser?.displayName || 'Anonym anmälare',
         action: 'Created',
         timestamp: serverTimestamp()
       });
       
-      // Secondary Audit info
-      currentPath = `cases/${docRef.id}/audit`;
+      // TRIGGER: Notify Principals and Authorities
+      const school = caseData.school || 'Danderyds Skola';
+      const usersRef = collection(db, 'users');
       
-      // Automated Notification for Principal
-      currentPath = 'notifications';
-      await addDoc(collection(db, currentPath), {
-        type: 'new_case',
-        school: caseData.school || 'Danderyds Skola',
-        message: `Ny anmälan inkommen: ${caseData.title || 'Incident'}`,
-        caseId: docRef.id,
-        recipientUid: caseData.assignedToUid || null,
-        read: false,
-        createdAt: serverTimestamp()
-      });
+      // Find principals at this school
+      const principalsQuery = query(usersRef, where('role', '==', 'principal'), where('school', '==', school));
+      const authoritiesQuery = query(usersRef, where('globalRole', '==', 'admin')); // Simplified authority check
+      
+      const [principalsSnap, authoritiesSnap] = await Promise.all([
+        getDocs(principalsQuery),
+        getDocs(authoritiesQuery)
+      ]);
 
-      return docRef.id;
+      const recipients = new Set<string>();
+      principalsSnap.forEach(d => recipients.add(d.id));
+      authoritiesSnap.forEach(d => recipients.add(d.id));
+
+      for (const uid of recipients) {
+        const template = caseService.getNotificationTemplate('new_case', { caseId, schoolName: school });
+        await caseService.sendNotification({
+          ...template,
+          caseId,
+          recipientUid: uid,
+          school
+        });
+      }
+
+      return caseId;
     } catch (error) {
       handleFirestoreError(error, OperationType.CREATE, currentPath);
     }
@@ -105,29 +204,81 @@ export const caseService = {
   updateCase: async (caseId: string, updateData: any) => {
     const path = `cases/${caseId}`;
     try {
+      const oldDoc = await getDoc(doc(db, 'cases', caseId));
+      const oldData = oldDoc.data();
+      
       const finalUpdate = {
         ...updateData,
         updatedAt: serverTimestamp()
       };
 
-      // If status changes to utredning, mark it
       if (updateData.status === 'utredning' || updateData.status === 'utreds') {
         (finalUpdate as any).investigationStartedAt = serverTimestamp();
       }
 
       await updateDoc(doc(db, 'cases', caseId), finalUpdate);
 
-      // Automated Audit Log for update
+      // Audit Log
       await addDoc(collection(db, `cases/${caseId}/audit`), {
         caseId,
         userId: auth.currentUser?.uid || 'system',
         userName: auth.currentUser?.displayName || 'System',
         action: 'Updated',
-        oldStatus: updateData.oldStatus || null,
+        oldStatus: oldData?.status || null,
         newStatus: updateData.status || null,
-        changes: Object.keys(updateData).filter(key => key !== 'oldStatus'), // Simple version tracking
+        changes: Object.keys(updateData).filter(key => key !== 'oldStatus'),
         timestamp: serverTimestamp()
       });
+
+      // TRIGGER: Investigator Assigned
+      if (updateData.assignedToUid && updateData.assignedToUid !== oldData?.assignedToUid) {
+        const template = caseService.getNotificationTemplate('assigned', { caseId, schoolName: oldData?.school || 'Danderyds Skola' });
+        await caseService.sendNotification({
+          ...template,
+          caseId,
+          recipientUid: updateData.assignedToUid
+        });
+      }
+
+      // TRIGGER: Investigation Finished / Sent for review
+      if ((updateData.status === 'uppföljd' || updateData.status === 'avslutat') && oldData?.status !== updateData.status) {
+        const school = oldData?.school || 'Danderyds Skola';
+        const principalsQuery = query(collection(db, 'users'), where('role', '==', 'principal'), where('school', '==', school));
+        const principalsSnap = await getDocs(principalsQuery);
+        
+        for (const d of principalsSnap.docs) {
+          const template = caseService.getNotificationTemplate('finished', { caseId, schoolName: school });
+          await caseService.sendNotification({
+            ...template,
+            caseId,
+            recipientUid: d.id,
+            school
+          });
+        }
+      }
+
+      // TRIGGER: Follow-up required (if status changed to åtgärdad or similar)
+      if (updateData.status === 'åtgärdad' && oldData?.status !== 'åtgärdad') {
+        const school = oldData?.school || 'Danderyds Skola';
+        // Notify both investigator and principal
+        const recipients = new Set<string>();
+        if (oldData?.assignedToUid) recipients.add(oldData.assignedToUid);
+        
+        const principalsQuery = query(collection(db, 'users'), where('role', '==', 'principal'), where('school', '==', school));
+        const principalsSnap = await getDocs(principalsQuery);
+        principalsSnap.forEach(d => recipients.add(d.id));
+
+        for (const uid of recipients) {
+          const template = caseService.getNotificationTemplate('follow_up', { caseId, schoolName: school });
+          await caseService.sendNotification({
+            ...template,
+            caseId,
+            recipientUid: uid,
+            school
+          });
+        }
+      }
+
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, path);
     }
@@ -179,6 +330,81 @@ export const caseService = {
       await deleteDoc(doc(db, 'cases', caseId));
     } catch (error) {
       handleFirestoreError(error, OperationType.DELETE, path);
+    }
+  },
+
+  requestClarification: async (caseId: string) => {
+    try {
+      const caseDoc = await getDoc(doc(db, 'cases', caseId));
+      const caseData = caseDoc.data();
+      
+      const investigatorUid = caseData?.assignedToUid || caseData?.assignedTeacherUid;
+      if (!caseData || !investigatorUid) {
+        throw new Error('Ärendet saknar tilldelad utredare.');
+      }
+
+      const template = caseService.getNotificationTemplate('manual_request', { 
+        caseId, 
+        schoolName: caseData.school || 'Danderyds Skola' 
+      });
+
+      await caseService.sendNotification({
+        ...template,
+        caseId,
+        recipientUid: investigatorUid,
+        school: caseData.school
+      });
+
+      // Audit Log
+      await addDoc(collection(db, `cases/${caseId}/audit`), {
+        caseId,
+        userId: auth.currentUser?.uid || 'system',
+        userName: auth.currentUser?.displayName || 'System',
+        action: 'MANUAL_NUDGE',
+        message: 'Rektor begärde skyndsamt förtydligande',
+        timestamp: serverTimestamp()
+      });
+    } catch (error) {
+      console.error('Error requesting clarification:', error);
+      throw error;
+    }
+  },
+
+  sendDirectMessage: async (caseId: string, messageText: string) => {
+    try {
+      const caseDoc = await getDoc(doc(db, 'cases', caseId));
+      const caseData = caseDoc.data();
+      
+      const investigatorUid = caseData?.assignedToUid || caseData?.assignedTeacherUid;
+      if (!caseData || !investigatorUid) {
+        throw new Error('Ärendet saknar tilldelad utredare.');
+      }
+
+      const senderName = auth.currentUser?.displayName || 'Rektor';
+
+      await caseService.sendNotification({
+        type: 'DIRECT_MESSAGE',
+        title: 'Fråga från rektor',
+        message: messageText,
+        caseId,
+        recipientUid: investigatorUid,
+        senderName,
+        actionUrl: `/cases/${caseId}`,
+        school: caseData.school
+      });
+
+      // Logga även i AuditLog för att behålla spårbarhet enligt GDPR
+      await addDoc(collection(db, `cases/${caseId}/audit`), {
+        caseId,
+        userId: auth.currentUser?.uid || 'system',
+        userName: senderName,
+        action: 'MANUAL_MESSAGE_SENT',
+        message: `Rektor skickade en fråga till utredaren: '${messageText}'`,
+        timestamp: serverTimestamp()
+      });
+    } catch (error) {
+      console.error('Error sending direct message:', error);
+      throw error;
     }
   }
 };
