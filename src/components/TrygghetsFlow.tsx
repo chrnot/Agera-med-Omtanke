@@ -7,6 +7,7 @@ import {
   Zap, 
   BarChart3,
   ArrowRight,
+  ArrowLeft,
   ClipboardList,
   AlertCircle,
   AlertTriangle,
@@ -570,6 +571,13 @@ export const TrygghetsFlow = ({ isQuickReport = false, onSuccess, initialCaseId,
     }
   };
 
+  const handlePrevStep = () => {
+    if (currentStepIndex > 0) {
+      setCurrentStepIndex(prev => prev - 1);
+      setDocumentation('');
+    }
+  };
+
   const handleNextStep = async () => {
     if (!isStepValid()) {
       setError("Vänligen fyll i alla obligatoriska fält markerade med *");
@@ -892,8 +900,19 @@ export const TrygghetsFlow = ({ isQuickReport = false, onSuccess, initialCaseId,
                 const badgeColor = count > 5 ? 'bg-amber-500' : 'bg-visuera-green';
                 const badgeOpacity = count === 0 ? 'opacity-30' : 'opacity-100';
 
+                const canJumpToStep = (userProfile?.role === 'principal' || userProfile?.role === 'admin' || userProfile?.globalRole === 'admin');
+
                 return (
-                  <div key={step.id} className="flex items-center">
+                  <div 
+                    key={step.id} 
+                    className={`flex items-center ${canJumpToStep ? 'cursor-pointer' : ''}`}
+                    onClick={() => {
+                      if (canJumpToStep) {
+                        setCurrentStepIndex(idx);
+                        setDocumentation('');
+                      }
+                    }}
+                  >
                     <div className="flex flex-col items-center gap-2">
                       <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-500 relative ${
                         step.status === 'completed' ? 'bg-visuera-green text-white' :
@@ -1437,6 +1456,7 @@ export const TrygghetsFlow = ({ isQuickReport = false, onSuccess, initialCaseId,
                               updateFormData('assignedTeam', team);
                               updateFormData('assignedTeacher', '');
                               updateFormData('assignedTeacherUid', '');
+                              updateFormData('assignedToUid', '');
                             }}
                             className={`px-6 py-3 rounded-xl text-sm font-bold transition-all border ${
                               formData.assignedTeam === team
@@ -1460,6 +1480,7 @@ export const TrygghetsFlow = ({ isQuickReport = false, onSuccess, initialCaseId,
                             const teacher = availableStaff.find(s => s.name === e.target.value);
                             updateFormData('assignedTeacher', e.target.value);
                             updateFormData('assignedTeacherUid', teacher?.uid || '');
+                            updateFormData('assignedToUid', teacher?.uid || '');
                           }}
                           disabled={!formData.assignedTeam}
                           className={`w-full pl-12 p-4 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-visuera-green/20 transition-all text-sm appearance-none cursor-pointer text-visuera-dark font-medium ${!formData.assignedTeam ? 'opacity-50 cursor-not-allowed' : ''}`}
@@ -2207,24 +2228,37 @@ export const TrygghetsFlow = ({ isQuickReport = false, onSuccess, initialCaseId,
                 )}
               </div>
               
-              <button 
-                onClick={handleNextStep}
-                disabled={isProcessing || (currentStepIndex === steps.length - 1 && !showClosingSummary && isSubmitted) || (!isStepValid())}
-                className={`flex items-center gap-2 px-8 py-4 rounded-2xl font-bold transition-all shadow-lg shadow-visuera-green/20 ${
-                  isProcessing || !isStepValid()
-                    ? 'bg-slate-100 text-slate-400 cursor-not-allowed shadow-none'
-                    : 'bg-visuera-green text-white hover:bg-visuera-light-green hover:-translate-y-1'
-                }`}
-              >
-                {isProcessing ? (
-                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                ) : (
-                  <>
-                    {showClosingSummary ? 'Bekräfta & Avsluta' : (currentStepIndex === 0 ? 'Skicka anmälan' : 'Gå till nästa steg')}
-                    <ArrowRight size={18} />
-                  </>
+              <div className="flex gap-4">
+                {currentStepIndex > 0 && (
+                  <button 
+                    onClick={handlePrevStep}
+                    disabled={isProcessing}
+                    className="flex items-center gap-2 px-8 py-4 rounded-2xl font-bold bg-white border border-slate-100 text-slate-500 hover:bg-slate-50 transition-all"
+                  >
+                    <ArrowLeft size={18} />
+                    Tillbaka
+                  </button>
                 )}
-              </button>
+                
+                <button 
+                  onClick={handleNextStep}
+                  disabled={isProcessing || (currentStepIndex === steps.length - 1 && !showClosingSummary && isSubmitted) || (!isStepValid())}
+                  className={`flex items-center gap-2 px-8 py-4 rounded-2xl font-bold transition-all shadow-lg shadow-visuera-green/20 ${
+                    isProcessing || !isStepValid()
+                      ? 'bg-slate-100 text-slate-400 cursor-not-allowed shadow-none'
+                      : 'bg-visuera-green text-white hover:bg-visuera-light-green hover:-translate-y-1'
+                  }`}
+                >
+                  {isProcessing ? (
+                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  ) : (
+                    <>
+                      {showClosingSummary ? 'Bekräfta & Avsluta' : (currentStepIndex === 0 ? 'Skicka anmälan' : 'Gå till nästa steg')}
+                      <ArrowRight size={18} />
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         </motion.div>

@@ -191,25 +191,50 @@ const Login = ({ onQuickReport, onBankIDLogin }: { onQuickReport: () => void, on
       const userRef = doc(db, 'users', user.uid);
       const userSnap = await getDoc(userRef);
       
-      if (userSnap.exists()) {
+      if (!userSnap.exists()) {
+        // RECONCILIATION: Check if there's a provisioned user document with this email but different ID
+        const emailQuery = query(collection(db, 'users'), where('email', '==', user.email));
+        const emailSnap = await getDocs(emailQuery);
+        
+        if (!emailSnap.empty && emailSnap.docs[0].id !== user.uid) {
+          const oldDoc = emailSnap.docs[0];
+          const oldData = oldDoc.data();
+          
+          // Migrate old profile data to the new UID-based document
+          await setDoc(userRef, {
+            ...oldData,
+            uid: user.uid,
+            reconciledFrom: oldDoc.id,
+            updatedAt: new Date().toISOString()
+          });
+          
+          // Optionally delete or mark the old document to avoid duplicates in lists
+          // For now, let's mark it as inactive or migrated to keep lists clean
+          await updateDoc(doc(db, 'users', oldDoc.id), {
+             isActive: false,
+             migratedTo: user.uid
+          });
+        } else {
+          // Regular new user creation
+          const isAdminEmail = user.email === 'christopher.nottberg@gmail.com';
+          await setDoc(userRef, {
+            uid: user.uid,
+            email: user.email,
+            name: user.displayName,
+            role: isAdminEmail ? 'admin' : 'staff',
+            globalRole: isAdminEmail ? 'admin' : 'none',
+            school: 'Danderyds Skola',
+            isActive: true,
+            createdAt: new Date().toISOString()
+          });
+        }
+      } else {
         const userData = userSnap.data();
-        if (userData.isActive === false) {
+        if (userData.isActive === false && !userData.migratedTo) {
           await signOut(auth);
           setError('Ditt konto har avaktiverats. Kontakta en administratör vid frågor.');
           return;
         }
-      } else {
-        const isAdminEmail = user.email === 'christopher.nottberg@gmail.com';
-        await setDoc(userRef, {
-          uid: user.uid,
-          email: user.email,
-          name: user.displayName,
-          role: isAdminEmail ? 'admin' : 'staff', // Assign admin to owner email
-          globalRole: isAdminEmail ? 'admin' : 'none',
-          school: 'Danderyds Skola',
-          isActive: true,
-          createdAt: new Date().toISOString()
-        });
       }
     } catch (error: any) {
       console.error('Login failed:', error);
@@ -811,8 +836,23 @@ const App = () => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setUser(user);
       if (user) {
-        const userRef = doc(db, 'users', user.uid);
-        const userSnap = await getDoc(userRef);
+        let userRef = doc(db, 'users', user.uid);
+        let userSnap = await getDoc(userRef);
+        
+        // If UID-based doc doesn't exist, check for email-based doc (Legacy/Provisioned)
+        if (!userSnap.exists()) {
+          const emailQuery = query(collection(db, 'users'), where('email', '==', user.email));
+          const emailSnap = await getDocs(emailQuery);
+          if (!emailSnap.empty) {
+             // Re-run handleLogin logic or just use this data temporarily
+             // To be safe, we let handleLogin handle migration, but we can set profile here too
+             const data = emailSnap.docs[0].data();
+             setUserProfile(data);
+             setLoading(false);
+             return;
+          }
+        }
+
         if (userSnap.exists()) {
           const data = userSnap.data();
           
@@ -860,14 +900,16 @@ const App = () => {
     if (user) {
       const q = query(
         collection(db, 'notifications'), 
-        where('recipientUid', '==', user.uid),
-        where('read', '==', false)
+        where('recipientUid', '==', user.uid)
       );
       const unsubscribe = onSnapshot(q, (snapshot) => {
-        setUnreadCount(snapshot.size);
-        const questions = snapshot.docs
-          .filter(doc => doc.data().type === 'DIRECT_MESSAGE')
-          .map(doc => doc.data().caseId);
+        const docs = snapshot.docs.map(d => ({ ...d.data(), id: d.id }));
+        const unreadDocs = docs.filter((d: any) => d.read === false);
+        
+        setUnreadCount(unreadDocs.length);
+        const questions = unreadDocs
+          .filter((d: any) => d.type === 'DIRECT_MESSAGE')
+          .map((d: any) => d.caseId);
         setCaseQuestions(Array.from(new Set(questions)));
       });
       return unsubscribe;

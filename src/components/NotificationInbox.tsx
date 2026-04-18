@@ -8,7 +8,8 @@ import {
   FileText,
   UserCheck,
   CheckCircle2,
-  Trash2
+  Trash2,
+  MessageSquare
 } from 'lucide-react';
 import { 
   collection, 
@@ -40,8 +41,7 @@ export const NotificationInbox = ({ userId, onOpenCase, onClose }: NotificationI
 
     const q = query(
       collection(db, 'notifications'),
-      where('recipientUid', '==', userId),
-      orderBy('createdAt', 'desc')
+      where('recipientUid', '==', userId)
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -49,6 +49,14 @@ export const NotificationInbox = ({ userId, onOpenCase, onClose }: NotificationI
         id: d.id, 
         ...d.data() 
       } as Notification));
+      
+      // Sort in memory to avoid index requirements
+      fetched.sort((a, b) => {
+        const timeA = (a.createdAt as any)?.toDate ? (a.createdAt as any).toDate().getTime() : 0;
+        const timeB = (b.createdAt as any)?.toDate ? (b.createdAt as any).toDate().getTime() : 0;
+        return timeB - timeA;
+      });
+
       setNotifications(fetched);
       setLoading(false);
     });
@@ -86,6 +94,7 @@ export const NotificationInbox = ({ userId, onOpenCase, onClose }: NotificationI
       case 'ACTION_REQUIRED': return <AlertCircle className="text-red-500" size={18} />;
       case 'INFO': return <FileText className="text-blue-500" size={18} />;
       case 'REMINDER': return <Clock className="text-amber-500" size={18} />;
+      case 'DIRECT_MESSAGE': return <MessageSquare className="text-visuera-green" size={18} />;
       default: return <Bell className="text-slate-400" size={18} />;
     }
   };
@@ -164,7 +173,7 @@ export const NotificationInbox = ({ userId, onOpenCase, onClose }: NotificationI
                   <div className="flex-1 space-y-1">
                     <div className="flex justify-between items-start">
                       <h4 className={`text-sm tracking-tight ${!n.read ? 'font-black text-visuera-dark' : 'font-bold text-slate-600'}`}>
-                        {n.title}
+                        {n.title} {n.senderName && <span className="text-slate-400 font-medium">från {n.senderName}</span>}
                       </h4>
                       <span className="text-[9px] font-bold text-slate-400 uppercase flex items-center gap-1">
                         <Clock size={10} /> {getTimeMessage(n.createdAt)}
