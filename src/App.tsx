@@ -69,6 +69,7 @@ interface UserProfile {
   authorityAccess?: Record<string, string>;
   createdAt: string;
   isActive?: boolean;
+  migratedTo?: string;
 }
 
 const BankIDModal = ({ isOpen, onClose, onAuthenticated }: { isOpen: boolean, onClose: () => void, onAuthenticated: (pnr: string) => void }) => {
@@ -833,56 +834,84 @@ const App = () => {
   }, [userProfile, activeTab]);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+    let unsubscribeProfile: (() => void) | null = null;
+
+    const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
       setUser(user);
       if (user) {
-        let userRef = doc(db, 'users', user.uid);
-        let userSnap = await getDoc(userRef);
+        const userRef = doc(db, 'users', user.uid);
         
-        // If UID-based doc doesn't exist, check for email-based doc (Legacy/Provisioned)
-        if (!userSnap.exists()) {
-          const emailQuery = query(collection(db, 'users'), where('email', '==', user.email));
-          const emailSnap = await getDocs(emailQuery);
-          if (!emailSnap.empty) {
-             // Re-run handleLogin logic or just use this data temporarily
-             // To be safe, we let handleLogin handle migration, but we can set profile here too
-             const data = emailSnap.docs[0].data();
-             setUserProfile(data);
-             setLoading(false);
-             return;
-          }
-        }
+        // Setup a real-time listener for the user profile
+        unsubscribeProfile = onSnapshot(userRef, async (snap) => {
+          if (snap.exists()) {
+            let data = snap.data() as UserProfile;
+            
+            if (data.isActive === false && !data.migratedTo) {
+              await signOut(auth);
+              setUser(null);
+              setUserProfile(null);
+              return;
+            }
 
-        if (userSnap.exists()) {
-          const data = userSnap.data();
-          
-          if (data.isActive === false) {
-            await signOut(auth);
-            setUser(null);
-            setUserProfile(null);
-            setLoading(false);
-            return;
-          }
-
-          // Ensure the primary user becomes admin if they aren't already
-          if (user.email === 'christopher.nottberg@gmail.com' && data.role !== 'admin') {
-            await updateDoc(userRef, { role: 'admin', globalRole: 'admin' });
-            setUserProfile({ ...data, role: 'admin', globalRole: 'admin' });
-            // Seed schools on first admin login
-            await setupService.seedInitialData();
+            // Ensure the primary user becomes admin if they aren't already
+            if (user.email === 'christopher.nottberg@gmail.com' && (data.role !== 'admin' || data.globalRole !== 'admin')) {
+              await updateDoc(userRef, { role: 'admin', globalRole: 'admin' });
+              // Snapshot will trigger again after this update
+            } else {
+              setUserProfile(data);
+              if (data.role === 'admin' || data.globalRole === 'admin') {
+                await setupService.seedInitialData();
+              }
+            }
           } else {
-            setUserProfile(data);
-            if (data.role === 'admin' || data.globalRole === 'admin') {
-               await setupService.seedInitialData();
+            // Document doesn't exist, check for migration
+            const emailQuery = query(collection(db, 'users'), where('email', '==', user.email));
+            const emailSnap = await getDocs(emailQuery);
+            if (!emailSnap.empty && emailSnap.docs[0].id !== user.uid) {
+               const oldDoc = emailSnap.docs[0];
+               const oldData = oldDoc.data();
+               
+               console.log("Migrating provisioned profile for:", user.email);
+               await setDoc(userRef, {
+                 ...oldData,
+                 uid: user.uid,
+                 isActive: true,
+                 reconciledFrom: oldDoc.id,
+                 updatedAt: new Date().toISOString()
+               });
+               
+               await updateDoc(doc(db, 'users', oldDoc.id), {
+                  isActive: false,
+                  migratedTo: user.uid
+               });
+               // snapshot listener will catch the new doc
+            } else if (emailSnap.empty) {
+               // New user
+               const isAdminEmail = user.email === 'christopher.nottberg@gmail.com';
+               await setDoc(userRef, {
+                 uid: user.uid,
+                 email: user.email,
+                 name: user.displayName,
+                 role: isAdminEmail ? 'admin' : 'staff',
+                 globalRole: isAdminEmail ? 'admin' : 'none',
+                 school: 'Danderyds Skola',
+                 isActive: true,
+                 createdAt: new Date().toISOString()
+               });
             }
           }
-        }
+          setLoading(false);
+        });
       } else {
         setUserProfile(null);
+        setLoading(false);
       }
-      setLoading(false);
     });
-    return unsubscribe;
+
+    return () => {
+      unsubscribeAuth();
+      if (unsubscribeProfile) unsubscribeProfile();
+    };
   }, []);
 
   // Subscribe to real-time cases
@@ -1185,9 +1214,9 @@ const App = () => {
               <div className="text-right hidden sm:block">
                 <div className="text-sm font-bold text-visuera-dark">{user.displayName}</div>
                 <div className="text-[10px] font-bold text-visuera-green uppercase tracking-widest">
-                  {userProfile?.globalRole === 'admin' ? 'Systemadministratör' : (
+                  {userProfile?.globalRole === 'admin' || userProfile?.role === 'admin' ? 'Systemadministratör' : (
                     <>
-                      {Object.keys(userProfile?.schoolAccess || {}).length > 1 ? 'Multipel Åtkomst' : (ROLE_LABELS[userProfile?.role] || 'Anmälare')}
+                      {Object.keys(userProfile?.schoolAccess || {}).length > 1 ? 'Multipel Åtkomst' : (ROLE_LABELS[userProfile?.role || ''] || 'Anmälare')}
                       {' • '}
                       {userProfile?.school || 'Danderyds Skola'}
                     </>

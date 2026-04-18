@@ -117,7 +117,9 @@ export const UserManagement = () => {
         getDocs(query(collection(db, 'schools'), orderBy('name', 'asc')))
       ]);
 
-      setUsers(usersSnap.docs.map(d => ({ ...d.data(), uid: d.id })) as UserProfile[]);
+      setUsers(usersSnap.docs
+        .map(d => ({ ...d.data(), uid: d.id }))
+        .filter((u: any) => u.isActive !== false) as UserProfile[]);
       setAuthorities(authSnap.docs.map(d => ({ ...d.data(), id: d.id })) as Authority[]);
       setSchools(schoolSnap.docs.map(d => ({ ...d.data(), id: d.id })) as School[]);
     } catch (error) {
@@ -207,6 +209,7 @@ export const UserManagement = () => {
       const oldUser = users.find(u => u.uid === selectedUser.uid);
       const userRef = doc(db, 'users', selectedUser.uid);
       const updates = {
+        role: selectedUser.role,
         schoolAccess: selectedUser.schoolAccess || {},
         authorityAccess: selectedUser.authorityAccess || {},
         globalRole: selectedUser.globalRole || 'none',

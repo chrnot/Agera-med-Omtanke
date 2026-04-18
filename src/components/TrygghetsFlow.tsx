@@ -197,7 +197,9 @@ export const TrygghetsFlow = ({ isQuickReport = false, onSuccess, initialCaseId,
         // Query users where school is the selected one
         const q = query(collection(db, 'users'), where('school', '==', schoolTarget));
         const staffSnap = await getDocs(q);
-        const staffData = staffSnap.docs.map(d => ({ uid: d.id, ...d.data() }));
+        const staffData = staffSnap.docs
+          .map(d => ({ uid: d.id, ...d.data() } as any))
+          .filter(u => u.isActive !== false);
         
         setAvailableStaff(staffData);
         
@@ -1441,34 +1443,38 @@ export const TrygghetsFlow = ({ isQuickReport = false, onSuccess, initialCaseId,
                   <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100">
                     <h4 className="text-sm font-bold text-visuera-dark mb-2">Tilldelning av ärende</h4>
                     <p className="text-xs text-slate-600 leading-relaxed">
-                      Välj vilket arbetslag som ansvarar för ärendet och utse en ansvarig utredare.
+                      {availableTeams.length > 0 
+                        ? "Välj vilket arbetslag som ansvarar för ärendet och utse en ansvarig utredare."
+                        : "Utse en ansvarig utredare för detta ärende."}
                     </p>
                   </div>
 
                   <div className="space-y-6">
-                    <div className="space-y-3">
-                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Välj arbetslag *</label>
-                      <div className="flex flex-wrap gap-2">
-                        {availableTeams.map(team => (
-                          <button
-                            key={team}
-                            onClick={() => {
-                              updateFormData('assignedTeam', team);
-                              updateFormData('assignedTeacher', '');
-                              updateFormData('assignedTeacherUid', '');
-                              updateFormData('assignedToUid', '');
-                            }}
-                            className={`px-6 py-3 rounded-xl text-sm font-bold transition-all border ${
-                              formData.assignedTeam === team
-                                ? 'bg-visuera-green text-white border-visuera-green shadow-lg shadow-visuera-green/20'
-                                : 'bg-white border-slate-100 text-slate-500 hover:border-visuera-green/30'
-                            }`}
-                          >
-                            Arbetslag {team}
-                          </button>
-                        ))}
+                    {availableTeams.length > 0 && (
+                      <div className="space-y-3">
+                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Välj arbetslag *</label>
+                        <div className="flex flex-wrap gap-2">
+                          {availableTeams.map(team => (
+                            <button
+                              key={team}
+                              onClick={() => {
+                                updateFormData('assignedTeam', team);
+                                updateFormData('assignedTeacher', '');
+                                updateFormData('assignedTeacherUid', '');
+                                updateFormData('assignedToUid', '');
+                              }}
+                              className={`px-6 py-3 rounded-xl text-sm font-bold transition-all border ${
+                                formData.assignedTeam === team
+                                  ? 'bg-visuera-green text-white border-visuera-green shadow-lg shadow-visuera-green/20'
+                                  : 'bg-white border-slate-100 text-slate-500 hover:border-visuera-green/30'
+                              }`}
+                            >
+                              Arbetslag {team}
+                            </button>
+                          ))}
+                        </div>
                       </div>
-                    </div>
+                    )}
 
                     <div className="space-y-3">
                       <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Välj ansvarig utredare *</label>
@@ -1482,12 +1488,16 @@ export const TrygghetsFlow = ({ isQuickReport = false, onSuccess, initialCaseId,
                             updateFormData('assignedTeacherUid', teacher?.uid || '');
                             updateFormData('assignedToUid', teacher?.uid || '');
                           }}
-                          disabled={!formData.assignedTeam}
-                          className={`w-full pl-12 p-4 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-visuera-green/20 transition-all text-sm appearance-none cursor-pointer text-visuera-dark font-medium ${!formData.assignedTeam ? 'opacity-50 cursor-not-allowed' : ''}`}
+                          disabled={availableTeams.length > 0 && !formData.assignedTeam}
+                          className={`w-full pl-12 p-4 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-visuera-green/20 transition-all text-sm appearance-none cursor-pointer text-visuera-dark font-medium ${(availableTeams.length > 0 && !formData.assignedTeam) ? 'opacity-50 cursor-not-allowed' : ''}`}
                         >
-                          <option value="">{formData.assignedTeam ? 'Välj en lärare...' : 'Välj arbetslag först...'}</option>
+                          <option value="">
+                            {availableTeams.length > 0 
+                              ? (formData.assignedTeam ? 'Välj en lärare...' : 'Välj arbetslag först...')
+                              : 'Välj en utredare...'}
+                          </option>
                           {availableStaff
-                            .filter(p => p.team === formData.assignedTeam)
+                            .filter(p => availableTeams.length === 0 || p.team === formData.assignedTeam)
                             .map(teacher => (
                               <option key={teacher.uid} value={teacher.name}>
                                 {teacher.name}
