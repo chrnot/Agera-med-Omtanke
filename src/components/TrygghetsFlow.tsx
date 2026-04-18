@@ -114,7 +114,8 @@ const DEFAULT_FORM_DATA = {
   signatureName: '',
   signatureDate: '',
   status: CaseStatus.Anmald,
-  isClosed: false
+  isClosed: false,
+  createdAt: null as any
 };
 
 export const TrygghetsFlow = ({ isQuickReport = false, onSuccess, initialCaseId, cases = [] }: TrygghetsFlowProps) => {
@@ -194,21 +195,52 @@ export const TrygghetsFlow = ({ isQuickReport = false, onSuccess, initialCaseId,
         return;
       }
       try {
-        // Query users where school is the selected one
-        const q = query(collection(db, 'users'), where('school', '==', schoolTarget));
+        const schoolDoc = availableSchools.find(s => s.name === schoolTarget);
+        const schoolId = schoolDoc?.id;
+
+        // Fetch all active users and filter client-side for better support of multi-school access
+        const q = query(collection(db, 'users'), where('isActive', '!=', false));
         const staffSnap = await getDocs(q);
+        
         const staffData = staffSnap.docs
-          .map(d => ({ uid: d.id, ...d.data() } as any))
-          .filter(u => u.isActive !== false);
+          .map(d => {
+            const data = d.data();
+            const uid = d.id;
+            
+            // Resolve the team for THIS school
+            let activeTeam = '';
+            if (data.school === schoolTarget) {
+              activeTeam = data.team || '';
+            } else if (schoolId && data.schoolAccess && data.schoolAccess[schoolId]) {
+              const access = data.schoolAccess[schoolId];
+              if (!Array.isArray(access) && typeof access === 'object') {
+                activeTeam = access.team || '';
+              }
+            }
+
+            return { uid, ...data, activeTeam } as any;
+          })
+          .filter(u => {
+            const matchesPrimary = u.school === schoolTarget;
+            const matchesAccess = schoolId && u.schoolAccess && u.schoolAccess[schoolId];
+            const isGlobalAdmin = u.globalRole === 'admin';
+            return matchesPrimary || matchesAccess || isGlobalAdmin;
+          });
         
         setAvailableStaff(staffData);
         
-        // Extract teams
-        const teams = Array.from(new Set(staffData.map((s: any) => s.team).filter(Boolean))) as string[];
+        // Extract teams using the contextual activeTeam
+        const teams = Array.from(new Set(staffData.map((s: any) => s.activeTeam).filter(Boolean))) as string[];
+        const hasStaffWithoutTeam = staffData.some((s: any) => !s.activeTeam);
+        if (hasStaffWithoutTeam) {
+          teams.push('Utan arbetslag');
+        }
         
         // Sorting: F, 1, 2, 3, 4, 5, 6, others (like 'Övriga')
         const teamOrder = ['F', '1', '2', '3', '4', '5', '6'];
         const sortedTeams = teams.sort((a, b) => {
+          if (a === 'Utan arbetslag') return 1;
+          if (b === 'Utan arbetslag') return -1;
           const idxA = teamOrder.indexOf(a);
           const idxB = teamOrder.indexOf(b);
           if (idxA !== -1 && idxB !== -1) return idxA - idxB;
@@ -218,8 +250,8 @@ export const TrygghetsFlow = ({ isQuickReport = false, onSuccess, initialCaseId,
         });
         
         if (sortedTeams.length > 0 && !formData.assignedTeam) {
-            const defaultTeam = sortedTeams.includes('Övriga') ? 'Övriga' : sortedTeams[0];
-            setFormData(prev => ({ ...prev, assignedTeam: defaultTeam }));
+          // If we had a team selected, keep it, otherwise set default
+          // No auto-set here to prevent unwanted switches
         }
 
         setAvailableTeams(sortedTeams);
@@ -228,7 +260,7 @@ export const TrygghetsFlow = ({ isQuickReport = false, onSuccess, initialCaseId,
       }
     };
     fetchStaff();
-  }, [formData.school]);
+  }, [formData.school, availableSchools]);
 
   // Fetch user profile for role/school
   React.useEffect(() => {
@@ -728,6 +760,58 @@ export const TrygghetsFlow = ({ isQuickReport = false, onSuccess, initialCaseId,
     }
   };
 
+  const getDynamicDeadlineInfo = (stepId: number, createdAt: any) => {
+    if (!createdAt) return { deadlineLabel: "Väntar på start", urgency: "Normal", timeLeft: "-", timePassed: "-", isOverdue: false };
+
+    const createdDate = createdAt.seconds ? new Date(createdAt.seconds * 1000) : new Date(createdAt);
+    const now = new Date();
+    const elapsedMs = now.getTime() - createdDate.getTime();
+    
+    // Deadlines in days from creation for each step
+    const stepDeadlines: Record<number, number> = {
+      1: 1,      // Anmälan: 24h
+      2: 2,      // Tilldelning: 48h
+      3: 7,      // Utredning: 1 week
+      4: 10,     // Åtgärder: 10 days
+      5: 21,     // Uppföljning: 3 weeks
+      6: 30      // Avslut: 1 month
+    };
+
+    const targetDays = stepDeadlines[stepId] || 7;
+    const targetMs = targetDays * 24 * 60 * 60 * 1000;
+    const remainingMs = targetMs - elapsedMs;
+
+    const formatDuration = (ms: number) => {
+      const positiveMs = Math.abs(ms);
+      const days = Math.floor(positiveMs / (24 * 60 * 60 * 1000));
+      const hours = Math.floor((positiveMs % (24 * 60 * 60 * 1000)) / (60 * 60 * 1000));
+      
+      let res = '';
+      if (days > 0) res += `${days}d `;
+      if (hours > 0 || days === 0) res += `${hours}h`;
+      return res.trim();
+    };
+
+    const timePassed = formatDuration(elapsedMs);
+    const timeLeft = remainingMs > 0 ? formatDuration(remainingMs) : `-${formatDuration(remainingMs)}`;
+    
+    let urgency = "Normal";
+    const percentLeft = (remainingMs / targetMs) * 100;
+    
+    if (remainingMs < 0) urgency = "FÖRSENAD";
+    else if (percentLeft < 15) urgency = "KRITISK";
+    else if (percentLeft < 40) urgency = "Hög";
+    else urgency = "Normal";
+
+    return {
+      deadlineLabel: `${targetDays}d totalt`,
+      urgency,
+      timeLeft,
+      timePassed,
+      isOverdue: remainingMs < 0
+    };
+  };
+
   const getStepContent = (stepId: number) => {
     const step1Items = ["Registrera ärendet i huvudmannens system"];
     const step2Items = [...step1Items, "Tilldela rätt arbetslag ansvar för ärendet", "Utse ansvarig utredare"];
@@ -736,52 +820,72 @@ export const TrygghetsFlow = ({ isQuickReport = false, onSuccess, initialCaseId,
     const step5Items = [...step4Items, "Genomför uppföljningssamtal", "Utvärdera åtgärdernas effekt", "Besluta om ev. ytterligare åtgärder"];
     const step6Items = [...step5Items, "Slutdokumentera ärendet", "Informera vårdnadshavare om avslut", "Arkivera enligt gällande regler"];
 
+    const dynamic = getDynamicDeadlineInfo(stepId, formData.createdAt);
+
     switch (stepId) {
       case 1:
         return {
           support: "Anmälan görs inom 24h från kännedom. Beskriv händelsen mycket kortfattat. Gör ingen värdering av allvaret före anmälan.",
-          deadline: "Inom 24 timmar",
-          urgency: "Hög",
+          deadline: dynamic.deadlineLabel,
+          urgency: dynamic.urgency,
+          timeLeft: dynamic.timeLeft,
+          timePassed: dynamic.timePassed,
+          isOverdue: dynamic.isOverdue,
           action: "Skicka anmälan till rektor",
           checklist: step1Items
         };
       case 2:
         return {
           support: "Rektor eller biträdande rektor tilldelar ärendet till ansvarigt arbetslag och utredare för vidare hantering.",
-          deadline: "Skyndsamt",
-          urgency: "Hög",
+          deadline: dynamic.deadlineLabel,
+          urgency: dynamic.urgency,
+          timeLeft: dynamic.timeLeft,
+          timePassed: dynamic.timePassed,
+          isOverdue: dynamic.isOverdue,
           action: "Tilldela ärende",
           checklist: step2Items
         };
       case 3:
         return {
           support: "Utredning påbörjas i samband med anmälan. Samtliga inblandades versioner ska finnas med. Endast saklig beskrivning, inga värderingar.",
-          deadline: "Inom 1 vecka",
-          urgency: "Normal",
+          deadline: dynamic.deadlineLabel,
+          urgency: dynamic.urgency,
+          timeLeft: dynamic.timeLeft,
+          timePassed: dynamic.timePassed,
+          isOverdue: dynamic.isOverdue,
           action: "Dokumentera alla versioner",
           checklist: step3Items
         };
       case 4:
         return {
           support: "Åtgärder beslutas utifrån analysen. Informera berörd personal, elevhälsa och vårdnadshavare.",
-          deadline: "Inom 1 vecka (tillsammans med utredning)",
-          urgency: "Hög",
+          deadline: dynamic.deadlineLabel,
+          urgency: dynamic.urgency,
+          timeLeft: dynamic.timeLeft,
+          timePassed: dynamic.timePassed,
+          isOverdue: dynamic.isOverdue,
           action: "Upprätta åtgärdsplan",
           checklist: step4Items
         };
       case 5:
         return {
           support: "Utvärderas inom 2 veckor efter utredning. Prata med både utsatt och den som utsatt. Om problemet kvarstår - nya åtgärder.",
-          deadline: "Inom 2 veckor",
-          urgency: "Normal",
+          deadline: dynamic.deadlineLabel,
+          urgency: dynamic.urgency,
+          timeLeft: dynamic.timeLeft,
+          timePassed: dynamic.timePassed,
+          isOverdue: dynamic.isOverdue,
           action: "Genomför utvärderingssamtal",
           checklist: step5Items
         };
       case 6:
         return {
           support: "Ärendet ska avslutas inom 4 veckor från händelsen/kännedom. Säkerställ att all dokumentation är komplett.",
-          deadline: "Inom 4 veckor totalt",
-          urgency: "Låg",
+          deadline: dynamic.deadlineLabel,
+          urgency: dynamic.urgency,
+          timeLeft: dynamic.timeLeft,
+          timePassed: dynamic.timePassed,
+          isOverdue: dynamic.isOverdue,
           action: "Slutför checklistan och arkivera",
           checklist: step6Items
         };
@@ -1062,19 +1166,45 @@ export const TrygghetsFlow = ({ isQuickReport = false, onSuccess, initialCaseId,
               </p>
               
               <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="p-4 bg-white/5 rounded-2xl border border-white/10 flex flex-col gap-1">
+                    <div className="flex items-center gap-2 text-slate-400">
+                      <Clock size={14} />
+                      <span className="text-[10px] font-bold uppercase tracking-wider">Tid gått</span>
+                    </div>
+                    <span className="text-sm font-bold text-white">{content?.timePassed}</span>
+                  </div>
+                  <div className={`p-4 rounded-2xl border flex flex-col gap-1 ${content?.isOverdue ? 'bg-red-500/10 border-red-500/20' : 'bg-white/5 border-white/10'}`}>
+                    <div className="flex items-center gap-2 text-slate-400">
+                      <Zap size={14} className={content?.isOverdue ? 'text-red-400' : ''} />
+                      <span className="text-[10px] font-bold uppercase tracking-wider">Tid kvar</span>
+                    </div>
+                    <span className={`text-sm font-bold ${content?.isOverdue ? 'text-red-400' : 'text-visuera-green'}`}>
+                      {content?.timeLeft}
+                    </span>
+                  </div>
+                </div>
+
                 <div className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/10">
                   <div className="flex items-center gap-3">
-                    <Clock size={18} className="text-visuera-green" />
-                    <span className="text-sm">Deadline</span>
+                    <Calendar size={18} className="text-visuera-green" />
+                    <span className="text-sm">Mål deadline</span>
                   </div>
                   <span className="text-sm font-bold">{content?.deadline}</span>
                 </div>
+
                 <div className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/10">
                   <div className="flex items-center gap-3">
-                    <AlertCircle size={18} className="text-orange-400" />
+                    <AlertCircle size={18} className={
+                      content?.urgency === 'KRITISK' || content?.urgency === 'FÖRSENAD' ? 'text-red-500' :
+                      content?.urgency === 'Hög' ? 'text-orange-400' : 'text-visuera-green'
+                    } />
                     <span className="text-sm">Prioritet</span>
                   </div>
-                  <span className="text-sm font-bold">{content?.urgency}</span>
+                  <span className={`text-sm font-bold ${
+                    content?.urgency === 'KRITISK' || content?.urgency === 'FÖRSENAD' ? 'text-red-400 animate-pulse' :
+                    content?.urgency === 'Hög' ? 'text-orange-400' : 'text-white'
+                  }`}>{content?.urgency}</span>
                 </div>
               </div>
             </div>
@@ -1497,7 +1627,11 @@ export const TrygghetsFlow = ({ isQuickReport = false, onSuccess, initialCaseId,
                               : 'Välj en utredare...'}
                           </option>
                           {availableStaff
-                            .filter(p => availableTeams.length === 0 || p.team === formData.assignedTeam)
+                            .filter(p => {
+                              if (availableTeams.length === 0) return true;
+                              if (formData.assignedTeam === 'Utan arbetslag') return !p.activeTeam;
+                              return p.activeTeam === formData.assignedTeam;
+                            })
                             .map(teacher => (
                               <option key={teacher.uid} value={teacher.name}>
                                 {teacher.name}

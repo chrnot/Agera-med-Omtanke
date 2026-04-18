@@ -65,7 +65,7 @@ interface UserProfile {
   team?: string;
   personalNumber?: string;
   globalRole?: string;
-  schoolAccess?: Record<string, string[]>;
+  schoolAccess?: Record<string, string[] | { roles: string[]; team?: string }>;
   authorityAccess?: Record<string, string>;
   createdAt: string;
   isActive?: boolean;
@@ -1298,10 +1298,12 @@ const App = () => {
                               className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold focus:ring-2 focus:ring-visuera-green/20 transition-all appearance-none cursor-pointer"
                             >
                               <option value="alla">Alla statusar</option>
-                              <option value="anmäld">Anmälda</option>
+                              <option value="anmäld">Inkomna anmälningar</option>
                               <option value="utredning">Under utredning</option>
-                              <option value="åtgärder">Aktiva åtgärder</option>
-                              <option value="avslutad">Avslutade</option>
+                              <option value="åtgärder">Under åtgärder</option>
+                              <option value="åtgärdad">Åtgärdade (väntar uppföljning)</option>
+                              <option value="uppföljd">Uppföljda (väntar avslut)</option>
+                              <option value="avslutat">Avslutade ärenden</option>
                             </select>
                           </div>
 
@@ -1363,7 +1365,14 @@ const App = () => {
                         <div className="py-20 text-center text-slate-400 italic">Inga ärenden hittades som matchar dina filter.</div>
                      ) : (
                         filteredCases.map(c => (
-                        <div key={c.id} className="p-6 bg-slate-50 rounded-2xl border border-slate-100 flex items-center justify-between hover:border-visuera-green/30 transition-all cursor-pointer group">
+                        <div 
+                          key={c.id} 
+                          className="p-6 bg-slate-50 rounded-2xl border border-slate-100 flex items-center justify-between hover:border-visuera-green/30 transition-all cursor-pointer group"
+                          onClick={() => {
+                            setSelectedCaseId(c.id);
+                            setActiveTab('flow');
+                          }}
+                        >
                            <div className="flex items-center gap-4">
                               <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-visuera-green shadow-sm">
                                  <FileSearch size={20} />
@@ -1395,6 +1404,7 @@ const App = () => {
                               <span className={`text-[9px] font-black px-2 py-1 rounded uppercase tracking-wider ${
                                 c.status === 'anmäld' ? 'bg-blue-100 text-blue-600' :
                                 c.status === 'utredning' ? 'bg-amber-100 text-amber-600' :
+                                c.status === 'avslutat' ? 'bg-slate-100 text-slate-500' :
                                 'bg-visuera-green/10 text-visuera-green'
                               }`}>
                                 {c.status}

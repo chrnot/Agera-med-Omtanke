@@ -51,7 +51,7 @@ interface UserProfile {
   name: string;
   role: string;
   globalRole?: string;
-  schoolAccess?: Record<string, string[]>;
+  schoolAccess?: Record<string, string[] | { roles: string[]; team?: string }>;
   authorityAccess?: Record<string, string>;
   school: string; // Legacy
   team?: string;
@@ -166,25 +166,53 @@ export const UserManagement = () => {
 
   // --- User Permission Actions ---
 
-  const toggleUserSchoolRole = (schoolId: string, role: string) => {
+  const toggleUserSchoolRole = (schoolId: string, roleId: string) => {
     if (!selectedUser) return;
     const currentAccess = selectedUser.schoolAccess || {};
-    const schoolRoles = currentAccess[schoolId] || [];
+    const accessEntry = currentAccess[schoolId];
     
-    let newRoles;
-    if (schoolRoles.includes(role)) {
-      newRoles = schoolRoles.filter(r => r !== role);
+    let currentRoles: string[] = [];
+    let currentTeam: string | undefined = undefined;
+
+    if (Array.isArray(accessEntry)) {
+        currentRoles = accessEntry;
+    } else if (accessEntry && typeof accessEntry === 'object') {
+        currentRoles = accessEntry.roles;
+        currentTeam = accessEntry.team;
+    }
+
+    const newRoles = currentRoles.includes(roleId)
+      ? currentRoles.filter(r => r !== roleId)
+      : [...currentRoles, roleId];
+
+    const newAccess = { ...currentAccess };
+    if (newRoles.length === 0 && !currentTeam) {
+      delete newAccess[schoolId];
     } else {
-      newRoles = [...schoolRoles, role];
+      newAccess[schoolId] = { roles: newRoles, team: currentTeam };
+    }
+
+    setSelectedUser({ ...selectedUser, schoolAccess: newAccess });
+  };
+
+  const updateUserSchoolTeam = (schoolId: string, team: string) => {
+    if (!selectedUser) return;
+    const currentAccess = selectedUser.schoolAccess || {};
+    const accessEntry = currentAccess[schoolId];
+    
+    let currentRoles: string[] = [];
+    if (Array.isArray(accessEntry)) {
+        currentRoles = accessEntry;
+    } else if (accessEntry && typeof accessEntry === 'object') {
+        currentRoles = accessEntry.roles;
     }
 
     const newAccess = { ...currentAccess };
-    if (newRoles.length === 0) {
-      delete newAccess[schoolId];
+    if (currentRoles.length === 0 && !team) {
+       delete newAccess[schoolId];
     } else {
-      newAccess[schoolId] = newRoles;
+       newAccess[schoolId] = { roles: currentRoles, team: team };
     }
-
     setSelectedUser({ ...selectedUser, schoolAccess: newAccess });
   };
 
@@ -545,31 +573,63 @@ export const UserManagement = () => {
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                   {schools.map(school => (
                                     <div key={school.id} className="bg-slate-50/50 p-6 rounded-[32px] border border-slate-100">
-                                      <div className="flex justify-between items-start mb-6">
+                                      <div className="flex justify-between items-start mb-4">
                                          <div>
                                             <h5 className="font-bold text-visuera-dark">{school.name}</h5>
                                             <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">
                                               {authorities.find(a => a.id === school.authorityId)?.name}
                                             </p>
                                          </div>
-                                         {(selectedUser.schoolAccess?.[school.id]?.length || 0) > 0 && (
-                                           <span className="bg-visuera-green text-white text-[9px] font-black px-2 py-0.5 rounded uppercase">Aktiv</span>
-                                         )}
+                                         {(() => {
+                                            const entry = selectedUser.schoolAccess?.[school.id];
+                                            const isActive = Array.isArray(entry) ? entry.length > 0 : (entry?.roles?.length || 0) > 0;
+                                            return isActive && (
+                                              <span className="bg-visuera-green text-white text-[9px] font-black px-2 py-0.5 rounded uppercase">Aktiv</span>
+                                            );
+                                         })()}
                                       </div>
-                                      <div className="flex flex-wrap gap-2 text-center items-center">
-                                         {ROLE_OPTIONS.map(role => (
-                                           <button
-                                              key={role.id}
-                                              onClick={() => toggleUserSchoolRole(school.id, role.id)}
-                                              className={`px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all ${
-                                                selectedUser.schoolAccess?.[school.id]?.includes(role.id)
-                                                  ? 'bg-visuera-green text-white shadow-lg shadow-visuera-green/20 scale-105'
-                                                  : 'bg-white text-slate-400 border border-slate-100 hover:border-visuera-green/30'
-                                              }`}
-                                           >
-                                             {role.label}
-                                           </button>
-                                         ))}
+
+                                      <div className="space-y-4">
+                                        <div className="flex flex-wrap gap-2 text-center items-center">
+                                          {ROLE_OPTIONS.map(role => {
+                                            const entry = selectedUser.schoolAccess?.[school.id];
+                                            const isSelected = Array.isArray(entry) ? entry.includes(role.id) : entry?.roles?.includes(role.id);
+                                            return (
+                                              <button
+                                                  key={role.id}
+                                                  onClick={() => toggleUserSchoolRole(school.id, role.id)}
+                                                  className={`px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all ${
+                                                    isSelected
+                                                      ? 'bg-visuera-green text-white shadow-lg shadow-visuera-green/20 scale-105'
+                                                      : 'bg-white text-slate-400 border border-slate-100 hover:border-visuera-green/30'
+                                                  }`}
+                                              >
+                                                {role.label}
+                                              </button>
+                                            );
+                                          })}
+                                        </div>
+
+                                        {(() => {
+                                           const entry = selectedUser.schoolAccess?.[school.id];
+                                           const roles = Array.isArray(entry) ? entry : entry?.roles || [];
+                                           if (roles.length > 0) {
+                                              const team = Array.isArray(entry) ? '' : entry?.team || '';
+                                              return (
+                                                <div className="pt-4 border-t border-slate-100 flex flex-col gap-2">
+                                                  <label className="text-[9px] font-bold text-slate-400 uppercase tracking-widest ml-1">Arbetslag på {school.name}</label>
+                                                  <input 
+                                                    type="text"
+                                                    placeholder="t.ex. F-3, Arbetslag 1..."
+                                                    value={team}
+                                                    onChange={(e) => updateUserSchoolTeam(school.id, e.target.value)}
+                                                    className="w-full bg-white border border-slate-100 rounded-xl px-4 py-2 text-xs focus:border-visuera-green transition-all font-bold placeholder:font-normal"
+                                                  />
+                                                </div>
+                                              );
+                                           }
+                                           return null;
+                                        })()}
                                       </div>
                                     </div>
                                   ))}
