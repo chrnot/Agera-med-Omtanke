@@ -62,7 +62,7 @@ export const AtgarderStep: React.FC<AtgarderStepProps> = ({
         <div className="space-y-6">
           <div className="space-y-2">
             <div className="flex items-center">
-              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Miljö & Grupp *</label>
+              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Miljö & Grupp</label>
               <InfoPopover title="Strukturella insatser" content="Beskriv förändringar i skolmiljön eller gruppstärkande insatser som ska genomföras." />
             </div>
             <textarea 

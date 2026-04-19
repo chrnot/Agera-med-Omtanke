@@ -8,7 +8,8 @@ import {
   ExternalLink,
   Info,
   AlertCircle,
-  Layers
+  Layers,
+  ArrowRight
 } from 'lucide-react';
 import { motion } from 'motion/react';
 
@@ -18,6 +19,7 @@ interface CaseSidebarProps {
   currentStepTitle: string;
   onShowOriginal?: () => void;
   onShowAudit?: () => void;
+  onGoToUtredning?: () => void;
 }
 
 export const CaseSidebar: React.FC<CaseSidebarProps> = ({ 
@@ -25,7 +27,8 @@ export const CaseSidebar: React.FC<CaseSidebarProps> = ({
   formData, 
   currentStepTitle,
   onShowOriginal,
-  onShowAudit 
+  onShowAudit,
+  onGoToUtredning
 }) => {
   const incidentDate = formData.incidentDate ? new Date(formData.incidentDate) : null;
   const createdAt = formData.createdAt ? (formData.createdAt.seconds ? new Date(formData.createdAt.seconds * 1000) : new Date(formData.createdAt)) : null;
@@ -161,6 +164,21 @@ export const CaseSidebar: React.FC<CaseSidebarProps> = ({
               </div>
               <ExternalLink size={12} className="text-slate-300" />
             </button>
+
+            {onGoToUtredning && (
+              <button 
+                onClick={onGoToUtredning}
+                className="flex items-center justify-between p-2 text-xs font-medium text-blue-600 hover:bg-blue-50 rounded-lg transition-colors border border-transparent hover:border-blue-100"
+              >
+                <div className="flex items-center gap-2">
+                  <div className="w-6 h-6 rounded bg-blue-100 flex items-center justify-center text-blue-600">
+                    <History size={14} />
+                  </div>
+                  <span>Gå till Utredning</span>
+                </div>
+                <ArrowRight size={12} className="text-blue-300" />
+              </button>
+            )}
           </div>
         </div>
 

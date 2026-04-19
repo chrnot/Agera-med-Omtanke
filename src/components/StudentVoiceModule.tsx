@@ -88,7 +88,6 @@ export const StudentVoiceModule: React.FC<StudentVoiceModuleProps> = ({
   const [showSupport, setShowSupport] = React.useState(false);
   const currentTemplate = templates[selectedStage];
   const charCount = studentVersion.length;
-  const isMinCharsMet = charCount >= 150;
 
   const childRightsPoints = [
     { id: 'informed', text: 'Eleven har informerats om varför samtalet sker.' },
@@ -107,11 +106,6 @@ export const StudentVoiceModule: React.FC<StudentVoiceModuleProps> = ({
             <h3 className="text-sm font-black text-visuera-dark uppercase tracking-widest">Elevens Röst</h3>
             <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">Säkerställ dokumentation enligt Barnkonventionen</p>
           </div>
-        </div>
-        <div className="flex items-center gap-2">
-           <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded-lg border ${isMinCharsMet ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-orange-50 text-orange-600 border-orange-100'}`}>
-             {isMinCharsMet ? 'Rättssäker volym' : 'För ytligt'}
-           </span>
         </div>
       </div>
 
@@ -202,15 +196,12 @@ export const StudentVoiceModule: React.FC<StudentVoiceModuleProps> = ({
       <div className="space-y-2 pt-2 border-t border-slate-50">
         <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-widest text-slate-400">
           <span>Skriven dokumentation</span>
-          <span className={isMinCharsMet ? 'text-emerald-600' : 'text-orange-500'}>
-            {charCount} / 150
-          </span>
         </div>
         <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
           <motion.div 
             initial={{ width: 0 }}
-            animate={{ width: `${Math.min((charCount / 150) * 100, 100)}%` }}
-            className={`h-full transition-colors duration-500 ${isMinCharsMet ? 'bg-emerald-500' : 'bg-orange-500'}`}
+            animate={{ width: `${Math.min((charCount / 500) * 100, 100)}%` }}
+            className="h-full bg-visuera-green transition-colors duration-500"
           />
         </div>
       </div>

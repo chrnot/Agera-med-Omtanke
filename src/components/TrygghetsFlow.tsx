@@ -45,7 +45,7 @@ import { StudentVoiceModule } from './StudentVoiceModule';
 import { CaseSidebar } from './flow/CaseSidebar';
 import { ProgressHeader } from './ProgressHeader';
 import { CollapsibleLegal } from './CollapsibleLegal';
-import { INCIDENT_CATEGORIES, LEGAL_HELP_TEXTS } from '../constants/guidanceContent';
+import { INCIDENT_CATEGORIES, LEGAL_HELP_TEXTS, ACTION_TEMPLATES } from '../constants/guidanceContent';
 
 // Import New Step Components
 import { AnmalanStep } from './flow/steps/AnmalanStep';
@@ -396,22 +396,23 @@ export const TrygghetsFlow = ({ isQuickReport = false, onSuccess, initialCaseId,
       const isAdding = !prev.includes(activity);
       const nextActivities = isAdding ? [...prev, activity] : prev.filter(a => a !== activity);
       
-      // Update the actionsText textarea automatically
+      // Determine which textarea to update
+      const isStructural = ACTION_TEMPLATES.structural.includes(activity);
+      const targetField = isStructural ? 'structuralActions' : 'actionsText';
+      
       setFormData(fPrev => {
-        let currentText = fPrev.actionsText || '';
+        let currentText = fPrev[targetField as keyof typeof fPrev] || '';
         if (isAdding) {
-          // Add activity to text if not already present in some form
           if (!currentText.includes(activity)) {
             const separator = currentText.length > 0 ? '\n' : '';
             currentText = `${currentText}${separator}- ${activity}`;
           }
         } else {
-          // Attempt to remove the activity line if it was added automatically
           const lines = currentText.split('\n');
           const filteredLines = lines.filter(line => line.trim() !== `- ${activity}` && line.trim() !== activity);
           currentText = filteredLines.join('\n');
         }
-        return { ...fPrev, actionsText: currentText };
+        return { ...fPrev, [targetField]: currentText };
       });
 
       return nextActivities;
@@ -603,7 +604,16 @@ export const TrygghetsFlow = ({ isQuickReport = false, onSuccess, initialCaseId,
       case 1: // Tilldelning
         return !!formData.assignedTeacherUid;
       case 2: // Utredning
-        return !!(formData.investigationText && formData.studentVersion && formData.incidentConfirmed && formData.ageAdaptedConfirmation);
+        const needsDiscriminationGround = formData.incidentTypes?.includes('diskriminering');
+        const hasDiscriminationGround = !!formData.discriminationGround;
+        
+        return !!(
+          formData.investigationText && 
+          formData.studentVersion && 
+          formData.incidentConfirmed && 
+          formData.investigationAnalysis &&
+          (!needsDiscriminationGround || hasDiscriminationGround)
+        );
       case 3: // Åtgärder
         if (formData.incidentConfirmed === 'Nej' || formData.incidentConfirmed === 'Kränkning kan ej konstateras') return true;
         return !!(formData.actionsText && formData.followUpScheduled);
@@ -868,6 +878,10 @@ export const TrygghetsFlow = ({ isQuickReport = false, onSuccess, initialCaseId,
                         setShowStats(true);
                         setShowMobileSidebar(false);
                       }}
+                      onGoToUtredning={currentStepIndex === 3 ? () => {
+                        setCurrentStepIndex(2);
+                        setShowMobileSidebar(false);
+                      } : undefined}
                     />
                   </div>
                 </motion.div>
@@ -1045,6 +1059,7 @@ export const TrygghetsFlow = ({ isQuickReport = false, onSuccess, initialCaseId,
                           setHistoryTab('audit');
                           setShowStats(true);
                         }}
+                        onGoToUtredning={currentStepIndex === 3 ? () => setCurrentStepIndex(2) : undefined}
                       />
                     </div>
                   )}
