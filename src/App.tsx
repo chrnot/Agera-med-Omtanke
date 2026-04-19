@@ -12,6 +12,9 @@ import {
   LogOut, 
   X, 
   ChevronDown, 
+  ChevronLeft,
+  Maximize2,
+  Minimize2,
   Info, 
   CheckCircle2, 
   AlertCircle, 
@@ -820,6 +823,7 @@ const App = () => {
   const [userProfile, setUserProfile] = useState<any>(null);
   const [isAnonymous, setIsAnonymous] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'dashboard' | 'cases' | 'report' | 'flow' | 'users'>(
     (localStorage.getItem('lastActiveTab') as any) || 'dashboard'
@@ -1286,12 +1290,25 @@ const App = () => {
         </AnimatePresence>
 
         {/* Desktop Sidebar (Fixed) */}
-        <aside className="hidden md:flex w-20 lg:w-64 bg-white border-r border-slate-100 flex-col items-center lg:items-stretch py-8 px-4 lg:px-6 fixed h-full z-20">
-          <div className="flex items-center gap-3 px-2 mb-12">
-            <div className="w-10 h-10 bg-visuera-green rounded-[14px] flex items-center justify-center shrink-0 shadow-lg shadow-visuera-green/20">
-              <span className="text-white font-bold text-xs">AmO</span>
+        <aside className={`hidden md:flex bg-white border-r border-slate-100 flex-col items-center lg:items-stretch py-8 px-4 lg:px-6 fixed h-full z-20 transition-all duration-500 ${isSidebarCollapsed ? 'w-20' : 'w-20 lg:w-64'}`}>
+          <div className="flex items-center justify-between gap-3 px-2 mb-12 overflow-hidden">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-visuera-green rounded-[14px] flex items-center justify-center shrink-0 shadow-lg shadow-visuera-green/20">
+                <span className="text-white font-bold text-xs">AmO</span>
+              </div>
+              {!isSidebarCollapsed && (
+                <span className="text-xl font-extrabold text-visuera-dark tracking-tight hidden lg:block whitespace-nowrap">Agera med Omtanke</span>
+              )}
             </div>
-            <span className="text-xl font-extrabold text-visuera-dark tracking-tight hidden lg:block">Agera med Omtanke</span>
+            
+            {/* Main Sidebar Collapse Button */}
+            <button 
+              onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+              className="hidden lg:flex w-8 h-8 rounded-xl bg-slate-50 text-slate-400 items-center justify-center hover:bg-visuera-green/10 hover:text-visuera-green transition-all"
+              title={isSidebarCollapsed ? "Expandera meny" : "Minimera meny"}
+            >
+              {isSidebarCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
+            </button>
           </div>
 
           <nav className="space-y-2 flex-1">
@@ -1313,9 +1330,12 @@ const App = () => {
                     ? 'bg-visuera-green text-white shadow-xl shadow-visuera-green/20' 
                     : 'text-slate-400 hover:bg-slate-50 hover:text-visuera-green'
                 }`}
+                title={isSidebarCollapsed ? item.label : undefined}
               >
                 <item.icon size={20} className={activeTab === item.id ? 'text-white' : 'group-hover:scale-110 transition-transform'} />
-                <span className="font-bold text-sm hidden lg:block">{item.label}</span>
+                {!isSidebarCollapsed && (
+                  <span className="font-bold text-sm hidden lg:block">{item.label}</span>
+                )}
               </button>
             ))}
           </nav>
@@ -1323,14 +1343,17 @@ const App = () => {
           <button 
             onClick={() => signOut(auth)}
             className="w-full flex items-center gap-4 p-4 rounded-2xl text-slate-400 hover:bg-red-50 hover:text-red-500 transition-all mt-auto"
+            title={isSidebarCollapsed ? "Logga ut" : undefined}
           >
             <LogOut size={20} />
-            <span className="font-bold text-sm hidden lg:block">Logga ut</span>
+            {!isSidebarCollapsed && (
+              <span className="font-bold text-sm hidden lg:block">Logga ut</span>
+            )}
           </button>
         </aside>
 
         {/* Main Content Area */}
-        <main className="flex-1 ml-0 md:ml-20 lg:ml-64 p-4 sm:p-6 lg:p-12 min-w-0">
+        <main className={`flex-1 transition-all duration-500 ml-0 md:ml-20 ${isSidebarCollapsed ? 'lg:ml-20' : 'lg:ml-64'} p-4 sm:p-6 lg:p-12 min-w-0`}>
           {/* Notification Sidebar / Overlay */}
           <AnimatePresence>
             {isNotificationsOpen && (

@@ -23,6 +23,10 @@ import {
   PenTool,
   FileCheck,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  Maximize2,
+  Minimize2,
   Building2,
   Layers,
   FileDown,
@@ -147,6 +151,7 @@ const DEFAULT_FORM_DATA = {
 
 export const TrygghetsFlow = ({ isQuickReport = false, onSuccess, initialCaseId, cases = [] }: TrygghetsFlowProps) => {
   const [showMobileSidebar, setShowMobileSidebar] = React.useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = React.useState(window.innerWidth >= 1024);
 
   const [activeCaseId, setActiveCaseId] = React.useState<string | null>(initialCaseId || null);
   const [currentStepIndex, setCurrentStepIndex] = React.useState(0);
@@ -288,6 +293,16 @@ export const TrygghetsFlow = ({ isQuickReport = false, onSuccess, initialCaseId,
   }, [formData.school, availableSchools]);
 
   // Fetch user profile for role/school
+  React.useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth < 1024) {
+        setIsSidebarOpen(false);
+      }
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   React.useEffect(() => {
     const fetchProfile = async () => {
       if (auth.currentUser) {
@@ -1013,8 +1028,8 @@ export const TrygghetsFlow = ({ isQuickReport = false, onSuccess, initialCaseId,
             </AnimatePresence>
 
             {/* Form Content Column */}
-            <div className="w-full flex-1 space-y-8 lg:space-y-12 pb-32">
-            <motion.div 
+            <div className={`w-full flex-1 space-y-8 lg:space-y-12 pb-32 transition-all duration-500 ${isSidebarOpen ? '' : 'lg:px-12'}`}>
+              <motion.div 
                 key={currentStepIndex}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -1057,12 +1072,31 @@ export const TrygghetsFlow = ({ isQuickReport = false, onSuccess, initialCaseId,
                           Nödvändig uppföljning
                         </button>
                       )}
+                      
+                      {/* Explicit Focus Mode Toggle */}
+                      {!isQuickReport && (
+                        <button
+                          onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+                          className={`hidden lg:flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border shadow-sm hover:-translate-y-0.5 active:translate-y-0 ${
+                            isSidebarOpen 
+                              ? 'bg-white hover:bg-slate-50 text-slate-600 border-slate-100' 
+                              : 'bg-visuera-green text-white border-visuera-green shadow-visuera-green/20'
+                          }`}
+                          title={isSidebarOpen ? "Dölj verktyg för att fokusera" : "Visa ärendeverktyg"}
+                        >
+                          {isSidebarOpen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+                          {isSidebarOpen ? 'Dölj Verktyg' : 'Visa Verktyg'}
+                        </button>
+                      )}
                     </div>
                   )}
                 </div>
 
-                <div className={`grid grid-cols-1 ${!isQuickReport ? 'lg:grid-cols-[1fr_300px]' : ''} gap-6 lg:gap-10 items-start`}>
-                  <div className="space-y-8 lg:space-y-10">
+                <div className="relative flex flex-col lg:flex-row gap-6 lg:gap-10 items-start">
+                  <motion.div 
+                    layout
+                    className="flex-1 space-y-8 lg:space-y-10 min-w-0"
+                  >
                     {currentStep.id === 1 && (
                       <AnmalanStep 
                         formData={formData}
@@ -1168,26 +1202,76 @@ export const TrygghetsFlow = ({ isQuickReport = false, onSuccess, initialCaseId,
                         </button>
                       </div>
                     </div>
-                  </div>
+                  </motion.div>
 
                   {/* Smart Sidopanel (Sticky Sidebar) */}
                   {!isQuickReport && (
-                    <div className="hidden lg:block sticky top-8 space-y-6">
-                      <CaseSidebar 
-                        formData={formData}
-                        caseId={activeCaseId}
-                        currentStepTitle={currentStep.title}
-                        onShowOriginal={() => {
-                          setHistoryTab('original');
-                          setShowStats(true);
-                        }}
-                        onShowAudit={() => {
-                          setHistoryTab('audit');
-                          setShowStats(true);
-                        }}
-                        onGoToUtredning={currentStepIndex === 3 ? () => setCurrentStepIndex(2) : undefined}
-                      />
-                    </div>
+                    <AnimatePresence mode="wait">
+                      {isSidebarOpen ? (
+                        <motion.div 
+                          key="sidebar-open"
+                          initial={{ opacity: 0.5, x: 20 }}
+                          animate={{ opacity: 1, x: 0, width: 320 }}
+                          exit={{ opacity: 0, x: 20, width: 0 }}
+                          transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                          className="hidden lg:block sticky top-8 space-y-6 h-fit shrink-0 overflow-visible"
+                        >
+                          <div className="relative">
+                            {/* Visual Handle for Sidebar - Overlapping trigger area */}
+                            <div 
+                              onClick={() => setIsSidebarOpen(false)}
+                              className="absolute -left-6 top-0 bottom-0 w-6 group cursor-pointer z-50 flex items-center justify-center"
+                              title="Dölj sidopanel"
+                            >
+                               <div className="w-1.5 h-16 bg-slate-200 rounded-full group-hover:bg-visuera-green group-hover:w-2 transition-all shadow-sm" />
+                            </div>
+
+                            <CaseSidebar 
+                              formData={formData}
+                              caseId={activeCaseId}
+                              currentStepTitle={currentStep.title}
+                              onShowOriginal={() => {
+                                setHistoryTab('original');
+                                setShowStats(true);
+                              }}
+                              onShowAudit={() => {
+                                setHistoryTab('audit');
+                                setShowStats(true);
+                              }}
+                              onGoToUtredning={currentStepIndex === 3 ? () => setCurrentStepIndex(2) : undefined}
+                            />
+                          </div>
+                        </motion.div>
+                      ) : (
+                        <motion.div
+                          key="sidebar-closed"
+                          initial={{ opacity: 0, x: -10 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          exit={{ opacity: 0, x: -10 }}
+                          className="hidden lg:flex flex-col items-center gap-6 sticky top-8 py-8 px-3 bg-white/40 backdrop-blur-md border border-slate-100 rounded-[32px] h-fit shadow-sm"
+                        >
+                          <button
+                            onClick={() => setIsSidebarOpen(true)}
+                            className="w-10 h-10 bg-white border border-slate-200 rounded-2xl flex items-center justify-center text-slate-400 hover:text-visuera-green shadow-sm transition-all hover:scale-110"
+                            aria-label="Visa ärendeinformation"
+                          >
+                            <ChevronLeft size={20} />
+                          </button>
+                          
+                          <div className="flex flex-col items-center gap-6 text-slate-300">
+                             <div className="p-2 rounded-xl bg-slate-50/50" title={`ID: ÄRE-${activeCaseId?.slice(-4).toUpperCase()}`}>
+                                <Info size={16} />
+                             </div>
+                             <div className="p-2 rounded-xl bg-slate-50/50" title="Dokumentation">
+                                <FileText size={16} />
+                             </div>
+                             <div className="p-2 rounded-xl bg-slate-50/50" title="Historik">
+                                <History size={16} />
+                             </div>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                   )}
                 </div>
               </motion.div>
