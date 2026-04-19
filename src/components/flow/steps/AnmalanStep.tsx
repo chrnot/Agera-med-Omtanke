@@ -24,7 +24,7 @@ export const AnmalanStep: React.FC<AnmalanStepProps> = ({
   return (
     <div className="space-y-8">
       {/* Card 1: Grund */}
-      <StepCard title="Card 1: Grund" icon={Building2}>
+      <StepCard title="GRUNDINFORMATION" icon={Building2}>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-2">
             <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Huvudman *</label>
@@ -150,7 +150,7 @@ export const AnmalanStep: React.FC<AnmalanStepProps> = ({
       </StepCard>
 
       {/* Card 2: Händelsen */}
-      <StepCard title="Card 2: Händelsen" icon={Zap}>
+      <StepCard title="BESKRIV HÄNDELSEN" icon={Zap}>
         <div className="space-y-6">
           <div className="space-y-2">
             <div className="flex items-center">
@@ -168,7 +168,7 @@ export const AnmalanStep: React.FC<AnmalanStepProps> = ({
       </StepCard>
 
       {/* Card 3: Inblandade */}
-      <StepCard title="Card 3: Inblandade & Uppgiftslämnare" icon={Mail}>
+      <StepCard title="UPPGIFTSLÄMNARE och INBLANDADE" icon={Mail}>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-2">
             <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Namn på uppgiftslämnare</label>

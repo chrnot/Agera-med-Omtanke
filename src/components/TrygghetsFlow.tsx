@@ -780,72 +780,78 @@ export const TrygghetsFlow = ({ isQuickReport = false, onSuccess, initialCaseId,
   }
 
   return (
-    <div className="min-h-screen bg-[#FDFDFD] flex flex-col font-sans">
-      <ProgressHeader 
-        steps={steps.map((s, i) => ({
-          ...s,
-          status: i === currentStepIndex ? 'current' : i < currentStepIndex ? 'completed' : 'upcoming'
-        }))}
-        currentStepIndex={currentStepIndex}
-        onStepClick={(idx) => {
-          const canJumpToStep = (userProfile?.role === 'principal' || userProfile?.role === 'admin' || userProfile?.globalRole === 'admin');
-          if (canJumpToStep || idx <= currentStepIndex) {
-            setCurrentStepIndex(idx);
-          }
-        }}
-      />
+    <div className={`${!isQuickReport ? 'min-h-screen bg-[#FDFDFD]' : ''} flex flex-col font-sans`}>
+      {!isQuickReport && (
+        <ProgressHeader 
+          steps={steps.map((s, i) => ({
+            ...s,
+            status: i === currentStepIndex ? 'current' : i < currentStepIndex ? 'completed' : 'upcoming'
+          }))}
+          currentStepIndex={currentStepIndex}
+          onStepClick={(idx) => {
+            const canJumpToStep = (userProfile?.role === 'principal' || userProfile?.role === 'admin' || userProfile?.globalRole === 'admin');
+            if (canJumpToStep || idx <= currentStepIndex) {
+              setCurrentStepIndex(idx);
+            }
+          }}
+        />
+      )}
 
-      <div className="flex-1 flex overflow-hidden">
+      <div className={`${!isQuickReport ? 'flex-1 flex overflow-hidden' : ''}`}>
         {/* Main Workspace Area */}
-        <div className="flex-1 overflow-y-auto custom-scrollbar">
-          <div className="max-w-6xl mx-auto p-8 flex gap-12 items-start h-full">
+        <div className={`${!isQuickReport ? 'flex-1 overflow-y-auto custom-scrollbar' : 'w-full'}`}>
+          <div className={`${isQuickReport ? 'w-full' : 'max-w-6xl mx-auto p-8'} flex gap-12 items-start h-full`}>
             
             {/* Form Content Column */}
             <div className="flex-1 space-y-12 pb-32">
-              <motion.div 
+            <motion.div 
                 key={currentStepIndex}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 className="space-y-8"
               >
                 <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-visuera-green/10 rounded-2xl flex items-center justify-center text-visuera-green">
-                      <ClipboardList size={20} />
+                  {!isQuickReport && (
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-visuera-green/10 rounded-2xl flex items-center justify-center text-visuera-green">
+                        <ClipboardList size={20} />
+                      </div>
+                      <div>
+                        <h2 className="text-xl font-black text-visuera-dark uppercase tracking-widest">{currentStep.title}</h2>
+                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">Dokumenteras enligt legal standard</p>
+                      </div>
                     </div>
-                    <div>
-                      <h2 className="text-xl font-black text-visuera-dark uppercase tracking-widest">{currentStep.title}</h2>
-                      <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">Dokumenteras enligt legal standard</p>
-                    </div>
-                  </div>
+                  )}
 
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={generatePDF}
-                      disabled={isGeneratingPDF}
-                      className="flex items-center gap-2 px-4 py-2 bg-white hover:bg-slate-50 text-slate-600 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border border-slate-100 shadow-sm"
-                    >
-                      {isGeneratingPDF ? (
-                        <div className="w-4 h-4 border-2 border-visuera-green border-t-transparent rounded-full animate-spin" />
-                      ) : (
-                        <FileDown size={14} className="text-visuera-green" />
-                      )}
-                      Export PDF
-                    </button>
-                    {activeCaseId && userProfile?.role === 'principal' && currentStepIndex >= 2 && currentStepIndex <= 4 && (
+                  {!isQuickReport && (
+                    <div className="flex items-center gap-2">
                       <button
-                        onClick={handleNudge}
-                        disabled={isNudging}
-                        className="flex items-center gap-2 px-4 py-2 bg-visuera-green/5 hover:bg-visuera-green/10 text-visuera-green rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border border-visuera-green/20"
+                        onClick={generatePDF}
+                        disabled={isGeneratingPDF}
+                        className="flex items-center gap-2 px-4 py-2 bg-white hover:bg-slate-50 text-slate-600 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border border-slate-100 shadow-sm"
                       >
-                        <Zap size={14} />
-                        Begär uppdatering
+                        {isGeneratingPDF ? (
+                          <div className="w-4 h-4 border-2 border-visuera-green border-t-transparent rounded-full animate-spin" />
+                        ) : (
+                          <FileDown size={14} className="text-visuera-green" />
+                        )}
+                        Export PDF
                       </button>
-                    )}
-                  </div>
+                      {activeCaseId && userProfile?.role === 'principal' && currentStepIndex >= 2 && currentStepIndex <= 4 && (
+                        <button
+                          onClick={handleNudge}
+                          disabled={isNudging}
+                          className="flex items-center gap-2 px-4 py-2 bg-visuera-green/5 hover:bg-visuera-green/10 text-visuera-green rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border border-visuera-green/20"
+                        >
+                          <Zap size={14} />
+                          Begär uppdatering
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-10 items-start">
+                <div className={`grid grid-cols-1 ${!isQuickReport ? 'lg:grid-cols-[1fr_300px]' : ''} gap-10 items-start`}>
                   <div className="space-y-10">
                     {currentStep.id === 1 && (
                       <AnmalanStep 
@@ -939,7 +945,11 @@ export const TrygghetsFlow = ({ isQuickReport = false, onSuccess, initialCaseId,
                             <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                           ) : (
                             <>
-                              {showClosingSummary ? 'Slutför Arkivering' : steps[currentStepIndex].action}
+                              {showClosingSummary 
+                                ? 'Slutför Arkivering' 
+                                : (isQuickReport && currentStepIndex === 0 
+                                    ? 'Skicka Anmälan' 
+                                    : steps[currentStepIndex].action)}
                               <ArrowRight size={16} />
                             </>
                           )}
@@ -949,14 +959,16 @@ export const TrygghetsFlow = ({ isQuickReport = false, onSuccess, initialCaseId,
                   </div>
 
                   {/* Smart Sidopanel (Sticky Sidebar) */}
-                  <div className="hidden lg:block sticky top-8 space-y-6">
-                    <CaseSidebar 
-                      formData={formData}
-                      caseId={activeCaseId}
-                      currentStepTitle={currentStep.title}
-                      onShowAudit={() => setShowStats(true)}
-                    />
-                  </div>
+                  {!isQuickReport && (
+                    <div className="hidden lg:block sticky top-8 space-y-6">
+                      <CaseSidebar 
+                        formData={formData}
+                        caseId={activeCaseId}
+                        currentStepTitle={currentStep.title}
+                        onShowAudit={() => setShowStats(true)}
+                      />
+                    </div>
+                  )}
                 </div>
               </motion.div>
             </div>

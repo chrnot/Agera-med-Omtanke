@@ -67,7 +67,7 @@ export const UtredningStep: React.FC<UtredningStepProps> = ({
       )}
 
       {/* Card 1: Barnets röst */}
-      <StepCard title="Card 1: Barnets röst" icon={User}>
+      <StepCard title="BARNETS RÖST" icon={User}>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-4">
           <div className="space-y-2">
             <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Elevens Namn</label>
@@ -153,7 +153,7 @@ export const UtredningStep: React.FC<UtredningStepProps> = ({
       </StepCard>
 
       {/* Card 2: Hörande */}
-      <StepCard title="Card 2: Hörande" icon={Users}>
+      <StepCard title="HÖRANDE" icon={Users}>
         <div className="space-y-6">
           <div className="space-y-2">
             <div className="flex items-center">
@@ -171,7 +171,7 @@ export const UtredningStep: React.FC<UtredningStepProps> = ({
       </StepCard>
 
       {/* Card 3: Analys */}
-      <StepCard title="Card 3: Analys & Bedömning" icon={CheckCircle2}>
+      <StepCard title="ANALYS OCH BEDÖMNING" icon={CheckCircle2}>
         <div className="space-y-8">
           <div className="space-y-4">
             <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Kategorisering</label>

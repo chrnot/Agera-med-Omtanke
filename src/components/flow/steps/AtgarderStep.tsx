@@ -20,7 +20,7 @@ export const AtgarderStep: React.FC<AtgarderStepProps> = ({
   return (
     <div className="space-y-8">
       {/* Card 1: Individuellt */}
-      <StepCard title="Card 1: Individuella åtgärder" icon={User}>
+      <StepCard title="INDIVIDUELLA ÅTGÄRDER" icon={User}>
         <div className="space-y-6">
           <div className="space-y-2">
             <div className="flex items-center">
@@ -58,7 +58,7 @@ export const AtgarderStep: React.FC<AtgarderStepProps> = ({
       </StepCard>
 
       {/* Card 2: Strukturellt */}
-      <StepCard title="Card 2: Strukturella åtgärder" icon={Layers}>
+      <StepCard title="STRUKTURELLA ÅTGÄRDER" icon={Layers}>
         <div className="space-y-6">
           <div className="space-y-2">
             <div className="flex items-center">
@@ -96,7 +96,7 @@ export const AtgarderStep: React.FC<AtgarderStepProps> = ({
       </StepCard>
 
       {/* Card 3: Uppföljning Datum */}
-      <StepCard title="Card 3: Uppföljningsplan" icon={Calendar}>
+      <StepCard title="UPPFÖLJNINGSPLAN" icon={Calendar}>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-2">
             <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Ansvarig för uppföljning *</label>
