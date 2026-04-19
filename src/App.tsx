@@ -333,24 +333,60 @@ const ROLE_LABELS: Record<string, string> = {
   'admin': 'Systemadministratör'
 };
 
-const Dashboard = ({ onNewReport, cases, onOpenCase, onNavigate, caseQuestions }: { onNewReport: () => void, cases: any[], onOpenCase: (id: string) => void, onNavigate: (tab: any) => void, caseQuestions: string[] }) => {
+const Dashboard = ({ onNewReport, cases: allCases, onOpenCase, onNavigate, caseQuestions, userProfile }: { 
+  onNewReport: () => void, 
+  cases: any[], 
+  onOpenCase: (id: string) => void, 
+  onNavigate: (tab: any) => void, 
+  caseQuestions: string[],
+  userProfile: any
+}) => {
+  // Context-aware filtering for Role and School
+  const cases = React.useMemo(() => {
+    if (!userProfile) return allCases;
+    if (userProfile.globalRole === 'admin') return allCases;
+    if (userProfile.school) {
+      return allCases.filter(c => c.school === userProfile.school);
+    }
+    return allCases;
+  }, [allCases, userProfile]);
+
+  const [leadTimePhase, setLeadTimePhase] = React.useState('anmälan-utredning');
+
   const activeCases = cases.filter(c => c.status !== 'avslutat');
   const closedCases = cases.filter(c => c.status === 'avslutat');
-  const recentCases = [...cases].sort((a,b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)).slice(0, 5);
+  const recentCases = [...cases].sort((a,b) => {
+    const timeA = a.createdAt?.seconds ? a.createdAt.seconds : (new Date(a.createdAt).getTime() / 1000 || 0);
+    const timeB = b.createdAt?.seconds ? b.createdAt.seconds : (new Date(b.createdAt).getTime() / 1000 || 0);
+    return timeB - timeA;
+  }).slice(0, 5);
 
-  // Data for Trend Analysis (Monthly)
-  const trendData = React.useMemo(() => {
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Maj', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dec'];
-    const currentYear = new Date().getFullYear();
+  const calculateAverageLeadTime = (phase: string) => {
+    let durations: number[] = [];
     
-    return months.map((month, index) => {
-      const count = cases.filter(c => {
-        const date = c.createdAt?.toDate ? c.createdAt.toDate() : new Date(c.createdAt);
-        return date.getMonth() === index && date.getFullYear() === currentYear;
-      }).length;
-      return { name: month, antal: count };
+    cases.forEach(c => {
+      const created = c.createdAt?.seconds ? c.createdAt.seconds * 1000 : new Date(c.createdAt).getTime();
+      const updated = c.updatedAt?.seconds ? c.updatedAt.seconds * 1000 : new Date(c.updatedAt).getTime();
+      const investigationStarted = c.investigationStartedAt?.seconds ? c.investigationStartedAt.seconds * 1000 : (c.investigationStartedAt ? new Date(c.investigationStartedAt).getTime() : null);
+
+      if (phase === 'anmälan-tilldelning') {
+        // Here we use updated as a proxy for the first status transition if investigationStarted isn't set yet
+        if (c.status !== 'anmäld') {
+          durations.push((investigationStarted || updated) - created);
+        }
+      } else if (phase === 'utredning-tid') {
+        if (investigationStarted && c.status === 'avslutat') {
+          durations.push(updated - investigationStarted);
+        }
+      } else if (phase === 'hela-processen') {
+        if (c.status === 'avslutat') durations.push(updated - created);
+      }
     });
-  }, [cases]);
+
+    if (durations.length === 0) return "0.0";
+    const avgMs = durations.reduce((a, b) => a + b, 0) / durations.length;
+    return (avgMs / (1000 * 60 * 60 * 24)).toFixed(1);
+  };
 
   // Data for Category Distribution (Donut)
   const categoryData = React.useMemo(() => {
@@ -380,6 +416,41 @@ const Dashboard = ({ onNewReport, cases, onOpenCase, onNavigate, caseQuestions }
       .map(([name, value]) => ({ name, value }))
       .sort((a, b) => b.value - a.value)
       .slice(0, 5);
+  }, [cases]);
+
+  const analysisSummary = React.useMemo(() => {
+    if (cases.length === 0) return "Analysen väntar på mer data för att identifiera mönster i verksamheten.";
+    
+    const topHotspot = hotspotData[0]?.name;
+    const topCategory = categoryData[0]?.name;
+
+    let text = "";
+    if (topHotspot && topHotspot !== 'Ospecificerat') {
+      text += `Vi ser ett mönster där ${topHotspot} är en återkommande plats för incidenter. `;
+    }
+    if (topCategory) {
+      text += `Majoriteten av de anmälda ärendena kategoriseras som "${topCategory.toLowerCase()}". `;
+    }
+    
+    if (text === "") text = "Det finns inga tydliga avvikelser i nuvarande dataunderlag. ";
+
+    text += "Fortsätt dokumentera noggrant för att förbättra den prediktiva analysen.";
+
+    return text;
+  }, [cases, hotspotData, categoryData]);
+
+  // Data for Trend Analysis (Monthly)
+  const trendData = React.useMemo(() => {
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Maj', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dec'];
+    const currentYear = new Date().getFullYear();
+    
+    return months.map((month, index) => {
+      const count = cases.filter(c => {
+        const date = c.createdAt?.toDate ? c.createdAt.toDate() : new Date(c.createdAt);
+        return date.getMonth() === index && date.getFullYear() === currentYear;
+      }).length;
+      return { name: month, antal: count };
+    });
   }, [cases]);
 
   const COLORS = ['#10B981', '#3B82F6', '#F59E0B', '#EF4444', '#8B5CF6'];
@@ -686,34 +757,63 @@ const Dashboard = ({ onNewReport, cases, onOpenCase, onNavigate, caseQuestions }
 
             <div className="space-y-6">
               {/* Hotspots */}
-              <div className="space-y-1">
-                <div className="flex justify-between text-[10px] font-bold uppercase tracking-widest text-slate-400">
-                  <span>Hotspot: Skolgården</span>
-                  <span className="text-visuera-green">42%</span>
+              <div className="space-y-3">
+                <div className="flex justify-between items-center">
+                  <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Hotspots (Lokala)</div>
+                  <span className="text-[8px] font-bold text-slate-300 uppercase">{userProfile?.school || 'Samtliga'}</span>
                 </div>
-                <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
-                  <div className="h-full bg-visuera-green w-[42%] rounded-full"></div>
+                <div className="space-y-3">
+                   {hotspotData.slice(0, 2).map((item, i) => {
+                     const percentage = Math.round((item.value / (cases.length || 1)) * 100);
+                     return (
+                       <div key={i} className="space-y-1">
+                          <div className="flex justify-between text-[10px] font-bold text-visuera-dark">
+                            <span>{item.name}</span>
+                            <span className="text-visuera-green">{percentage}%</span>
+                          </div>
+                          <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                            <div className="h-full bg-visuera-green rounded-full" style={{ width: `${percentage}%` }}></div>
+                          </div>
+                       </div>
+                     );
+                   })}
+                   {hotspotData.length === 0 && <div className="text-[10px] text-slate-300 italic">Ingen data än</div>}
                 </div>
               </div>
 
-              {/* Lead Times */}
-              <div className="space-y-2">
-                <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Genomsnittlig ledtid</div>
+              {/* Lead Times with Selectable Phase */}
+              <div className="space-y-3 pt-4 border-t border-slate-50">
+                <div className="flex justify-between items-center mb-1">
+                  <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Genomsnittlig ledtid</div>
+                  <select 
+                    value={leadTimePhase}
+                    onChange={(e) => setLeadTimePhase(e.target.value)}
+                    className="bg-transparent border-none text-[8px] font-black text-visuera-green uppercase tracking-widest focus:ring-0 cursor-pointer p-0"
+                  >
+                    <option value="anmälan-tilldelning">SLA: Tilldelning</option>
+                    <option value="utredning-tid">Snitt: Utredningstid</option>
+                    <option value="hela-processen">Hela processen (Avslutade)</option>
+                  </select>
+                </div>
                 <div className="flex items-end gap-2">
-                  <div className="text-2xl font-black text-visuera-dark">1.8</div>
-                  <div className="text-[10px] font-bold text-slate-400 mb-1">DAGAR TILL UTREDNING</div>
+                  <div className="text-3xl font-black text-visuera-dark leading-none">
+                    {calculateAverageLeadTime(leadTimePhase)}
+                  </div>
+                  <div className="text-[10px] font-bold text-slate-400 mb-0.5">DAGAR</div>
                 </div>
-                <div className="flex items-center gap-2 text-[9px] font-bold text-visuera-green bg-visuera-green/10 px-2 py-1 rounded-lg w-fit">
-                  <ArrowRight size={10} className="-rotate-45" />
-                  Minskar med 12% mot föreg mån.
+                <div className="flex items-center gap-2 text-[9px] font-bold text-visuera-green bg-visuera-green/10 px-2 py-1.5 rounded-xl w-fit">
+                   Baserat på {cases.length} ärenden
                 </div>
               </div>
 
-              {/* Trend */}
-              <div className="p-4 bg-white rounded-2xl border border-slate-100 shadow-sm space-y-2">
-                <div className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Trendanalys</div>
+              {/* Dynamic Trend Analysis */}
+              <div className="p-5 bg-white rounded-[24px] border border-slate-100 shadow-sm space-y-2">
+                <div className="text-[9px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                   <TrendingUp size={12} className="text-visuera-green" />
+                   Trendanalys
+                </div>
                 <p className="text-[10px] text-slate-500 leading-relaxed font-medium">
-                  * Just nu syns en ökning av incidenter under raster på förmiddagen. Överväg ökad vuxentäthet vid klätternätet.
+                  {analysisSummary}
                 </p>
               </div>
             </div>
@@ -1243,6 +1343,7 @@ const App = () => {
                 }}
                 onNavigate={setActiveTab}
                 caseQuestions={caseQuestions}
+                userProfile={userProfile}
               />
             )}
             {activeTab === 'cases' && (

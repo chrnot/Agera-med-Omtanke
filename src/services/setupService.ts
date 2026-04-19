@@ -76,6 +76,7 @@ export const setupService = {
             schoolAccess: {
               [schoolId]: [staff.role]
             },
+            isActive: true,
             createdAt: new Date().toISOString()
           }, { merge: true });
         }

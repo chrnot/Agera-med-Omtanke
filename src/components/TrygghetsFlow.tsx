@@ -35,6 +35,9 @@ import autoTable from 'jspdf-autotable';
 import { caseService } from '../services/caseService';
 import { auth, db } from '../lib/firebase';
 import { doc, getDoc, collection, getDocs, query, where } from 'firebase/firestore';
+import { LegalGuidance } from './LegalGuidance';
+import { ContextualGuidance } from './ContextualGuidance';
+import { StudentVoiceModule } from './StudentVoiceModule';
 
 interface Step {
   id: number;
@@ -101,6 +104,10 @@ const DEFAULT_FORM_DATA = {
   investigationDate: '',
   investigationText: '',
   studentVersion: '',
+  studentStage: '',
+  childRightsChecklist: [] as string[],
+  interviewQuestionsChecklist: [] as string[],
+  ageAdaptedConfirmation: false,
   incidentConfirmed: '',
   discriminationGround: '',
   actionsText: '',
@@ -119,6 +126,23 @@ const DEFAULT_FORM_DATA = {
 };
 
 export const TrygghetsFlow = ({ isQuickReport = false, onSuccess, initialCaseId, cases = [] }: TrygghetsFlowProps) => {
+  const [isDescriptionFocused, setIsDescriptionFocused] = React.useState(false);
+  const [isStudentVersionFocused, setIsStudentVersionFocused] = React.useState(false);
+  const [isDiscriminationFocused, setIsDiscriminationFocused] = React.useState(false);
+  const [isFollowupFocused, setIsFollowupFocused] = React.useState(false);
+
+  const INCIDENT_CATEGORIES = [
+    { id: 'bullying', label: 'Kränkande behandling', color: 'bg-slate-100 text-slate-700' },
+    { id: 'sex', label: 'Kön', color: 'bg-pink-100 text-pink-700' },
+    { id: 'trans', label: 'Könsöverskridande identitet', color: 'bg-purple-100 text-purple-700' },
+    { id: 'ethnicity', label: 'Etnisk tillhörighet', color: 'bg-amber-100 text-amber-700' },
+    { id: 'religion', label: 'Religion eller annan trosuppfattning', color: 'bg-indigo-100 text-indigo-700' },
+    { id: 'disability', label: 'Funktionsnedsättning', color: 'bg-emerald-100 text-emerald-700' },
+    { id: 'orientation', label: 'Sexuell läggning', color: 'bg-blue-100 text-blue-700' },
+    { id: 'age', label: 'Ålder', color: 'bg-orange-100 text-orange-700' },
+    { id: 'other', label: 'Annan kränkning', color: 'bg-slate-100 text-slate-700' },
+  ];
+
   const [activeCaseId, setActiveCaseId] = React.useState<string | null>(initialCaseId || null);
   const [currentStepIndex, setCurrentStepIndex] = React.useState(0);
   const [isProcessing, setIsProcessing] = React.useState(false);
@@ -198,8 +222,8 @@ export const TrygghetsFlow = ({ isQuickReport = false, onSuccess, initialCaseId,
         const schoolDoc = availableSchools.find(s => s.name === schoolTarget);
         const schoolId = schoolDoc?.id;
 
-        // Fetch all active users and filter client-side for better support of multi-school access
-        const q = query(collection(db, 'users'), where('isActive', '!=', false));
+        // Fetch all users and filter client-side to ensure provisioned users (with undefined isActive) are included
+        const q = query(collection(db, 'users'));
         const staffSnap = await getDocs(q);
         
         const staffData = staffSnap.docs
@@ -221,10 +245,11 @@ export const TrygghetsFlow = ({ isQuickReport = false, onSuccess, initialCaseId,
             return { uid, ...data, activeTeam } as any;
           })
           .filter(u => {
+            const isActive = u.isActive !== false;
             const matchesPrimary = u.school === schoolTarget;
             const matchesAccess = schoolId && u.schoolAccess && u.schoolAccess[schoolId];
             const isGlobalAdmin = u.globalRole === 'admin';
-            return matchesPrimary || matchesAccess || isGlobalAdmin;
+            return isActive && (matchesPrimary || matchesAccess || isGlobalAdmin);
           });
         
         setAvailableStaff(staffData);
@@ -588,7 +613,8 @@ export const TrygghetsFlow = ({ isQuickReport = false, onSuccess, initialCaseId,
       case 1: // Tilldelning
         return !!formData.assignedTeacherUid;
       case 2: // Utredning
-        return !!(formData.investigationText && formData.studentVersion && formData.incidentConfirmed);
+        const isStudentVersionLongEnough = (formData.studentVersion || '').length >= 150;
+        return !!(formData.investigationText && isStudentVersionLongEnough && formData.incidentConfirmed && formData.ageAdaptedConfirmation);
       case 3: // Åtgärder
         if (formData.incidentConfirmed === 'Nej' || formData.incidentConfirmed === 'Kränkning kan ej konstateras') return true;
         return !!(formData.actionsText && formData.followUpScheduled);
@@ -1527,15 +1553,60 @@ export const TrygghetsFlow = ({ isQuickReport = false, onSuccess, initialCaseId,
                     )}
                   </div>
 
+                  {/* Guided Incident Type Selection */}
+                  <div className="space-y-4">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Typ av händelse (Välj en eller flera) *</label>
+                    <div className="grid grid-cols-2 lg:grid-cols-3 gap-2">
+                       {INCIDENT_CATEGORIES.map(cat => (
+                         <button
+                           key={cat.id}
+                           type="button"
+                           onClick={() => toggleReportType(cat.label)}
+                           className={`p-4 rounded-2xl text-[11px] font-bold transition-all border text-left h-full flex items-center ${
+                             formData.reportType.includes(cat.label)
+                               ? 'bg-visuera-green text-white border-visuera-green shadow-lg shadow-visuera-green/20'
+                               : 'bg-white border-slate-100 text-slate-500 hover:border-visuera-green/30 hover:bg-slate-50/50'
+                           }`}
+                         >
+                           {cat.label}
+                         </button>
+                       ))}
+                    </div>
+                  </div>
+
                   <div className="space-y-2">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Kort beskrivning av händelsen *</label>
+                    <div className="flex items-center justify-between">
+                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Beskrivning av händelsen *</label>
+                      <span className="text-[10px] text-slate-400 italic font-medium">Beskriv objektivt och kortfattat</span>
+                    </div>
                     <textarea 
                       value={formData.incidentDescription}
                       onChange={(e) => updateFormData('incidentDescription', e.target.value)}
-                      placeholder="Beskriv vad som hänt mycket kortfattat..."
+                      onFocus={() => setIsDescriptionFocused(true)}
+                      onBlur={() => setIsDescriptionFocused(false)}
+                      placeholder="Beskriv objektivt vad som hände..."
                       className="w-full h-32 p-6 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-visuera-green/20 transition-all resize-none text-sm"
                     />
                   </div>
+
+                  <AnimatePresence>
+                    {isDescriptionFocused && (
+                      <ContextualGuidance type="incident" />
+                    )}
+                  </AnimatePresence>
+
+                  <AnimatePresence mode="wait">
+                    {formData.reportType.length > 0 && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className="overflow-hidden"
+                      >
+                        <LegalGuidance incidentTypes={formData.reportType} />
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
 
                   <div className="pt-8 border-t border-slate-100 space-y-6">
                     <h4 className="text-xs font-bold text-visuera-dark uppercase tracking-widest flex items-center gap-2">
@@ -1737,13 +1808,42 @@ export const TrygghetsFlow = ({ isQuickReport = false, onSuccess, initialCaseId,
                   </div>
 
                     <div className="space-y-4">
-                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Elevens version *</label>
-                      <textarea 
-                        value={formData.studentVersion}
-                        onChange={(e) => updateFormData('studentVersion', e.target.value)}
-                        placeholder="Beskriv den utsatta elevens version av händelsen..."
-                        className="w-full h-32 p-6 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-visuera-green/20 transition-all resize-none text-sm"
+                      <StudentVoiceModule
+                        selectedStage={formData.studentStage}
+                        onStageChange={(stage) => updateFormData('studentStage', stage)}
+                        checkedQuestions={formData.interviewQuestionsChecklist}
+                        onToggleQuestion={(q) => {
+                          const current = formData.interviewQuestionsChecklist || [];
+                          const updated = current.includes(q) ? current.filter(i => i !== q) : [...current, q];
+                          updateFormData('interviewQuestionsChecklist', updated);
+                        }}
+                        childRightsStatus={formData.childRightsChecklist}
+                        onToggleChildRight={(point) => {
+                          const current = formData.childRightsChecklist || [];
+                          const updated = current.includes(point) ? current.filter(i => i !== point) : [...current, point];
+                          updateFormData('childRightsChecklist', updated);
+                        }}
+                        ageAdaptedConfirmation={formData.ageAdaptedConfirmation}
+                        onToggleConfirmation={(val) => updateFormData('ageAdaptedConfirmation', val)}
+                        studentVersion={formData.studentVersion}
                       />
+
+                      <div className="pt-4 space-y-2">
+                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Dokumenterad version (Elevens röst) *</label>
+                        <textarea 
+                          value={formData.studentVersion}
+                          onChange={(e) => updateFormData('studentVersion', e.target.value)}
+                          onFocus={() => setIsStudentVersionFocused(true)}
+                          onBlur={() => setIsStudentVersionFocused(false)}
+                          placeholder="Dokumentera elevens egna ord om händelsen här..."
+                          className="w-full h-48 p-6 bg-white rounded-3xl border-2 border-slate-100 shadow-sm focus:ring-4 focus:ring-visuera-green/10 focus:border-visuera-green/30 transition-all resize-none text-sm placeholder:italic"
+                        />
+                        <AnimatePresence>
+                          {isStudentVersionFocused && (
+                            <ContextualGuidance type="studentVersion" />
+                          )}
+                        </AnimatePresence>
+                      </div>
                     </div>
 
                     <div className="space-y-4">
@@ -1863,7 +1963,12 @@ export const TrygghetsFlow = ({ isQuickReport = false, onSuccess, initialCaseId,
                         className="space-y-4 pt-4"
                       >
                         <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Vilken diskrimineringsgrund?</label>
-                        <div className="grid grid-cols-1 gap-2">
+                        <div 
+                          className="grid grid-cols-1 gap-2"
+                          onFocus={() => setIsDiscriminationFocused(true)}
+                          onBlur={() => setIsDiscriminationFocused(false)}
+                          tabIndex={0}
+                        >
                           {[
                             'Kränkande behandling, SL 6: 10',
                             'Trakasserier, DiskrL 1:4',
@@ -1886,6 +1991,11 @@ export const TrygghetsFlow = ({ isQuickReport = false, onSuccess, initialCaseId,
                             </button>
                           ))}
                         </div>
+                        <AnimatePresence>
+                          {isDiscriminationFocused && (
+                            <ContextualGuidance type="discrimination" />
+                          )}
+                        </AnimatePresence>
                       </motion.div>
                     )}
                   </AnimatePresence>
@@ -2044,14 +2154,24 @@ export const TrygghetsFlow = ({ isQuickReport = false, onSuccess, initialCaseId,
                     </p>
                   </div>
 
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Utvärdering & Resultat *</label>
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Utvärdering & Resultat *</label>
+                      <span className="text-[10px] text-slate-400 italic">Har kränkningarna upphört?</span>
+                    </div>
                     <textarea 
                       value={formData.followUpText}
                       onChange={(e) => updateFormData('followUpText', e.target.value)}
-                      placeholder="Har kränkningarna upphört? Beskriv samtal med inblandade..."
+                      onFocus={() => setIsFollowupFocused(true)}
+                      onBlur={() => setIsFollowupFocused(false)}
+                      placeholder="Hur har det gått? Har kränkningarna upphört?"
                       className="w-full h-48 p-6 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-visuera-green/20 transition-all resize-none text-sm"
                     />
+                    <AnimatePresence>
+                      {isFollowupFocused && (
+                        <ContextualGuidance type="followup" />
+                      )}
+                    </AnimatePresence>
                   </div>
 
                   <div className="p-6 bg-slate-50 rounded-2xl border border-slate-100 space-y-4">
