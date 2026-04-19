@@ -1,8 +1,9 @@
 import React from 'react';
-import { Building2, Calendar, MapPin, User, Zap, Mail, ChevronDown, Layers } from 'lucide-react';
+import { Building2, Calendar, MapPin, Zap, Mail, ChevronDown, Layers, Users } from 'lucide-react';
 import { StepCard } from '../../ui/StepCard';
 import { InfoPopover } from '../../ui/InfoPopover';
 import { LEGAL_HELP_TEXTS } from '../../../constants/guidanceContent';
+import { InvolvedPartyList } from '../InvolvedPartyList';
 
 interface AnmalanStepProps {
   formData: any;
@@ -121,31 +122,19 @@ export const AnmalanStep: React.FC<AnmalanStepProps> = ({
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="space-y-2">
-            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Namn på berörd elev *</label>
-            <div className="relative">
-              <User className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
-              <input 
-                type="text"
-                required
-                value={formData.studentName}
-                onChange={(e) => updateFormData('studentName', e.target.value)}
-                placeholder="Elevens för- och efternamn"
-                className="w-full pl-12 p-4 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-blue-500/10 transition-all text-sm font-medium text-slate-700"
-              />
-            </div>
-          </div>
-          <div className="space-y-2">
-            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Klass/Grupp *</label>
-            <input 
-              type="text"
-              value={formData.studentClass}
-              onChange={(e) => updateFormData('studentClass', e.target.value)}
-              placeholder="t.ex. 4B eller F-klass"
-              className="w-full p-4 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-blue-500/10 transition-all text-sm font-medium text-slate-700"
-            />
-          </div>
+        <div className="grid grid-cols-1 gap-6">
+          <InvolvedPartyList 
+            parties={formData.involvedParties || []}
+            onChange={(parties) => {
+              updateFormData('involvedParties', parties);
+              // For backward compatibility with dashboard/lists, use the first victim as primary student
+              const primary = parties.find(p => p.role === 'Utsatt') || parties[0];
+              if (primary) {
+                updateFormData('studentName', primary.name);
+                updateFormData('studentClass', primary.class || '');
+              }
+            }}
+          />
         </div>
       </StepCard>
 
@@ -167,8 +156,8 @@ export const AnmalanStep: React.FC<AnmalanStepProps> = ({
         </div>
       </StepCard>
 
-      {/* Card 3: Inblandade */}
-      <StepCard title="UPPGIFTSLÄMNARE och INBLANDADE" icon={Mail}>
+      {/* Card 3: Uppgiftslämnare */}
+      <StepCard title="UPPGIFTSLÄMNARE" icon={Mail}>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-2">
             <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Namn på uppgiftslämnare</label>
@@ -188,15 +177,6 @@ export const AnmalanStep: React.FC<AnmalanStepProps> = ({
               className="w-full p-4 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-blue-500/10 transition-all text-sm font-medium text-slate-700"
             />
           </div>
-        </div>
-        <div className="pt-4 space-y-4">
-           <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Andra inblandade elever/vuxna</label>
-           <textarea 
-            value={formData.activeParticipants}
-            onChange={(e) => updateFormData('activeParticipants', e.target.value)}
-            placeholder="Vilka andra var inblandade?"
-            className="w-full h-24 p-6 bg-slate-50 rounded-3xl border-none focus:ring-2 focus:ring-blue-500/10 transition-all resize-none text-sm leading-relaxed text-slate-700 font-medium"
-          />
         </div>
       </StepCard>
     </div>

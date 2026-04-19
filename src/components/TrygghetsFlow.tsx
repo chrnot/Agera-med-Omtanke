@@ -99,7 +99,7 @@ const DEFAULT_FORM_DATA = {
   incidentDate: '',
   incidentLocation: '',
   incidentLocationOther: '',
-  activeParticipants: '',
+  involvedParties: [] as { id: string, name: string, role: 'Utsatt' | 'Utövare' | 'Vittne', type: 'Elev' | 'Vuxen', class?: string }[],
   incidentDescription: '',
   actionsTaken: [] as string[],
   actionsTakenOther: '',
@@ -431,6 +431,130 @@ export const TrygghetsFlow = ({ isQuickReport = false, onSuccess, initialCaseId,
   const [isGeneratingPDF, setIsGeneratingPDF] = React.useState(false);
   const [isNudging, setIsNudging] = React.useState(false);
   const [quickMessage, setQuickMessage] = React.useState('');
+
+  const maskNames = (text: string, parties: any[], targetId: string) => {
+    if (!text) return '';
+    let maskedText = text;
+    
+    // Sort parties by name length descending to avoid partial matches
+    const otherParties = parties
+      .filter(p => p.id !== targetId)
+      .sort((a, b) => (b.name?.length || 0) - (a.name?.length || 0));
+
+    otherParties.forEach((p, index) => {
+      if (p.name && p.name.trim().length > 2) {
+        // Simple case-insensitive replacement
+        const regex = new RegExp(p.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+        const placeholder = p.type === 'Elev' ? `Elev ${index + 1}` : `Personal/Vuxen ${index + 1}`;
+        maskedText = maskedText.replace(regex, placeholder);
+      }
+    });
+
+    return maskedText;
+  };
+
+  const handleGenerateAnonymizedReport = async (studentId: string) => {
+    const student = formData.involvedParties.find((p: any) => p.id === studentId);
+    if (!student) return;
+
+    setIsGeneratingPDF(true);
+    try {
+      const doc = new jsPDF();
+      const pageWidth = doc.internal.pageSize.getWidth();
+      
+      // Header
+      doc.setFillColor(15, 23, 42); // slate-900
+      doc.rect(0, 0, pageWidth, 40, 'F');
+      
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(18);
+      doc.setFont('helvetica', 'bold');
+      doc.text('ELEVRAPPORT - TRYGGHETSÄRENDE', 20, 20);
+      
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`ANONYMISERAD KOPIA FÖR: ${student.name.toUpperCase()}`, 20, 30);
+      
+      doc.setTextColor(15, 23, 42);
+      doc.setFontSize(12);
+      
+      // Case Info
+      const head = [['Information', 'Detaljer']];
+      const caseInfo = [
+        ['Ärende-ID', `ÄRE-${activeCaseId?.slice(-4).toUpperCase()}`],
+        ['Skola', formData.school],
+        ['Händelsedatum', formData.incidentDate],
+        ['Status', 'Arkiverat & Signerat'],
+        ['Sekretess', 'Maskerad enligt GDPR/OSL']
+      ];
+      
+      autoTable(doc, {
+        startY: 50,
+        head: head,
+        body: caseInfo,
+        theme: 'striped',
+        headStyles: { fillColor: [51, 65, 85] }
+      });
+
+      // Anonymized Content
+      doc.setFont('helvetica', 'bold');
+      doc.text('HÄNDELSEBESKRIVNING', 20, (doc as any).lastAutoTable.finalY + 15);
+      
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(10);
+      const maskedDesc = maskNames(formData.incidentDescription, formData.involvedParties, studentId);
+      const splitDesc = doc.splitTextToSize(maskedDesc, pageWidth - 40);
+      doc.text(splitDesc, 20, (doc as any).lastAutoTable.finalY + 22);
+
+      const nextY = (doc as any).lastAutoTable.finalY + 25 + (splitDesc.length * 5);
+
+      doc.setFont('helvetica', 'bold');
+      doc.text('UTREDNING & ANALYS', 20, nextY);
+      
+      doc.setFont('helvetica', 'normal');
+      const analysisText = formData.investigationAnalysis || formData.investigationText || '';
+      const maskedAnalysis = maskNames(analysisText, formData.involvedParties, studentId);
+      const splitAnalysis = doc.splitTextToSize(maskedAnalysis, pageWidth - 40);
+      doc.text(splitAnalysis, 20, nextY + 7);
+
+      const nextY2 = nextY + 10 + (splitAnalysis.length * 5);
+
+      doc.setFont('helvetica', 'bold');
+      doc.text('BESLUTADE ÅTGÄRDER', 20, nextY2);
+      
+      doc.setFont('helvetica', 'normal');
+      const maskedActions = maskNames(formData.actionsText || '', formData.involvedParties, studentId);
+      const splitActions = doc.splitTextToSize(maskedActions, pageWidth - 40);
+      doc.text(splitActions, 20, nextY2 + 7);
+
+      // Warning footer
+      doc.setFontSize(8);
+      doc.setTextColor(100, 116, 139);
+      doc.text('OBS: Detta är en anonymiserad rapport avsedd för vårdnadshavare. Kontrollera alltid att inga personnamn kvarstår i fritexten innan utlämning.', 20, 280);
+
+      doc.save(`Rapport_${student.name.replace(/\s+/g, '_')}_${activeCaseId?.slice(-4)}.pdf`);
+
+      // Audit Log
+      if (activeCaseId) {
+        await addDoc(collection(db, `cases/${activeCaseId}/audit`), {
+          caseId: activeCaseId,
+          userId: auth.currentUser?.uid || 'system',
+          userName: auth.currentUser?.displayName || 'System',
+          action: 'ANONYMISERAD_RAPPORT_GENERERAD',
+          targetStudent: student.name,
+          timestamp: serverTimestamp()
+        });
+      }
+
+      setSuccessToast({ message: 'Anonymiserad rapport skapad', visible: true });
+      setTimeout(() => setSuccessToast(prev => ({ ...prev, visible: false })), 5000);
+    } catch (err) {
+      console.error('PDF Generation failed:', err);
+      setError('Kunde inte skapa anonymiserad rapport.');
+    } finally {
+      setIsGeneratingPDF(false);
+    }
+  };
 
   const generatePDF = async () => {
     setIsGeneratingPDF(true);
@@ -988,6 +1112,8 @@ export const TrygghetsFlow = ({ isQuickReport = false, onSuccess, initialCaseId,
                         showClosingSummary={showClosingSummary}
                         setShowClosingSummary={setShowClosingSummary}
                         activeCaseId={activeCaseId}
+                        onGenerateAnonymizedReport={handleGenerateAnonymizedReport}
+                        isGeneratingPDF={isGeneratingPDF}
                       />
                     )}
 
@@ -1130,17 +1256,31 @@ export const TrygghetsFlow = ({ isQuickReport = false, onSuccess, initialCaseId,
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                       <div className="space-y-4">
                         <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                           <User size={12} className="text-visuera-green" /> Elev & Plats
+                           <User size={12} className="text-visuera-green" /> Inblandade
                         </h4>
                         <div className="space-y-3">
-                          <div>
-                            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tighter">Fullständigt namn</p>
-                            <p className="text-sm font-bold text-slate-700">{formData.studentName || '-'}</p>
-                          </div>
-                          <div>
-                            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tighter">Klass/Grupp</p>
-                            <p className="text-sm font-bold text-slate-700">{formData.studentClass || '-'}</p>
-                          </div>
+                          {formData.involvedParties?.length > 0 ? (
+                            formData.involvedParties.map((p: any) => (
+                              <div key={p.id} className="p-3 bg-slate-50 rounded-xl border border-slate-100">
+                                <div className="flex items-center justify-between mb-1">
+                                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none">{p.role} ({p.type})</p>
+                                  {p.class && <span className="text-[9px] font-bold text-visuera-green">{p.class}</span>}
+                                </div>
+                                <p className="text-xs font-bold text-slate-700">{p.name}</p>
+                              </div>
+                            ))
+                          ) : (
+                            <>
+                              <div>
+                                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tighter">Fullständigt namn</p>
+                                <p className="text-sm font-bold text-slate-700">{formData.studentName || '-'}</p>
+                              </div>
+                              <div>
+                                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tighter">Klass/Grupp</p>
+                                <p className="text-sm font-bold text-slate-700">{formData.studentClass || '-'}</p>
+                              </div>
+                            </>
+                          )}
                           <div>
                             <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tighter">Plats för incident</p>
                             <p className="text-sm font-bold text-slate-700">

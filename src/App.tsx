@@ -354,7 +354,16 @@ const Dashboard = ({ onNewReport, cases: allCases, onOpenCase, onNavigate, caseQ
   const [showAnalysis, setShowAnalysis] = React.useState(false);
   const [searchQuery, setSearchQuery] = React.useState('');
   const [filterType, setFilterType] = React.useState<'all' | 'mine'>('all');
+  const [statusFilter, setStatusFilter] = React.useState<string | 'all'>('all');
   const [viewMode, setViewMode] = React.useState<'table' | 'cards'>('table');
+
+  const statusLevels = [
+    { label: 'Anmälda', status: 'anmäld', ringColor: 'bg-blue-500', bgColor: 'bg-blue-50', textColor: 'text-blue-600' },
+    { label: 'Utredning', status: 'utredning', ringColor: 'bg-amber-500', bgColor: 'bg-amber-50', textColor: 'text-amber-600' },
+    { label: 'Åtgärder', status: 'åtgärder', ringColor: 'bg-emerald-500', bgColor: 'bg-emerald-50', textColor: 'text-emerald-600' },
+    { label: 'Uppföljning', status: 'uppföljd', ringColor: 'bg-purple-500', bgColor: 'bg-purple-50', textColor: 'text-purple-600' },
+    { label: 'Avslutade', status: 'avslutat', ringColor: 'bg-slate-300', bgColor: 'bg-slate-50', textColor: 'text-slate-500' }
+  ];
 
   // Context-aware filtering for Role and School
   const cases = React.useMemo(() => {
@@ -384,12 +393,19 @@ const Dashboard = ({ onNewReport, cases: allCases, onOpenCase, onNavigate, caseQ
     if (filterType === 'mine' && userProfile) {
       filtered = filtered.filter(c => c.assignedToUid === userProfile.uid || c.reporterUid === userProfile.uid);
     }
+    if (statusFilter !== 'all') {
+      filtered = filtered.filter(c => {
+        if (statusFilter === 'utredning') return c.status === 'utredning' || c.status === 'utreds';
+        if (statusFilter === 'avslutat') return c.status === 'avslutat' || c.status === 'avslutad';
+        return c.status === statusFilter;
+      });
+    }
     return [...filtered].sort((a, b) => {
       const timeA = a.createdAt?.seconds || new Date(a.createdAt).getTime();
       const timeB = b.createdAt?.seconds || new Date(b.createdAt).getTime();
       return (Number(timeB)) - (Number(timeA));
     });
-  }, [cases, searchQuery, filterType, userProfile]);
+  }, [cases, searchQuery, filterType, statusFilter, userProfile]);
 
   const calculateAverageLeadTime = () => {
     const durations: number[] = [];
@@ -625,6 +641,53 @@ const Dashboard = ({ onNewReport, cases: allCases, onOpenCase, onNavigate, caseQ
       )}
 
       <div className="bg-white rounded-[40px] p-6 lg:p-8 border border-slate-100 shadow-sm space-y-6">
+        {/* Status Levels Overview */}
+        <div className="flex items-center gap-3 overflow-x-auto no-scrollbar pb-2 -mx-2 px-2">
+          <button
+            onClick={() => setStatusFilter('all')}
+            className={`flex items-center gap-3 px-4 py-2.5 rounded-2xl transition-all whitespace-nowrap border-2 ${
+              statusFilter === 'all' 
+                ? 'bg-visuera-dark border-visuera-dark text-white shadow-lg' 
+                : 'bg-slate-50 border-transparent text-slate-500 hover:border-slate-200'
+            }`}
+          >
+            <span className="text-[10px] font-black uppercase tracking-widest">Alla ärenden</span>
+            <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${statusFilter === 'all' ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-500'}`}>
+              {cases.length}
+            </div>
+          </button>
+          
+          {statusLevels.map((level) => {
+            const count = cases.filter(c => {
+              if (level.status === 'utredning') return c.status === 'utredning' || c.status === 'utreds';
+              if (level.status === 'avslutat') return c.status === 'avslutat' || c.status === 'avslutad';
+              return c.status === level.status;
+            }).length;
+            
+            const isActive = statusFilter === level.status;
+            
+            return (
+              <button
+                key={level.status}
+                onClick={() => setStatusFilter(level.status)}
+                className={`flex items-center gap-3 px-4 py-2.5 rounded-2xl transition-all whitespace-nowrap border-2 ${
+                  isActive 
+                    ? `${level.bgColor} border-current ${level.textColor} shadow-md` 
+                    : 'bg-slate-50 border-transparent text-slate-400 hover:border-slate-200'
+                }`}
+                style={isActive ? { borderColor: 'currentColor' } : {}}
+              >
+                <span className="text-[10px] font-black uppercase tracking-widest">{level.label}</span>
+                <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${
+                  isActive ? `${level.ringColor} text-white` : 'bg-slate-200 text-slate-400'
+                }`}>
+                  {count}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
           <div className="flex items-center gap-4">
             <h3 className="font-black text-visuera-dark uppercase tracking-widest">Ärendelista</h3>

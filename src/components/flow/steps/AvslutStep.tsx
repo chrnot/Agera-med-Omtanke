@@ -1,5 +1,5 @@
 import React from 'react';
-import { ShieldCheck, FileCheck, ClipboardList, PenTool, AlertTriangle } from 'lucide-react';
+import { ShieldCheck, FileCheck, ClipboardList, PenTool, AlertTriangle, Users, FileDown } from 'lucide-react';
 import { StepCard } from '../../ui/StepCard';
 import { motion } from 'motion/react';
 
@@ -9,6 +9,8 @@ interface AvslutStepProps {
   showClosingSummary: boolean;
   setShowClosingSummary: (val: boolean) => void;
   activeCaseId: string | null;
+  onGenerateAnonymizedReport?: (studentId: string) => void;
+  isGeneratingPDF?: boolean;
 }
 
 export const AvslutStep: React.FC<AvslutStepProps> = ({
@@ -16,7 +18,9 @@ export const AvslutStep: React.FC<AvslutStepProps> = ({
   updateFormData,
   showClosingSummary,
   setShowClosingSummary,
-  activeCaseId
+  activeCaseId,
+  onGenerateAnonymizedReport,
+  isGeneratingPDF
 }) => {
   if (showClosingSummary) {
     return (
@@ -146,6 +150,47 @@ export const AvslutStep: React.FC<AvslutStepProps> = ({
               <p className="text-sm text-slate-600 leading-relaxed font-normal">
                 {formData.actionsText}
               </p>
+            </div>
+          </div>
+
+          <div className="pt-8">
+            <div className="flex items-center gap-3 mb-6">
+               <ShieldCheck size={16} className="text-emerald-600" />
+               <h3 className="text-[11px] font-black uppercase tracking-[0.15em]">GDPR-Export (Anonymiserade rapporter)</h3>
+            </div>
+            
+            <p className="text-[11px] text-slate-500 mb-6 leading-relaxed">
+              Generera elevspecifika rapporter för vårdnadshavare. Systemet maskerar automatiskt övriga inblandades namn i fritextfälten baserat på listan över inblandade parter.
+            </p>
+
+            <div className="space-y-3">
+              {(formData.involvedParties || []).filter((p: any) => p.type === 'Elev').map((student: any) => (
+                <div key={student.id} className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100 group">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center text-slate-400">
+                      <Users size={16} />
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 leading-none mb-1">{student.role}</p>
+                      <p className="text-xs font-bold text-slate-700">{student.name}</p>
+                    </div>
+                  </div>
+                  <button 
+                    disabled={isGeneratingPDF}
+                    onClick={() => onGenerateAnonymizedReport?.(student.id)}
+                    className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-500 hover:border-emerald-500 hover:text-emerald-600 transition-all shadow-sm"
+                  >
+                    <FileDown size={14} />
+                    {isGeneratingPDF ? 'Skapar...' : 'Skapa rapport'}
+                  </button>
+                </div>
+              ))}
+              
+              {(formData.involvedParties || []).filter((p: any) => p.type === 'Elev').length === 0 && (
+                <div className="text-center py-6 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Inga elever i partlistan</p>
+                </div>
+              )}
             </div>
           </div>
 
