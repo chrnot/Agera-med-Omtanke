@@ -5,10 +5,12 @@ import { InfoPopover } from '../../ui/InfoPopover';
 import { StudentVoiceModule } from '../../StudentVoiceModule';
 import { LEGAL_HELP_TEXTS, DISCRIMINATION_GROUNDS } from '../../../constants/guidanceContent';
 import { motion, AnimatePresence } from 'motion/react';
+import { TeamContributions } from '../TeamContributions';
 
 interface UtredningStepProps {
   formData: any;
   userProfile: any;
+  activeCaseId: string | null;
   quickMessage: string;
   setQuickMessage: (val: string) => void;
   handleSendQuickMessage: (text: string) => void;
@@ -18,6 +20,7 @@ interface UtredningStepProps {
 export const UtredningStep: React.FC<UtredningStepProps> = ({
   formData,
   userProfile,
+  activeCaseId,
   quickMessage,
   setQuickMessage,
   handleSendQuickMessage,
@@ -25,8 +28,24 @@ export const UtredningStep: React.FC<UtredningStepProps> = ({
 }) => {
   const [showInterviewGuide, setShowInterviewGuide] = React.useState(false);
 
+  const isInvestigator = userProfile?.uid === (formData.assignedToUid || formData.assignedTeacherUid);
+  const isTeamMember = userProfile?.team === formData.assignedTeam;
+  const isAdmin = userProfile?.globalRole === 'admin' || userProfile?.role === 'admin' || userProfile?.role === 'principal';
+  const canEditMain = isInvestigator || isAdmin;
+
   return (
     <div className="space-y-8">
+      {activeCaseId && (
+        <TeamContributions
+          activeCaseId={activeCaseId}
+          userProfile={userProfile}
+          formData={formData}
+          updateFormData={updateFormData}
+          isInvestigator={isInvestigator}
+          isTeamMember={isTeamMember}
+        />
+      )}
+
       {/* Principal Quick Message Panel */}
       {(userProfile?.role === 'principal' || userProfile?.globalRole === 'admin') && (
         <div className="bg-slate-900 border border-slate-800 rounded-[32px] p-6 space-y-4 shadow-xl">
@@ -82,10 +101,11 @@ export const UtredningStep: React.FC<UtredningStepProps> = ({
             <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Personnummer</label>
             <input 
               type="text"
+              readOnly
               value={formData.studentSSN || ''}
               onChange={(e) => updateFormData('studentSSN', e.target.value)}
-              placeholder="YYYYMMDD-XXXX"
-              className="w-full p-4 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-blue-500/10 transition-all text-sm font-medium text-slate-700"
+              placeholder={canEditMain ? "YYYYMMDD-XXXX" : "Ej ifyllt"}
+              className={`w-full p-4 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-blue-500/10 transition-all text-sm font-medium text-slate-700 ${!canEditMain ? 'cursor-not-allowed opacity-80' : ''}`}
             />
           </div>
         </div>
@@ -142,9 +162,10 @@ export const UtredningStep: React.FC<UtredningStepProps> = ({
           </div>
           <textarea 
             value={formData.studentVersion}
+            readOnly={!canEditMain}
             onChange={(e) => updateFormData('studentVersion', e.target.value)}
-            placeholder="Dokumentera elevens ord sakligt och fritt från tolkningar."
-            className="w-full h-48 p-6 bg-slate-50 rounded-3xl border-none focus:ring-2 focus:ring-blue-500/10 transition-all resize-none text-sm leading-relaxed text-slate-700 font-medium"
+            placeholder={canEditMain ? "Dokumentera elevens ord sakligt och fritt från tolkningar." : "Ingen dokumentation ännu."}
+            className={`w-full h-48 p-6 bg-slate-50 rounded-3xl border-none focus:ring-2 focus:ring-blue-500/10 transition-all resize-none text-sm leading-relaxed text-slate-700 font-medium ${!canEditMain ? 'cursor-not-allowed opacity-80' : ''}`}
           />
         </div>
       </StepCard>
@@ -159,9 +180,10 @@ export const UtredningStep: React.FC<UtredningStepProps> = ({
             </div>
             <textarea 
               value={formData.investigationText}
+              readOnly={!canEditMain}
               onChange={(e) => updateFormData('investigationText', e.target.value)}
-              placeholder="Dokumentera sakligt vad övriga inblandade har uppgett..."
-              className="w-full h-48 p-6 bg-slate-50 rounded-3xl border-none focus:ring-2 focus:ring-blue-500/10 transition-all resize-none text-sm leading-relaxed text-slate-700 font-medium"
+              placeholder={canEditMain ? "Dokumentera sakligt vad övriga inblandade har uppgett..." : "Ingen dokumentation ännu."}
+              className={`w-full h-48 p-6 bg-slate-50 rounded-3xl border-none focus:ring-2 focus:ring-blue-500/10 transition-all resize-none text-sm leading-relaxed text-slate-700 font-medium ${!canEditMain ? 'cursor-not-allowed opacity-80' : ''}`}
             />
           </div>
         </div>
@@ -182,15 +204,17 @@ export const UtredningStep: React.FC<UtredningStepProps> = ({
                   key={type.id}
                   type="button"
                   onClick={() => {
+                    if (!canEditMain) return;
                     const current = formData.incidentTypes || [];
                     const updated = current.includes(type.id) ? current.filter(t => t !== type.id) : [...current, type.id];
                     updateFormData('incidentTypes', updated);
                   }}
+                  disabled={!canEditMain}
                   className={`p-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all border flex items-center justify-between ${
                     formData.incidentTypes?.includes(type.id)
                       ? 'bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-500/10'
                       : 'bg-slate-50 border-transparent text-slate-500 hover:bg-slate-100'
-                  }`}
+                  } ${!canEditMain ? 'opacity-80 cursor-not-allowed' : ''}`}
                 >
                   {type.label}
                   {formData.incidentTypes?.includes(type.id) && <Check size={14} />}
@@ -207,12 +231,15 @@ export const UtredningStep: React.FC<UtredningStepProps> = ({
                   <button
                     key={ground}
                     type="button"
-                    onClick={() => updateFormData('discriminationGround', ground)}
+                    onClick={() => {
+                      if (canEditMain) updateFormData('discriminationGround', ground);
+                    }}
+                    disabled={!canEditMain}
                     className={`px-4 py-2 rounded-xl text-[10px] font-bold transition-all border ${
                       formData.discriminationGround === ground 
                         ? 'bg-blue-600 text-white border-blue-600 shadow-sm' 
                         : 'bg-white text-slate-400 border-slate-200 hover:border-blue-300'
-                    }`}
+                    } ${!canEditMain ? 'opacity-80 cursor-not-allowed' : ''}`}
                   >
                     {ground}
                   </button>
@@ -228,12 +255,15 @@ export const UtredningStep: React.FC<UtredningStepProps> = ({
                   <button
                     key={opt}
                     type="button"
-                    onClick={() => updateFormData('incidentConfirmed', opt)}
+                    onClick={() => {
+                      if (canEditMain) updateFormData('incidentConfirmed', opt);
+                    }}
+                    disabled={!canEditMain}
                     className={`p-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all border ${
                       formData.incidentConfirmed === opt
                         ? 'bg-slate-900 text-white border-slate-900 shadow-xl'
                         : 'bg-slate-50 border-transparent text-slate-500 hover:bg-slate-100'
-                    }`}
+                    } ${!canEditMain ? 'opacity-80 cursor-not-allowed' : ''}`}
                   >
                     {opt}
                   </button>
@@ -248,9 +278,10 @@ export const UtredningStep: React.FC<UtredningStepProps> = ({
             </div>
             <textarea 
               value={formData.investigationAnalysis}
+              readOnly={!canEditMain}
               onChange={(e) => updateFormData('investigationAnalysis', e.target.value)}
-              placeholder="Dokumentera de överväganden som lett till bedömningen..."
-              className="w-full h-40 p-6 bg-slate-50 rounded-3xl border-none focus:ring-2 focus:ring-blue-500/10 transition-all resize-none text-sm leading-relaxed text-slate-700 font-medium"
+              placeholder={canEditMain ? "Dokumentera de överväganden som lett till bedömningen..." : "Ingen analys ännu."}
+              className={`w-full h-40 p-6 bg-slate-50 rounded-3xl border-none focus:ring-2 focus:ring-blue-500/10 transition-all resize-none text-sm leading-relaxed text-slate-700 font-medium ${!canEditMain ? 'cursor-not-allowed opacity-80' : ''}`}
             />
           </div>
         </div>

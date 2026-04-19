@@ -103,7 +103,7 @@ const DEFAULT_FORM_DATA = {
   incidentDate: '',
   incidentLocation: '',
   incidentLocationOther: '',
-  involvedParties: [] as { id: string, name: string, role: 'Utsatt' | 'Utövare' | 'Vittne', type: 'Elev' | 'Vuxen', class?: string }[],
+  involvedParties: [{ id: 'party-1', name: '', role: 'Utsatt', type: 'Elev', class: '' }] as { id: string, name: string, role: 'Utsatt' | 'Utövare' | 'Vittne', type: 'Elev' | 'Vuxen', class?: string }[],
   incidentDescription: '',
   actionsTaken: [] as string[],
   actionsTakenOther: '',
@@ -185,14 +185,24 @@ export const TrygghetsFlow = ({ isQuickReport = false, onSuccess, initialCaseId,
     setActiveCaseId(initialCaseId || null);
     // Reset basic state when switching to "new" mode
     if (!initialCaseId) {
-      setFormData(DEFAULT_FORM_DATA);
+      setFormData({
+        ...DEFAULT_FORM_DATA,
+        reporterName: userProfile?.displayName || userProfile?.name || '',
+        reporterEmail: userProfile?.email || auth.currentUser?.email || '',
+        school: userProfile?.school || '',
+        schoolId: userProfile?.schoolId || '',
+        authorityId: userProfile?.authorityId || '',
+        authority: userProfile?.authority || ''
+      });
+      if (userProfile?.authorityId) {
+        setSelectedAuthority(userProfile.authorityId);
+      }
       setCurrentStepIndex(0);
       setSelectedActivities([]);
-      setSelectedAuthority('');
       setError(null);
       setIsSubmitted(false);
     }
-  }, [initialCaseId]);
+  }, [initialCaseId, userProfile]);
 
   // Fetch school and authority list
   React.useEffect(() => {
@@ -1119,6 +1129,7 @@ export const TrygghetsFlow = ({ isQuickReport = false, onSuccess, initialCaseId,
                       <UtredningStep 
                         formData={formData}
                         userProfile={userProfile}
+                        activeCaseId={activeCaseId}
                         quickMessage={quickMessage}
                         setQuickMessage={setQuickMessage}
                         handleSendQuickMessage={handleSendQuickMessage}

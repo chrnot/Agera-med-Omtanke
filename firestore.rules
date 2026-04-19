@@ -104,13 +104,17 @@ service cloud.firestore {
       }
 
       function canUserViewCase(caseData) {
+        let userData = getUserData();
         return isGlobalAdmin() ||
                caseData.reporterUid == request.auth.uid ||
                caseData.assignedToUid == request.auth.uid ||
+               caseData.get('assignedTeacherUid', '') == request.auth.uid ||
+               (caseData.get('assignedTeam', '') != '' && caseData.assignedTeam == userData.get('team', 'none')) ||
+               (isSignedIn() && caseData.get('reporterEmail', '') != '' && caseData.reporterEmail == userData.email) ||
                (caseData.get('schoolId', '') != '' && hasSchoolRole(caseData.schoolId, 'principal')) ||
                (caseData.get('authorityId', '') != '' && hasAuthorityRole(caseData.authorityId, 'authority')) ||
                // Legacy school name check
-               (getUserData().get('role', 'none') == 'principal' && getUserData().get('school', '') == caseData.school);
+               (userData.get('role', 'none') == 'principal' && userData.get('school', '') == caseData.school);
       }
 
       // Query Enforcer (Pillar 8)
@@ -156,6 +160,22 @@ service cloud.firestore {
         allow write: if isSignedIn() && (
           get(/databases/$(database)/documents/cases/$(caseId)).data.assignedToUid == request.auth.uid ||
           isGlobalAdmin()
+        );
+      }
+
+      match /contributions/{contribId} {
+        allow read: if isSignedIn() && canUserViewCase(get(/databases/$(database)/documents/cases/$(caseId)).data);
+        allow create: if isSignedIn() && (
+          // Investigator can create
+          get(/databases/$(database)/documents/cases/$(caseId)).data.assignedToUid == request.auth.uid ||
+          // Or a member of the assigned team
+          (get(/databases/$(database)/documents/cases/$(caseId)).data.get('assignedTeam', '') != '' && 
+           get(/databases/$(database)/documents/cases/$(caseId)).data.assignedTeam == getUserData().get('team', 'none'))
+        );
+        allow update, delete: if isSignedIn() && (
+          incoming().authorUid == request.auth.uid || 
+          isGlobalAdmin() ||
+          get(/databases/$(database)/documents/cases/$(caseId)).data.assignedToUid == request.auth.uid
         );
       }
 

@@ -11,6 +11,7 @@ import {
   onSnapshot,
   serverTimestamp,
   Timestamp,
+  or,
   type FieldValue
 } from 'firebase/firestore';
 import { db, auth } from '../lib/firebase';
@@ -294,18 +295,24 @@ export const caseService = {
     }
   },
 
-  subscribeToCases: (callback: (cases: any[]) => void, filters?: { school?: string, assignedToUid?: string, reporterUid?: string }) => {
+  subscribeToCases: (callback: (cases: any[]) => void, filters?: { school?: string, assignedToUid?: string, reporterUid?: string, reporterEmail?: string, assignedTeam?: string, isAdmin?: boolean }) => {
     const path = 'cases';
     let q = query(collection(db, path));
     
-    if (filters?.school && filters.school !== 'alla') {
+    // If not admin and we have specific user filters, use OR logic for personal visibility
+    if (!filters?.isAdmin && (filters?.assignedToUid || filters?.reporterUid || filters?.reporterEmail || filters?.assignedTeam)) {
+      const visibilityFilters = [];
+      if (filters.assignedToUid) visibilityFilters.push(where('assignedToUid', '==', filters.assignedToUid));
+      if (filters.assignedToUid) visibilityFilters.push(where('assignedTeacherUid', '==', filters.assignedToUid));
+      if (filters.reporterUid) visibilityFilters.push(where('reporterUid', '==', filters.reporterUid));
+      if (filters.reporterEmail) visibilityFilters.push(where('reporterEmail', '==', filters.reporterEmail));
+      if (filters.assignedTeam) visibilityFilters.push(where('assignedTeam', '==', filters.assignedTeam));
+      
+      if (visibilityFilters.length > 0) {
+        q = query(q, or(...visibilityFilters));
+      }
+    } else if (filters?.school && filters.school !== 'alla') {
       q = query(q, where('school', '==', filters.school));
-    }
-    if (filters?.assignedToUid) {
-      q = query(q, where('assignedToUid', '==', filters.assignedToUid));
-    }
-    if (filters?.reporterUid) {
-      q = query(q, where('reporterUid', '==', filters.reporterUid));
     }
     
     return onSnapshot(q, (snapshot) => {
@@ -529,5 +536,92 @@ export const caseService = {
     } catch (error) {
       return handleFirestoreError(error, OperationType.CREATE, 'cases');
     }
+  },
+
+  requestTeamContribution: async (caseId: string, teamId: string, investigatorName: string) => {
+    try {
+      const caseDoc = await getDoc(doc(db, 'cases', caseId));
+      const school = caseDoc.data()?.school;
+
+      await updateDoc(doc(db, 'cases', caseId), {
+        assignedTeam: teamId,
+        requestTeamContribution: true,
+        updatedAt: serverTimestamp()
+      });
+
+      // Send notifications to all team members
+      const usersRef = collection(db, 'users');
+      const teamQuery = query(usersRef, where('team', '==', teamId), where('school', '==', school));
+      const teamSnap = await getDocs(teamQuery);
+
+      const idDisplay = `ÄRE-${caseId.slice(-4).toUpperCase()}`;
+
+      for (const d of teamSnap.docs) {
+        if (d.id === auth.currentUser?.uid) continue; // Don't notify self
+        
+        await caseService.sendNotification({
+          type: 'INFO',
+          title: 'Begäran om bidrag till utredning',
+          message: `Du har blivit ombedd av ${investigatorName} att bidra med observationer till utredning ${idDisplay}. Klicka här för att lägga till din information.`,
+          caseId,
+          recipientUid: d.id,
+          school,
+          actionUrl: `/cases/${caseId}`
+        });
+      }
+
+      // Audit Log
+      await addDoc(collection(db, `cases/${caseId}/audit`), {
+        caseId,
+        userId: auth.currentUser?.uid || 'system',
+        userName: investigatorName,
+        action: 'TEAM_CONTRIBUTION_REQUESTED',
+        teamId,
+        timestamp: serverTimestamp()
+      });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, `cases/${caseId}`);
+    }
+  },
+
+  addContribution: async (caseId: string, text: string, userProfile: any) => {
+    const path = `cases/${caseId}/contributions`;
+    try {
+      await addDoc(collection(db, path), {
+        caseId,
+        text,
+        authorUid: userProfile.uid,
+        authorName: userProfile.name,
+        authorTeam: userProfile.team || 'Okänd',
+        createdAt: serverTimestamp()
+      });
+
+      // Audit Log
+      await addDoc(collection(db, `cases/${caseId}/audit`), {
+        caseId,
+        userId: userProfile.uid,
+        userName: userProfile.name,
+        action: 'CONTRIBUTION_ADDED',
+        timestamp: serverTimestamp()
+      });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.CREATE, path);
+    }
+  },
+
+  subscribeToContributions: (caseId: string, callback: (contributions: any[]) => void) => {
+    const path = `cases/${caseId}/contributions`;
+    const q = query(collection(db, path));
+    
+    return onSnapshot(q, (snapshot) => {
+      const contributions = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
+      callback(contributions.sort((a, b) => {
+        const timeA = a.createdAt?.seconds || 0;
+        const timeB = b.createdAt?.seconds || 0;
+        return timeA - timeB;
+      }));
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, path);
+    });
   }
 };

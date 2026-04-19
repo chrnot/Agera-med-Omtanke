@@ -1,5 +1,5 @@
 import React from 'react';
-import { User, Users, Trash2, PlusCircle, AlertCircle } from 'lucide-react';
+import { User, Users, Trash2, PlusCircle, AlertCircle, ChevronDown } from 'lucide-react';
 
 interface InvolvedParty {
   id: string;
@@ -40,9 +40,9 @@ export const InvolvedPartyList: React.FC<InvolvedPartyListProps> = ({ parties, o
         <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Inblandade personer *</label>
         <button 
           onClick={addParty}
-          className="flex items-center gap-2 px-3 py-1.5 bg-visuera-green/10 text-visuera-green rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-visuera-green/20 transition-all shadow-sm"
+          className="flex items-center gap-2 px-5 py-2.5 bg-visuera-green text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-visuera-green/90 transition-all shadow-lg shadow-visuera-green/20 hover:scale-[1.02] active:scale-[0.98]"
         >
-          <PlusCircle size={14} />
+          <PlusCircle size={16} />
           Lägg till person
         </button>
       </div>
@@ -59,10 +59,10 @@ export const InvolvedPartyList: React.FC<InvolvedPartyListProps> = ({ parties, o
           {parties.map((party) => (
             <div 
               key={party.id}
-              className="group bg-white p-4 rounded-3xl border border-slate-100 shadow-sm hover:shadow-md transition-all flex flex-col md:flex-row gap-4 items-start md:items-center"
+              className="group bg-white p-4 rounded-3xl border border-slate-100 shadow-sm hover:shadow-md transition-all flex flex-col lg:flex-row gap-4 items-start lg:items-center"
             >
-              <div className="flex-1 w-full grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div className="space-y-1.5 md:col-span-2">
+              <div className="flex-1 w-full grid grid-cols-1 md:grid-cols-12 gap-4">
+                <div className="space-y-1.5 md:col-span-6">
                   <div className="relative">
                     <User className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300" size={14} />
                     <input 
@@ -75,49 +75,61 @@ export const InvolvedPartyList: React.FC<InvolvedPartyListProps> = ({ parties, o
                   </div>
                 </div>
 
-                <div className="space-y-1.5">
-                  <select 
-                    value={party.role}
-                    onChange={(e) => updateParty(party.id, 'role', e.target.value as any)}
-                    className="w-full p-2.5 bg-slate-50 rounded-xl border-none focus:ring-2 focus:ring-visuera-green/20 text-xs font-black uppercase tracking-widest text-slate-600 appearance-none cursor-pointer"
-                  >
-                    <option value="Utsatt">Utsatt</option>
-                    <option value="Utövare">Utövare</option>
-                    <option value="Vittne">Vittne</option>
-                  </select>
+                <div className="space-y-1.5 md:col-span-3">
+                  <div className="relative">
+                    <select 
+                      value={party.role}
+                      onChange={(e) => updateParty(party.id, 'role', e.target.value as any)}
+                      className="w-full p-2.5 pr-8 bg-slate-50 rounded-xl border-none focus:ring-2 focus:ring-visuera-green/20 text-[10px] font-black uppercase tracking-wider text-slate-600 appearance-none cursor-pointer"
+                    >
+                      <option value="Utsatt">Utsatt</option>
+                      <option value="Utövare">Utövare</option>
+                      <option value="Vittne">Vittne</option>
+                    </select>
+                    <div className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-300">
+                      <ChevronDown size={14} />
+                    </div>
+                  </div>
                 </div>
 
-                <div className="space-y-1.5">
-                  <select 
-                    value={party.type}
-                    onChange={(e) => updateParty(party.id, 'type', e.target.value as any)}
-                    className="w-full p-2.5 bg-slate-50 rounded-xl border-none focus:ring-2 focus:ring-visuera-green/20 text-xs font-black uppercase tracking-widest text-slate-600 appearance-none cursor-pointer"
-                  >
-                    <option value="Elev">Elev</option>
-                    <option value="Vuxen">Vuxen</option>
-                  </select>
+                <div className="space-y-1.5 md:col-span-3">
+                  <div className="relative">
+                    <select 
+                      value={party.type}
+                      onChange={(e) => updateParty(party.id, 'type', e.target.value as any)}
+                      className="w-full p-2.5 pr-8 bg-slate-50 rounded-xl border-none focus:ring-2 focus:ring-visuera-green/20 text-[10px] font-black uppercase tracking-wider text-slate-600 appearance-none cursor-pointer"
+                    >
+                      <option value="Elev">Elev</option>
+                      <option value="Vuxen">Vuxen</option>
+                    </select>
+                    <div className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-300">
+                      <ChevronDown size={14} />
+                    </div>
+                  </div>
                 </div>
               </div>
 
-              {party.type === 'Elev' && (
-                <div className="w-full md:w-32">
-                  <input 
-                    type="text"
-                    placeholder="Klass..."
-                    value={party.class || ''}
-                    onChange={(e) => updateParty(party.id, 'class', e.target.value)}
-                    className="w-full p-2.5 bg-slate-50 rounded-xl border-none focus:ring-2 focus:ring-visuera-green/20 text-xs font-bold text-slate-700"
-                  />
-                </div>
-              )}
+              <div className="flex items-center gap-3 w-full lg:w-auto">
+                {party.type === 'Elev' && (
+                  <div className="w-full lg:w-24">
+                    <input 
+                      type="text"
+                      placeholder="Klass..."
+                      value={party.class || ''}
+                      onChange={(e) => updateParty(party.id, 'class', e.target.value)}
+                      className="w-full p-2.5 bg-slate-50 rounded-xl border-none focus:ring-2 focus:ring-visuera-green/20 text-xs font-bold text-slate-700"
+                    />
+                  </div>
+                )}
 
-              <button 
-                onClick={() => removeParty(party.id)}
-                className="p-2.5 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"
-                title="Ta bort person"
-              >
-                <Trash2 size={16} />
-              </button>
+                <button 
+                  onClick={() => removeParty(party.id)}
+                  className="p-2.5 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all ml-auto lg:ml-0"
+                  title="Ta bort person"
+                >
+                  <Trash2 size={16} />
+                </button>
+              </div>
             </div>
           ))}
         </div>

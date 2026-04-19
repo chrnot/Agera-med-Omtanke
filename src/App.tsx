@@ -45,7 +45,11 @@ import {
   Lock,
   Settings,
   BookOpen,
-  MapPin
+  MapPin,
+  Mail,
+  Shield,
+  Eye,
+  CreditCard
 } from 'lucide-react';
 import { 
   LineChart, 
@@ -348,6 +352,81 @@ const ROLE_LABELS: Record<string, string> = {
   'admin': 'Systemadministratör'
 };
 
+const ActiveCasesList = ({ cases: myCases, onOpenCase }: { cases: any[], onOpenCase: (id: string) => void }) => {
+  return (
+    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <div className="bg-white rounded-[40px] p-8 lg:p-12 border border-slate-100 shadow-sm relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-visuera-green/5 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl -z-10" />
+        
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 mb-10">
+          <div>
+            <h2 className="text-3xl font-black text-visuera-dark tracking-tight">Aktiva ärenden</h2>
+            <p className="text-sm text-slate-500 mt-2">Här visas alla dina pågående ärenden och utredningar.</p>
+          </div>
+          <div className="flex items-center gap-2 px-4 py-2 bg-visuera-green/5 text-visuera-green rounded-2xl border border-visuera-green/10">
+             <Layers size={16} />
+             <span className="text-sm font-black uppercase tracking-widest">{myCases.length} Pågående</span>
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          {myCases.length === 0 ? (
+            <div className="py-20 text-center">
+               <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-200">
+                  <CheckCircle2 size={40} />
+               </div>
+               <p className="text-slate-400 font-medium italic">Du har inga pågående ärenden just nu.</p>
+            </div>
+          ) : (
+            myCases.map(c => (
+              <motion.div
+                key={c.id}
+                whileHover={{ x: 4 }}
+                className="bg-slate-50 rounded-2xl p-5 border border-slate-100 hover:border-visuera-green hover:bg-white hover:shadow-lg hover:shadow-visuera-green/5 transition-all cursor-pointer group flex flex-col md:flex-row md:items-center justify-between gap-4"
+                onClick={() => onOpenCase(c.id)}
+              >
+                <div className="flex items-center gap-4 flex-1 min-w-0">
+                  <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center text-visuera-green shadow-sm shrink-0 group-hover:scale-110 transition-transform">
+                     <Layers size={22} />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-[9px] font-black bg-white text-slate-400 px-2 py-0.5 rounded uppercase tracking-tighter shadow-sm">
+                        ÄRE-{c.id.slice(-4).toUpperCase()}
+                      </span>
+                      <h4 className="font-bold text-visuera-dark group-hover:text-visuera-green transition-colors truncate">
+                         {c.title}
+                      </h4>
+                    </div>
+                    <div className="text-[10px] text-slate-400 font-bold mt-1 flex items-center gap-4">
+                      <span className="flex items-center gap-1"><UserIcon size={12} className="text-slate-300" /> {c.studentName}</span>
+                      <span className="flex items-center gap-1"><Calendar size={12} className="text-slate-300" /> {new Date(c.createdAt?.seconds ? c.createdAt.seconds * 1000 : c.createdAt).toLocaleDateString('sv-SE')}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between md:justify-end gap-6 border-t md:border-t-0 pt-3 md:pt-0 border-slate-200/50">
+                  <span className={`text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest ${
+                    c.status === 'utredning' ? 'bg-amber-100 text-amber-600' :
+                    c.status === 'åtgärder' ? 'bg-emerald-100 text-emerald-600' :
+                    c.status === 'uppföljd' ? 'bg-purple-100 text-purple-600' :
+                    'bg-visuera-green/10 text-visuera-green'
+                  }`}>
+                    {c.status}
+                  </span>
+                  <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-visuera-green shadow-sm group-hover:bg-visuera-green group-hover:text-white transition-all transform group-hover:rotate-12">
+                    <ArrowRight size={20} />
+                  </div>
+                </div>
+              </motion.div>
+            ))
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const Dashboard = ({ onNewReport, cases: allCases, onOpenCase, onNavigate, caseQuestions, userProfile }: { 
   onNewReport: () => void, 
   cases: any[], 
@@ -358,7 +437,7 @@ const Dashboard = ({ onNewReport, cases: allCases, onOpenCase, onNavigate, caseQ
 }) => {
   const [showAnalysis, setShowAnalysis] = React.useState(false);
   const [searchQuery, setSearchQuery] = React.useState('');
-  const [filterType, setFilterType] = React.useState<'all' | 'mine'>('all');
+  const [filterType, setFilterType] = React.useState<'all' | 'mine'>('mine');
   const [statusFilter, setStatusFilter] = React.useState<string | 'all'>('all');
   const [viewMode, setViewMode] = React.useState<'table' | 'cards'>('table');
 
@@ -396,7 +475,11 @@ const Dashboard = ({ onNewReport, cases: allCases, onOpenCase, onNavigate, caseQ
       );
     }
     if (filterType === 'mine' && userProfile) {
-      filtered = filtered.filter(c => c.assignedToUid === userProfile.uid || c.reporterUid === userProfile.uid);
+      filtered = filtered.filter(c => 
+        c.assignedToUid === userProfile.uid || 
+        c.reporterUid === userProfile.uid ||
+        (c.assignedTeam && c.assignedTeam === userProfile.team)
+      );
     }
     if (statusFilter !== 'all') {
       filtered = filtered.filter(c => {
@@ -507,35 +590,11 @@ const Dashboard = ({ onNewReport, cases: allCases, onOpenCase, onNavigate, caseQ
 
   return (
     <div className="space-y-6 lg:space-y-8 pb-32 lg:pb-12">
-      {/* BankID Status Bar */}
-      <div className="bg-emerald-50 border border-emerald-100 rounded-2xl px-5 py-3 flex items-center justify-between shadow-sm">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-emerald-500 rounded-lg flex items-center justify-center text-white">
-            <ShieldCheck size={18} />
-          </div>
-          <div>
-            <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest leading-none">Verifierad Session</p>
-            <p className="text-xs font-bold text-visuera-dark mt-1">Inloggad som {userProfile?.name} via BankID</p>
-          </div>
-        </div>
-        <div className="hidden sm:flex items-center gap-2">
-          <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
-          <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest">Säker anslutning</span>
-        </div>
-      </div>
-
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-6">
         <div>
           <p className="text-[10px] font-bold text-visuera-green uppercase tracking-widest mb-1">Välkommen tillbaka</p>
           <h1 className="text-3xl font-black text-visuera-dark tracking-tight">Instrumentpanel</h1>
         </div>
-        <button 
-          onClick={onNewReport}
-          className="hidden sm:flex bg-visuera-green text-white px-6 py-4 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] items-center gap-3 hover:bg-visuera-light-green transition-all shadow-xl shadow-visuera-green/20"
-        >
-          <PlusCircle size={20} />
-          Ny anmälan
-        </button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 lg:gap-6">
@@ -624,7 +683,7 @@ const Dashboard = ({ onNewReport, cases: allCases, onOpenCase, onNavigate, caseQ
                 : 'bg-slate-50 border-transparent text-slate-500 hover:border-slate-200'
             }`}
           >
-            <span className="text-[10px] font-black uppercase tracking-widest">Alla ärenden</span>
+            <span className="text-[10px] font-black uppercase tracking-widest">{filterType === 'mine' ? 'Mina ärenden' : 'Alla ärenden'}</span>
             <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${statusFilter === 'all' ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-500'}`}>
               {cases.length}
             </div>
@@ -664,27 +723,29 @@ const Dashboard = ({ onNewReport, cases: allCases, onOpenCase, onNavigate, caseQ
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
           <div className="flex items-center gap-4">
             <h3 className="font-black text-visuera-dark uppercase tracking-widest">Ärendelista</h3>
-            <div className="flex bg-slate-50 p-1 rounded-xl border border-slate-200">
-              <button 
-                onClick={() => setFilterType('all')}
-                className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${filterType === 'all' ? 'bg-white text-visuera-dark shadow-sm' : 'text-slate-400 hover:text-visuera-dark'}`}
-              >
-                Alla
-              </button>
-              <button 
-                onClick={() => setFilterType('mine')}
-                className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${filterType === 'mine' ? 'bg-white text-visuera-dark shadow-sm' : 'text-slate-400 hover:text-visuera-dark'}`}
-              >
-                Mina
-              </button>
-            </div>
+            {(userProfile?.role === 'principal' || userProfile?.globalRole === 'admin' || userProfile?.role === 'admin') && (
+              <div className="flex bg-slate-50 p-1 rounded-xl border border-slate-200">
+                <button 
+                  onClick={() => setFilterType('mine')}
+                  className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${filterType === 'mine' ? 'bg-white text-visuera-dark shadow-sm' : 'text-slate-400 hover:text-visuera-dark'}`}
+                >
+                  Mina ärenden
+                </button>
+                <button 
+                  onClick={() => setFilterType('all')}
+                  className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${filterType === 'all' ? 'bg-white text-visuera-dark shadow-sm' : 'text-slate-400 hover:text-visuera-dark'}`}
+                >
+                  Visa hela skolan
+                </button>
+              </div>
+            )}
           </div>
 
           <div className="flex items-center gap-3 w-full md:w-auto">
             <div className="relative flex-1 md:w-64">
               <input 
                 type="text" 
-                placeholder="Sök i arkivet..." 
+                placeholder="Sök ärende..." 
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full bg-slate-50 border-none rounded-xl pl-10 pr-4 py-2.5 text-xs font-bold focus:ring-2 focus:ring-visuera-green/20 transition-all placeholder:text-slate-300"
@@ -825,7 +886,7 @@ const App = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'cases' | 'report' | 'flow' | 'users'>(
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'cases' | 'report' | 'flow' | 'users' | 'active-list'>(
     (localStorage.getItem('lastActiveTab') as any) || 'dashboard'
   );
   const [selectedCaseId, setSelectedCaseId] = useState<string | null>(
@@ -846,6 +907,37 @@ const App = () => {
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [caseQuestions, setCaseQuestions] = useState<string[]>([]);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
+
+  const handleToggleEmailNotifications = async () => {
+    if (!user) return;
+    const currentStatus = userProfile?.preferences?.emailNotifications || false;
+    try {
+      await updateDoc(doc(db, 'users', user.uid), {
+        'preferences.emailNotifications': !currentStatus
+      });
+      // userProfile will be updated via onSnapshot in App.tsx
+    } catch (err) {
+      console.error("Error updating notification preferences:", err);
+    }
+  };
+
+  const getPermissionsList = () => {
+    const role = userProfile?.role;
+    const permissions = [];
+    
+    if (role === 'admin') {
+      permissions.push("Full systemåtkomst", "Användarhantering", "Systemkonfiguration");
+    } else if (role === 'principal') {
+      permissions.push(`Läsrättigheter för ${userProfile?.school || 'skolan'}`, "Signera utredningar", "Hotspot-analys & EWS");
+    } else if (role === 'authority') {
+      permissions.push("Övergripande tillsyn", "Läsrättigheter för anslutna skolor", "Strategisk analys");
+    } else {
+      permissions.push("Skapa anmälningar", "Se egna inskickade ärenden");
+    }
+    
+    return permissions;
+  };
 
   const handleDeleteCase = async (e: React.MouseEvent, caseId: string) => {
     e.stopPropagation();
@@ -1016,14 +1108,26 @@ const App = () => {
       // If global admin, we can subscribe to all cases. 
       // Otherwise, we MUST filter to avoid permission-denied errors.
       const filters: any = {};
+      const isSystemAdmin = userProfile.globalRole === 'admin' || userProfile.role === 'admin';
       
-      if (userProfile.globalRole !== 'admin' && userProfile.role !== 'admin') {
-        if (userProfile.school) {
+      if (!isSystemAdmin) {
+        const isPrincipal = userProfile.role === 'principal';
+        
+        if (isPrincipal && userProfile.school) {
           filters.school = userProfile.school;
         } else {
-          // If no school and not admin, try only cases reported by or assigned to user
+          // Investigators (teachers) and staff only see cases they are involved in
           filters.reporterUid = user.uid;
+          filters.assignedToUid = user.uid;
+          if (userProfile.team) {
+            filters.assignedTeam = userProfile.team;
+          }
+          if (user.email) {
+            filters.reporterEmail = user.email;
+          }
         }
+      } else {
+        filters.isAdmin = true;
       }
 
       const unsubscribe = caseService.subscribeToCases((fetchedCases) => {
@@ -1160,6 +1264,14 @@ const App = () => {
     });
   }, [cases, filterStatus, filterSchool, filterDateStart, filterDateEnd, filterQuery]);
 
+  const myActiveCases = React.useMemo(() => {
+    if (!userProfile) return [];
+    return cases.filter(c => 
+      c.assignedToUid === userProfile.uid && 
+      !['avslutat', 'arkiverad'].includes(c.status)
+    );
+  }, [cases, userProfile]);
+
   if (loading) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
@@ -1251,19 +1363,26 @@ const App = () => {
                   {[
                     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
                     { id: 'cases', label: 'Alla ärenden', icon: FileSearch },
-                    { id: 'report', label: 'Ny anmälan', icon: PlusCircle },
-                    { id: 'flow', label: 'Aktiv utredning', icon: Layers },
+                    { id: 'flow', label: 'Aktiva ärenden', icon: Layers },
                     ...(userProfile?.role === 'admin' ? [{ id: 'users', label: 'Användare', icon: Users }] : [])
                   ].map((item) => (
                     <button
                       key={item.id}
                       onClick={() => {
-                        setActiveTab(item.id as any);
-                        if (item.id === 'report') setSelectedCaseId(null);
+                        if (item.id === 'flow') {
+                          if (myActiveCases.length === 1) {
+                            setSelectedCaseId(myActiveCases[0].id);
+                            setActiveTab('flow');
+                          } else {
+                            setActiveTab('active-list' as any);
+                          }
+                        } else {
+                          setActiveTab(item.id as any);
+                        }
                         setIsSidebarOpen(false);
                       }}
                       className={`w-full flex items-center gap-4 p-4 rounded-2xl transition-all ${
-                        activeTab === item.id 
+                        (activeTab === item.id || (item.id === 'flow' && activeTab === 'active-list'))
                           ? 'bg-visuera-green text-white shadow-xl shadow-visuera-green/20' 
                           : 'text-slate-400 hover:bg-slate-50 hover:text-visuera-green'
                       }`}
@@ -1290,43 +1409,56 @@ const App = () => {
         </AnimatePresence>
 
         {/* Desktop Sidebar (Fixed) */}
-        <aside className={`hidden md:flex bg-white border-r border-slate-100 flex-col items-center lg:items-stretch py-8 px-4 lg:px-6 fixed h-full z-20 transition-all duration-500 ${isSidebarCollapsed ? 'w-20' : 'w-20 lg:w-64'}`}>
-          <div className="flex items-center justify-between gap-3 px-2 mb-12 overflow-hidden">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-visuera-green rounded-[14px] flex items-center justify-center shrink-0 shadow-lg shadow-visuera-green/20">
-                <span className="text-white font-bold text-xs">AmO</span>
-              </div>
-              {!isSidebarCollapsed && (
-                <span className="text-xl font-extrabold text-visuera-dark tracking-tight hidden lg:block whitespace-nowrap">Agera med Omtanke</span>
-              )}
+        <aside className={`hidden md:flex bg-white border-r border-slate-100 flex-col py-8 fixed h-full z-20 transition-all duration-500 ${isSidebarCollapsed ? 'w-20 items-center px-2' : 'w-20 lg:w-72 items-center lg:items-stretch px-4 lg:px-6'}`}>
+          {/* Main Sidebar Collapse Button (Floating on border) */}
+          <button 
+            onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+            className="hidden lg:flex absolute -right-3 top-10 w-6 h-6 bg-white border border-slate-200 rounded-full items-center justify-center text-slate-400 hover:text-visuera-green shadow-sm z-50 transition-all hover:scale-110"
+            title={isSidebarCollapsed ? "Expandera meny" : "Minimera meny"}
+          >
+            {isSidebarCollapsed ? <ChevronRight size={12} /> : <ChevronLeft size={12} />}
+          </button>
+
+          <div className={`flex items-center mb-12 overflow-hidden ${isSidebarCollapsed ? 'justify-center' : 'gap-3 px-2'}`}>
+            <div className="w-10 h-10 bg-visuera-green rounded-[14px] flex items-center justify-center shrink-0 shadow-lg shadow-visuera-green/20">
+              <span className="text-white font-bold text-xs">AmO</span>
             </div>
-            
-            {/* Main Sidebar Collapse Button */}
-            <button 
-              onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-              className="hidden lg:flex w-8 h-8 rounded-xl bg-slate-50 text-slate-400 items-center justify-center hover:bg-visuera-green/10 hover:text-visuera-green transition-all"
-              title={isSidebarCollapsed ? "Expandera meny" : "Minimera meny"}
-            >
-              {isSidebarCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
-            </button>
+            {!isSidebarCollapsed && (
+              <div className="hidden lg:flex flex-col leading-none justify-center">
+                <div className="flex items-center gap-1.5 mb-1">
+                  <div className="h-[1px] w-4 bg-visuera-green/50" />
+                  <span className="text-[9px] font-extrabold text-visuera-green uppercase tracking-[0.2em] whitespace-nowrap">Agera med</span>
+                </div>
+                <span className="text-2xl font-black text-visuera-dark tracking-tighter">Omtanke<span className="text-visuera-green">.</span></span>
+              </div>
+            )}
           </div>
 
           <nav className="space-y-2 flex-1">
             {[
               { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
               { id: 'cases', label: 'Alla ärenden', icon: FileSearch },
-              { id: 'report', label: 'Ny anmälan', icon: PlusCircle },
-              { id: 'flow', label: 'Aktiv utredning', icon: Layers },
+              { id: 'flow', label: 'Aktiva ärenden', icon: Layers },
               ...(userProfile?.role === 'admin' ? [{ id: 'users', label: 'Användare', icon: Users }] : [])
             ].map((item) => (
               <button
                 key={item.id}
                 onClick={() => {
-                  setActiveTab(item.id as any);
-                  if (item.id === 'report') setSelectedCaseId(null);
+                  if (item.id === 'flow') {
+                    if (myActiveCases.length === 1) {
+                      setSelectedCaseId(myActiveCases[0].id);
+                      setActiveTab('flow');
+                    } else {
+                      setActiveTab('active-list' as any);
+                    }
+                  } else {
+                    setActiveTab(item.id as any);
+                  }
                 }}
-                className={`w-full flex items-center gap-4 p-4 rounded-2xl transition-all group ${
-                  activeTab === item.id 
+                className={`flex items-center rounded-2xl transition-all group ${
+                  isSidebarCollapsed ? 'w-12 h-12 justify-center' : 'w-full gap-4 p-4'
+                } ${
+                  (activeTab === item.id || (item.id === 'flow' && activeTab === 'active-list'))
                     ? 'bg-visuera-green text-white shadow-xl shadow-visuera-green/20' 
                     : 'text-slate-400 hover:bg-slate-50 hover:text-visuera-green'
                 }`}
@@ -1342,7 +1474,9 @@ const App = () => {
 
           <button 
             onClick={() => signOut(auth)}
-            className="w-full flex items-center gap-4 p-4 rounded-2xl text-slate-400 hover:bg-red-50 hover:text-red-500 transition-all mt-auto"
+            className={`flex items-center rounded-2xl text-slate-400 hover:bg-red-50 hover:text-red-500 transition-all mt-auto ${
+              isSidebarCollapsed ? 'w-12 h-12 justify-center' : 'w-full gap-4 p-4'
+            }`}
             title={isSidebarCollapsed ? "Logga ut" : undefined}
           >
             <LogOut size={20} />
@@ -1353,7 +1487,7 @@ const App = () => {
         </aside>
 
         {/* Main Content Area */}
-        <main className={`flex-1 transition-all duration-500 ml-0 md:ml-20 ${isSidebarCollapsed ? 'lg:ml-20' : 'lg:ml-64'} p-4 sm:p-6 lg:p-12 min-w-0`}>
+        <main className={`flex-1 transition-all duration-500 ml-0 md:ml-20 ${isSidebarCollapsed ? 'lg:ml-20' : 'lg:ml-72'} p-4 sm:p-6 lg:p-12 min-w-0`}>
           {/* Notification Sidebar / Overlay */}
           <AnimatePresence>
             {isNotificationsOpen && (
@@ -1393,16 +1527,17 @@ const App = () => {
               >
                 <Database size={20} />
               </button>
-              <div className="hidden lg:flex items-center gap-4">
-                <div className="relative">
-                  <input 
-                    type="text" 
-                    placeholder="Sök ärende..." 
-                    className="bg-white border-none rounded-2xl pl-12 pr-6 py-3 w-80 text-sm shadow-sm focus:ring-2 focus:ring-visuera-green/20 transition-all"
-                  />
-                  <Database className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
-                </div>
-              </div>
+              <button 
+                onClick={() => {
+                  setActiveTab('report');
+                  setSelectedCaseId(null);
+                }}
+                className="flex bg-visuera-green text-white px-5 sm:px-6 py-3 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] items-center gap-3 hover:bg-visuera-light-green transition-all shadow-md shadow-visuera-green/10"
+              >
+                <PlusCircle size={18} />
+                <span className="hidden sm:inline">Ny anmälan</span>
+                <span className="sm:hidden">Ny</span>
+              </button>
             </div>
             
             <div className="flex items-center gap-4">
@@ -1419,24 +1554,127 @@ const App = () => {
                 )}
               </button>
 
-              <div className="text-right hidden sm:block">
-                <div className="text-sm font-bold text-visuera-dark truncate max-w-[150px]">{user.displayName}</div>
-                <div className="text-[9px] font-bold text-visuera-green uppercase tracking-widest truncate max-w-[150px]">
-                  {userProfile?.globalRole === 'admin' || userProfile?.role === 'admin' ? 'Systemadministratör' : (
+              <div className="relative">
+                <button 
+                  onClick={() => setIsProfileOpen(!isProfileOpen)}
+                  className="flex items-center gap-3 bg-white p-1.5 pr-4 rounded-[20px] border border-slate-100 hover:border-visuera-green transition-all shadow-sm active:scale-95"
+                >
+                  <img 
+                    src={user.photoURL || `https://ui-avatars.com/api/?name=${user.displayName}`} 
+                    alt="Profile" 
+                    className="w-10 h-10 rounded-2xl border border-white shadow-sm"
+                    referrerPolicy="no-referrer"
+                  />
+                  <div className="text-right hidden sm:block">
+                    <div className="text-sm font-bold text-visuera-dark leading-tight">{user.displayName}</div>
+                    <div className="flex items-center justify-end gap-1">
+                      <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full" />
+                      <span className="text-[9px] font-bold text-emerald-600 uppercase tracking-widest">BankID-verifierad</span>
+                    </div>
+                  </div>
+                  <ChevronDown size={14} className={`text-slate-400 transition-transform ${isProfileOpen ? 'rotate-180' : ''}`} />
+                </button>
+
+                <AnimatePresence>
+                  {isProfileOpen && (
                     <>
-                      {Object.keys(userProfile?.schoolAccess || {}).length > 1 ? 'Multipel Åtkomst' : (ROLE_LABELS[userProfile?.role || ''] || 'Anmälare')}
-                      {' • '}
-                      {userProfile?.school || 'Danderyds Skola'}
+                      <div 
+                        className="fixed inset-0 z-40" 
+                        onClick={() => setIsProfileOpen(false)}
+                      />
+                      <motion.div
+                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                        transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+                        className="absolute right-0 mt-3 w-80 bg-white border border-slate-200 rounded-[28px] shadow-2xl z-50 overflow-hidden"
+                      >
+                        {/* Section 1: Profil & Identitet */}
+                        <div className="p-6 border-bottom border-slate-100 bg-slate-50/50">
+                          <div className="flex items-center gap-4 mb-4">
+                            <div className="w-14 h-14 bg-visuera-green rounded-2xl flex items-center justify-center text-white text-xl font-bold shadow-lg shadow-visuera-green/20">
+                              {user.displayName?.charAt(0)}
+                            </div>
+                            <div>
+                              <h3 className="text-lg font-black text-visuera-dark leading-tight">{user.displayName}</h3>
+                              <p className="text-xs text-visuera-green font-bold uppercase tracking-wider">
+                                {userProfile?.role === 'admin' ? 'Systemadministratör' : ROLE_LABELS[userProfile?.role || ''] || 'Användare'}
+                              </p>
+                              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tight">{userProfile?.school || 'Danderyds Skola'}</p>
+                            </div>
+                          </div>
+                          <button className="w-full flex items-center justify-center gap-2 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-50 transition-all">
+                            <UserIcon size={14} /> Visa Profil
+                          </button>
+                        </div>
+
+                        <div className="p-2 space-y-1">
+                          {/* Section 2: Rättigheter & Behörighet */}
+                          <div className="px-4 py-3">
+                            <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-2">
+                              <Shield size={12} className="text-visuera-green" /> Rättigheter & Behörighet
+                            </h4>
+                            <ul className="space-y-1.5">
+                              {getPermissionsList().map((perm, idx) => (
+                                <li key={idx} className="flex items-center gap-2 text-[11px] text-slate-600 font-medium">
+                                  <CheckCircle2 size={12} className="text-emerald-500 shrink-0" />
+                                  {perm}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+
+                          <div className="h-[1px] bg-slate-100 mx-4" />
+
+                          {/* Section 3: Notisinställningar */}
+                          <div className="px-4 py-3">
+                            <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                              <Bell size={12} className="text-visuera-green" /> Inställningar
+                            </h4>
+                            <div className="flex items-center justify-between p-3 bg-slate-50 rounded-2xl border border-slate-100">
+                              <div className="flex items-center gap-3">
+                                <div className="p-2 bg-white rounded-lg border border-slate-100 shadow-sm">
+                                  <Mail size={14} className="text-visuera-green" />
+                                </div>
+                                <div>
+                                  <p className="text-[11px] font-bold text-slate-700">E-post-forwarding</p>
+                                  <p className="text-[9px] text-slate-400">Skicka kopia av notiser</p>
+                                </div>
+                              </div>
+                              <button 
+                                onClick={handleToggleEmailNotifications}
+                                className={`w-10 h-5 rounded-full relative transition-all duration-300 ${
+                                  userProfile?.preferences?.emailNotifications ? 'bg-visuera-green' : 'bg-slate-200'
+                                }`}
+                              >
+                                <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-all duration-300 ${
+                                  userProfile?.preferences?.emailNotifications ? 'left-6' : 'left-1'
+                                }`} />
+                              </button>
+                            </div>
+                          </div>
+
+                          <div className="h-[1px] bg-slate-100 mx-4" />
+
+                          {/* Section 4: System & Säkerhet */}
+                          <div className="px-4 py-3 space-y-3">
+                            <div className="flex items-center justify-between text-[10px] text-slate-400 font-bold uppercase tracking-tighter">
+                              <span className="flex items-center gap-1"><Clock size={10} /> Session Löper ut</span>
+                              <span className="text-visuera-green">2h 45m kvar</span>
+                            </div>
+                            <button 
+                              onClick={() => signOut(auth)}
+                              className="w-full flex items-center justify-center gap-2 py-3 bg-red-50 text-red-500 rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-red-100 transition-all"
+                            >
+                              <LogOut size={14} /> Logga ut
+                            </button>
+                          </div>
+                        </div>
+                      </motion.div>
                     </>
                   )}
-                </div>
+                </AnimatePresence>
               </div>
-              <img 
-                src={user.photoURL || `https://ui-avatars.com/api/?name=${user.displayName}`} 
-                alt="Profile" 
-                className="w-12 h-12 rounded-2xl border-2 border-white shadow-md"
-                referrerPolicy="no-referrer"
-              />
             </div>
           </header>
 
@@ -1460,7 +1698,7 @@ const App = () => {
                   <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
                      <div>
                         <h2 className="text-xl lg:text-2xl font-black text-visuera-dark tracking-tight">Ärendehantering</h2>
-                        <p className="text-[11px] lg:text-sm text-slate-500 mt-1">Här visas alla ärenden på din skola.</p>
+                        <p className="text-[11px] lg:text-sm text-slate-500 mt-1">Här visas alla ärenden som du har rättigheter att se.</p>
                      </div>
                      <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
                         <div className="relative flex-1 sm:flex-initial">
@@ -1660,6 +1898,15 @@ const App = () => {
                 {/* We'll use the Step 1 of TrygghetsFlow as the simplified reporter view */}
                 <TrygghetsFlow isQuickReport={true} cases={cases} />
               </div>
+            )}
+            {activeTab === 'active-list' && (
+              <ActiveCasesList 
+                cases={myActiveCases} 
+                onOpenCase={(id) => {
+                  setSelectedCaseId(id);
+                  setActiveTab('flow');
+                }} 
+              />
             )}
             {activeTab === 'flow' && <TrygghetsFlow initialCaseId={selectedCaseId || undefined} cases={cases} />}
             {activeTab === 'users' && <UserManagement />}

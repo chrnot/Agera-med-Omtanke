@@ -20,8 +20,12 @@
         "school": { "type": "string", "description": "The school where the incident occurred." },
         "reporterUid": { "type": "string", "description": "Firebase Auth UID of the reporter (or 'anonymous')." },
         "reporterName": { "type": "string", "description": "Name of the person who reported the case." },
+        "reporterEmail": { "type": "string", "description": "Email address of the reporter (for anonymous linking)." },
         "assignedToUid": { "type": "string", "description": "UID of the investigator assigned by the principal." },
         "assignedTeacher": { "type": "string", "description": "Name of the investigator for display." },
+        "assignedTeacherUid": { "type": "string", "description": "UID of the investigator assigned (redundant with assignedToUid but used in some contexts)." },
+        "assignedTeam": { "type": "string", "description": "The team/workgroup assigned to help with the case." },
+        "requestTeamContribution": { "type": "boolean", "description": "True if the investigator has requested help from the team." },
         "principalUid": { "type": "string", "description": "UID of the principal responsible for the case." },
         "isRestricted": { "type": "boolean", "description": "If true, only rectors and specific investigators see the case." },
         "createdAt": { "type": "string", "format": "date-time" },
@@ -87,6 +91,20 @@
       },
       "required": ["recipientUid", "type", "title", "message", "createdAt"]
     },
+    "Contribution": {
+      "title": "Contribution (Bidrag)",
+      "description": "Observations or inputs from team members to a case.",
+      "type": "object",
+      "properties": {
+        "caseId": { "type": "string" },
+        "text": { "type": "string" },
+        "authorUid": { "type": "string" },
+        "authorName": { "type": "string" },
+        "authorTeam": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["caseId", "text", "authorUid", "authorName", "createdAt"]
+    },
     "Authority": {
       "title": "Authority (Huvudman)",
       "description": "An organization that manages multiple schools.",
@@ -136,6 +154,7 @@
   "firestore": {
     "/cases/{caseId}": { "schema": "Case", "description": "Main incident reports." },
     "/cases/{caseId}/actors/{actorId}": { "schema": "Actor", "description": "People in interviews." },
+    "/cases/{caseId}/contributions/{contribId}": { "schema": "Contribution", "description": "Team inputs." },
     "/cases/{caseId}/actions/{actionId}": { "schema": "Action", "description": "Corrective steps." },
     "/cases/{caseId}/audit/{logId}": { "schema": "AuditLog", "description": "Change history." },
     "/notifications/{noteId}": { "schema": "Notification", "description": "System alerts." },
