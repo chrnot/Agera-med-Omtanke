@@ -37,7 +37,7 @@ export const CollapsibleLegal: React.FC<CollapsibleLegalProps> = ({
             initial={{ opacity: 0, scale: 0.95, y: -10 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: -10 }}
-            className="absolute top-full left-0 mt-3 w-80 bg-[#EBF8FF] border border-blue-100 rounded-3xl p-6 shadow-2xl z-40"
+            className="absolute top-full left-0 mt-3 w-[280px] sm:w-80 bg-[#EBF8FF] border border-blue-100 rounded-2xl sm:rounded-3xl p-5 sm:p-6 shadow-2xl z-40"
           >
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2 text-blue-800">

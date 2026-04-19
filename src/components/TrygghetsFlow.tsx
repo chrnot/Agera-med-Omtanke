@@ -143,6 +143,8 @@ const DEFAULT_FORM_DATA = {
 };
 
 export const TrygghetsFlow = ({ isQuickReport = false, onSuccess, initialCaseId, cases = [] }: TrygghetsFlowProps) => {
+  const [showMobileSidebar, setShowMobileSidebar] = React.useState(false);
+
   const [activeCaseId, setActiveCaseId] = React.useState<string | null>(initialCaseId || null);
   const [currentStepIndex, setCurrentStepIndex] = React.useState(0);
   const [isProcessing, setIsProcessing] = React.useState(false);
@@ -797,38 +799,83 @@ export const TrygghetsFlow = ({ isQuickReport = false, onSuccess, initialCaseId,
         />
       )}
 
-      <div className={`${!isQuickReport ? 'flex-1 flex overflow-hidden' : ''}`}>
+      <div className={`${!isQuickReport ? 'flex-1 flex overflow-hidden' : ''} bg-[#FDFDFD]`}>
         {/* Main Workspace Area */}
         <div className={`${!isQuickReport ? 'flex-1 overflow-y-auto custom-scrollbar' : 'w-full'}`}>
-          <div className={`${isQuickReport ? 'w-full' : 'max-w-6xl mx-auto p-8'} flex gap-12 items-start h-full`}>
+          <div className={`${isQuickReport ? 'w-full' : 'max-w-6xl mx-auto px-4 py-8 lg:p-8'} flex flex-col lg:flex-row gap-8 lg:gap-12 items-start h-full`}>
             
+            {/* Mobile Sidebar Toggle Button */}
+            {!isQuickReport && activeCaseId && (
+              <button 
+                onClick={() => setShowMobileSidebar(!showMobileSidebar)}
+                className="lg:hidden w-full p-4 bg-white border border-slate-100 rounded-2xl shadow-sm flex items-center justify-between group active:scale-95 transition-all"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 bg-visuera-green/10 rounded-xl flex items-center justify-center text-visuera-green">
+                    <Info size={16} />
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block text-left">Ärendeinformation</span>
+                    <span className="text-sm font-bold text-visuera-dark">Visa detaljer & verktyg</span>
+                  </div>
+                </div>
+                <div className={`p-2 rounded-lg bg-slate-50 text-slate-400 group-hover:text-visuera-green transition-all ${showMobileSidebar ? 'rotate-180' : ''}`}>
+                  <ChevronDown size={20} />
+                </div>
+              </button>
+            )}
+
+            {/* Mobile Sidebar (Collapsible) */}
+            <AnimatePresence>
+              {!isQuickReport && showMobileSidebar && (
+                <motion.div 
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  className="lg:hidden w-full overflow-hidden"
+                >
+                  <div className="pb-6">
+                    <CaseSidebar 
+                      formData={formData}
+                      caseId={activeCaseId}
+                      currentStepTitle={currentStep.title}
+                      onShowAudit={() => {
+                        setShowStats(true);
+                        setShowMobileSidebar(false);
+                      }}
+                    />
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
             {/* Form Content Column */}
-            <div className="flex-1 space-y-12 pb-32">
+            <div className="w-full flex-1 space-y-8 lg:space-y-12 pb-32">
             <motion.div 
                 key={currentStepIndex}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 className="space-y-8"
               >
-                <div className="flex items-center justify-between mb-2">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-2">
                   {!isQuickReport && (
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 bg-visuera-green/10 rounded-2xl flex items-center justify-center text-visuera-green">
                         <ClipboardList size={20} />
                       </div>
                       <div>
-                        <h2 className="text-xl font-black text-visuera-dark uppercase tracking-widest">{currentStep.title}</h2>
+                        <h2 className="text-lg lg:text-xl font-black text-visuera-dark uppercase tracking-widest">{currentStep.title}</h2>
                         <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">Dokumenteras enligt legal standard</p>
                       </div>
                     </div>
                   )}
 
                   {!isQuickReport && (
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       <button
                         onClick={generatePDF}
                         disabled={isGeneratingPDF}
-                        className="flex items-center gap-2 px-4 py-2 bg-white hover:bg-slate-50 text-slate-600 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border border-slate-100 shadow-sm"
+                        className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 py-2 bg-white hover:bg-slate-50 text-slate-600 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border border-slate-100 shadow-sm"
                       >
                         {isGeneratingPDF ? (
                           <div className="w-4 h-4 border-2 border-visuera-green border-t-transparent rounded-full animate-spin" />
@@ -841,18 +888,18 @@ export const TrygghetsFlow = ({ isQuickReport = false, onSuccess, initialCaseId,
                         <button
                           onClick={handleNudge}
                           disabled={isNudging}
-                          className="flex items-center gap-2 px-4 py-2 bg-visuera-green/5 hover:bg-visuera-green/10 text-visuera-green rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border border-visuera-green/20"
+                          className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 py-2 bg-visuera-green/5 hover:bg-visuera-green/10 text-visuera-green rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border border-visuera-green/20"
                         >
                           <Zap size={14} />
-                          Begär uppdatering
+                          Nödvändig uppföljning
                         </button>
                       )}
                     </div>
                   )}
                 </div>
 
-                <div className={`grid grid-cols-1 ${!isQuickReport ? 'lg:grid-cols-[1fr_300px]' : ''} gap-10 items-start`}>
-                  <div className="space-y-10">
+                <div className={`grid grid-cols-1 ${!isQuickReport ? 'lg:grid-cols-[1fr_300px]' : ''} gap-6 lg:gap-10 items-start`}>
+                  <div className="space-y-8 lg:space-y-10">
                     {currentStep.id === 1 && (
                       <AnmalanStep 
                         formData={formData}
@@ -905,27 +952,27 @@ export const TrygghetsFlow = ({ isQuickReport = false, onSuccess, initialCaseId,
                       />
                     )}
 
-                    <div className="mt-12 pt-10 border-t border-slate-100 flex justify-between items-center">
-                      <div className="flex items-center gap-2 text-slate-400 text-xs font-medium">
+                    <div className="mt-8 lg:mt-12 pt-8 lg:pt-10 border-t border-slate-100 flex flex-col sm:flex-row justify-between items-center gap-6">
+                      <div className="w-full sm:w-auto flex items-center justify-center gap-2 text-slate-400 text-xs font-medium">
                         {isStepValid() ? (
                           <div className="flex items-center gap-2 bg-emerald-50 text-emerald-600 px-4 py-2 rounded-full border border-emerald-100">
                             <div className="w-2 h-2 bg-emerald-500 rounded-full shadow-[0_0_8px_rgba(16,185,129,0.4)]" />
-                            <span className="uppercase tracking-[0.15em] text-[9px] font-black">All information ifylld</span>
+                            <span className="uppercase tracking-[0.15em] text-[8px] lg:text-[9px] font-black">All information ifylld</span>
                           </div>
                         ) : (
                           <div className="flex items-center gap-2 bg-slate-50 text-slate-400 px-4 py-2 rounded-full border border-slate-100">
                             <div className="w-2 h-2 bg-slate-300 rounded-full" />
-                            <span className="uppercase tracking-[0.15em] text-[9px] font-black">Väntar på obligatoriska fält *</span>
+                            <span className="uppercase tracking-[0.15em] text-[8px] lg:text-[9px] font-black">Väntar på obligatoriska fält *</span>
                           </div>
                         )}
                       </div>
                       
-                      <div className="flex gap-4">
+                      <div className="w-full sm:w-auto flex flex-col sm:flex-row gap-3">
                         {currentStepIndex > 0 && (
                           <button 
                             onClick={handlePrevStep}
                             disabled={isProcessing}
-                            className="flex items-center gap-2 px-8 py-4 rounded-2xl font-black bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-slate-300 transition-all text-[10px] uppercase tracking-[0.2em]"
+                            className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 lg:px-8 py-3.5 lg:py-4 rounded-2xl font-black bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-slate-300 transition-all text-[9px] lg:text-[10px] uppercase tracking-[0.2em]"
                           >
                             <ArrowLeft size={16} />
                             Föregående
@@ -935,7 +982,7 @@ export const TrygghetsFlow = ({ isQuickReport = false, onSuccess, initialCaseId,
                         <button 
                           onClick={handleNextStep}
                           disabled={isProcessing || !isStepValid()}
-                          className={`flex items-center gap-2 px-10 py-5 rounded-2xl font-black transition-all shadow-xl text-[10px] uppercase tracking-[0.2em] ${
+                          className={`w-full sm:w-auto flex items-center justify-center gap-2 px-8 lg:px-10 py-4 lg:py-5 rounded-2xl font-black transition-all shadow-xl text-[9px] lg:text-[10px] uppercase tracking-[0.2em] ${
                             isProcessing || !isStepValid()
                               ? 'bg-slate-100 text-slate-300 cursor-not-allowed shadow-none border border-slate-200'
                               : 'bg-blue-600 text-white hover:bg-blue-700 hover:-translate-y-1 shadow-blue-600/20'
@@ -982,7 +1029,7 @@ export const TrygghetsFlow = ({ isQuickReport = false, onSuccess, initialCaseId,
             initial={{ opacity: 0, y: 50, scale: 0.9 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 50, scale: 0.9 }}
-            className="fixed bottom-12 left-1/2 -translate-x-1/2 z-[150] bg-visuera-dark text-white px-8 py-5 rounded-[30px] shadow-2xl flex items-center gap-4 border border-white/10"
+            className="fixed bottom-6 lg:bottom-12 left-1/2 -translate-x-1/2 z-[150] w-[calc(100%-2rem)] max-w-md bg-visuera-dark text-white px-6 lg:px-8 py-4 lg:py-5 rounded-[24px] lg:rounded-[30px] shadow-2xl flex items-center gap-4 border border-white/10"
           >
             <div className="w-10 h-10 bg-visuera-green rounded-full flex items-center justify-center shrink-0">
               <CheckCircle2 size={20} />

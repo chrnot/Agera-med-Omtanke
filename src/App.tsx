@@ -492,34 +492,28 @@ const Dashboard = ({ onNewReport, cases: allCases, onOpenCase, onNavigate, caseQ
           className="bg-visuera-green text-white px-6 py-3 rounded-2xl font-bold flex items-center gap-2 hover:bg-visuera-light-green transition-all shadow-lg shadow-visuera-green/10"
         >
           <PlusCircle size={20} />
-          Ny Snabb-anmälan
+          Ny anmälan
         </button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
         {[
           { id: 'anmäld', label: 'Anmälda', value: cases.filter(c => c.status === 'anmäld').length.toString(), icon: AlertCircle, color: 'text-blue-500', bg: 'bg-blue-50', border: 'border-blue-100', accent: 'blue' },
-          { id: 'utredning', label: 'Under utredning', value: cases.filter(c => c.status === 'utredning').length.toString(), icon: FileSearch, color: 'text-amber-500', bg: 'bg-amber-50', border: 'border-amber-100', accent: 'amber' },
-          { id: 'åtgärder', label: 'Aktiva åtgärder', value: cases.filter(c => c.status === 'åtgärder').length.toString(), icon: Zap, color: 'text-visuera-green', bg: 'bg-visuera-green/5', border: 'border-visuera-green/10', accent: 'green' },
-          { id: 'avslutat', label: 'Avslutade ärenden', value: cases.filter(c => c.status === 'avslutat').length.toString(), icon: CheckCircle2, color: 'text-slate-400', bg: 'bg-slate-50', border: 'border-slate-100', accent: 'slate' }
+          { id: 'utredning', label: 'Utredning', value: cases.filter(c => c.status === 'utredning').length.toString(), icon: FileSearch, color: 'text-amber-500', bg: 'bg-amber-50', border: 'border-amber-100', accent: 'amber' },
+          { id: 'åtgärder', label: 'Åtgärder', value: cases.filter(c => c.status === 'åtgärder').length.toString(), icon: Zap, color: 'text-visuera-green', bg: 'bg-visuera-green/5', border: 'border-visuera-green/10', accent: 'green' },
+          { id: 'avslutat', label: 'Avslutade', value: cases.filter(c => c.status === 'avslutat').length.toString(), icon: CheckCircle2, color: 'text-slate-400', bg: 'bg-slate-50', border: 'border-slate-100', accent: 'slate' }
         ].map((stat, i) => (
           <motion.div 
             key={i} 
             whileHover={{ y: -4 }}
-            className={`bg-white p-6 rounded-[32px] border ${stat.border} shadow-sm space-y-3 transition-all hover:shadow-xl hover:shadow-${stat.accent}-500/5`}
+            className={`bg-white p-4 lg:p-6 rounded-[24px] lg:rounded-[32px] border ${stat.border} shadow-sm space-y-3 transition-all`}
           >
-            <div className={`w-12 h-12 ${stat.bg} ${stat.color} rounded-2xl flex items-center justify-center`}>
-              <stat.icon size={22} />
+            <div className={`w-10 h-10 lg:w-12 lg:h-12 ${stat.bg} ${stat.color} rounded-xl lg:rounded-2xl flex items-center justify-center`}>
+              <stat.icon size={20} />
             </div>
             <div>
-              <div className="text-3xl font-black text-visuera-dark tracking-tight">{stat.value}</div>
-              <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">{stat.label}</div>
-            </div>
-            <div className="pt-2 flex items-center gap-1.5 border-t border-slate-50">
-               <div className={`text-[9px] font-bold px-1.5 py-0.5 rounded flex items-center gap-0.5 ${getTrend(stat.label).up ? 'bg-visuera-green/10 text-visuera-green' : 'bg-red-50 text-red-500'}`}>
-                  {getTrend(stat.label).up ? '↑' : '↓'} {getTrend(stat.label).val}
-               </div>
-               <span className="text-[9px] text-slate-300 font-medium whitespace-nowrap">vs föreg. månad</span>
+              <div className="text-2xl lg:text-3xl font-black text-visuera-dark tracking-tight">{stat.value}</div>
+              <div className="text-[9px] lg:text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">{stat.label}</div>
             </div>
           </motion.div>
         ))}
@@ -828,6 +822,7 @@ const App = () => {
   const [user, setUser] = useState<User | null>(null);
   const [userProfile, setUserProfile] = useState<any>(null);
   const [isAnonymous, setIsAnonymous] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'dashboard' | 'cases' | 'report' | 'flow' | 'users'>(
     (localStorage.getItem('lastActiveTab') as any) || 'dashboard'
@@ -1220,9 +1215,81 @@ const App = () => {
 
   return (
     <ErrorBoundary>
-      <div className="min-h-screen bg-slate-50 flex">
-        {/* Simplified Sidebar */}
-        <aside className="w-20 lg:w-64 bg-white border-r border-slate-100 flex flex-col items-center lg:items-stretch py-8 px-4 lg:px-6 fixed h-full z-20">
+      <div className="min-h-screen bg-slate-50 flex overflow-x-hidden">
+        {/* Mobile Sidebar Overlay */}
+        <AnimatePresence>
+          {isSidebarOpen && (
+            <>
+              <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setIsSidebarOpen(false)}
+                className="fixed inset-0 bg-visuera-dark/40 backdrop-blur-sm z-[80] lg:hidden"
+              />
+              <motion.aside 
+                initial={{ x: '-100%' }}
+                animate={{ x: 0 }}
+                exit={{ x: '-100%' }}
+                transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                className="fixed left-0 top-0 bottom-0 w-64 bg-white shadow-2xl z-[90] p-8 flex flex-col lg:hidden"
+              >
+                <div className="flex items-center justify-between mb-12">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-visuera-green rounded-[14px] flex items-center justify-center text-white font-bold text-xs shadow-lg shadow-visuera-green/20">
+                      AmO
+                    </div>
+                    <span className="text-xl font-extrabold text-visuera-dark tracking-tight">Agera med Omtanke</span>
+                  </div>
+                  <button onClick={() => setIsSidebarOpen(false)} className="p-2 text-slate-400 hover:text-slate-600 transition-all">
+                    <X size={20} />
+                  </button>
+                </div>
+
+                <nav className="space-y-2 flex-1">
+                  {[
+                    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+                    { id: 'cases', label: 'Alla ärenden', icon: FileSearch },
+                    { id: 'report', label: 'Ny anmälan', icon: PlusCircle },
+                    { id: 'flow', label: 'Aktiv utredning', icon: Layers },
+                    ...(userProfile?.role === 'admin' ? [{ id: 'users', label: 'Användare', icon: Users }] : [])
+                  ].map((item) => (
+                    <button
+                      key={item.id}
+                      onClick={() => {
+                        setActiveTab(item.id as any);
+                        if (item.id === 'report') setSelectedCaseId(null);
+                        setIsSidebarOpen(false);
+                      }}
+                      className={`w-full flex items-center gap-4 p-4 rounded-2xl transition-all ${
+                        activeTab === item.id 
+                          ? 'bg-visuera-green text-white shadow-xl shadow-visuera-green/20' 
+                          : 'text-slate-400 hover:bg-slate-50 hover:text-visuera-green'
+                      }`}
+                    >
+                      <item.icon size={20} />
+                      <span className="font-bold text-sm">{item.label}</span>
+                    </button>
+                  ))}
+                </nav>
+
+                <button 
+                  onClick={() => {
+                    signOut(auth);
+                    setIsSidebarOpen(false);
+                  }}
+                  className="w-full flex items-center gap-4 p-4 rounded-2xl text-slate-400 hover:bg-red-50 hover:text-red-500 transition-all mt-auto"
+                >
+                  <LogOut size={20} />
+                  <span className="font-bold text-sm">Logga ut</span>
+                </button>
+              </motion.aside>
+            </>
+          )}
+        </AnimatePresence>
+
+        {/* Desktop Sidebar (Fixed) */}
+        <aside className="hidden md:flex w-20 lg:w-64 bg-white border-r border-slate-100 flex-col items-center lg:items-stretch py-8 px-4 lg:px-6 fixed h-full z-20">
           <div className="flex items-center gap-3 px-2 mb-12">
             <div className="w-10 h-10 bg-visuera-green rounded-[14px] flex items-center justify-center shrink-0 shadow-lg shadow-visuera-green/20">
               <span className="text-white font-bold text-xs">AmO</span>
@@ -1266,7 +1333,7 @@ const App = () => {
         </aside>
 
         {/* Main Content Area */}
-        <main className="flex-1 ml-20 lg:ml-64 p-6 lg:p-12">
+        <main className="flex-1 ml-0 md:ml-20 lg:ml-64 p-4 sm:p-6 lg:p-12 min-w-0">
           {/* Notification Sidebar / Overlay */}
           <AnimatePresence>
             {isNotificationsOpen && (
@@ -1298,15 +1365,23 @@ const App = () => {
             )}
           </AnimatePresence>
 
-          <header className="flex justify-between items-center mb-12">
-            <div className="hidden lg:flex items-center gap-4">
-              <div className="relative">
-                <input 
-                  type="text" 
-                  placeholder="Sök ärende..." 
-                  className="bg-white border-none rounded-2xl pl-12 pr-6 py-3 w-80 text-sm shadow-sm focus:ring-2 focus:ring-visuera-green/20 transition-all"
-                />
-                <Database className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
+          <header className="flex justify-between items-center mb-8 lg:mb-12">
+            <div className="flex items-center gap-4">
+              <button 
+                onClick={() => setIsSidebarOpen(true)}
+                className="p-3 bg-white border border-slate-100 rounded-2xl shadow-sm text-slate-400 hover:text-visuera-green lg:hidden"
+              >
+                <Database size={20} />
+              </button>
+              <div className="hidden lg:flex items-center gap-4">
+                <div className="relative">
+                  <input 
+                    type="text" 
+                    placeholder="Sök ärende..." 
+                    className="bg-white border-none rounded-2xl pl-12 pr-6 py-3 w-80 text-sm shadow-sm focus:ring-2 focus:ring-visuera-green/20 transition-all"
+                  />
+                  <Database className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
+                </div>
               </div>
             </div>
             
@@ -1325,8 +1400,8 @@ const App = () => {
               </button>
 
               <div className="text-right hidden sm:block">
-                <div className="text-sm font-bold text-visuera-dark">{user.displayName}</div>
-                <div className="text-[10px] font-bold text-visuera-green uppercase tracking-widest">
+                <div className="text-sm font-bold text-visuera-dark truncate max-w-[150px]">{user.displayName}</div>
+                <div className="text-[9px] font-bold text-visuera-green uppercase tracking-widest truncate max-w-[150px]">
                   {userProfile?.globalRole === 'admin' || userProfile?.role === 'admin' ? 'Systemadministratör' : (
                     <>
                       {Object.keys(userProfile?.schoolAccess || {}).length > 1 ? 'Multipel Åtkomst' : (ROLE_LABELS[userProfile?.role || ''] || 'Anmälare')}
@@ -1362,19 +1437,19 @@ const App = () => {
             {activeTab === 'cases' && (
               <div className="space-y-6">
                 <div className="bg-white rounded-[32px] p-8 border border-slate-100 shadow-sm">
-                  <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
                      <div>
-                        <h2 className="text-2xl font-black text-visuera-dark tracking-tight">Ärendehantering</h2>
-                        <p className="text-sm text-slate-500 mt-1">Här visas alla ärenden på din skola.</p>
+                        <h2 className="text-xl lg:text-2xl font-black text-visuera-dark tracking-tight">Ärendehantering</h2>
+                        <p className="text-[11px] lg:text-sm text-slate-500 mt-1">Här visas alla ärenden på din skola.</p>
                      </div>
-                     <div className="flex items-center gap-3">
-                        <div className="relative">
+                     <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
+                        <div className="relative flex-1 sm:flex-initial">
                           <input 
                             type="text" 
-                            placeholder="Sök ärende..." 
+                            placeholder="Sök..." 
                             value={filterQuery}
                             onChange={(e) => setFilterQuery(e.target.value)}
-                            className="bg-slate-50 border-none rounded-xl pl-10 pr-4 py-2.5 text-xs w-64 focus:ring-2 focus:ring-visuera-green/20 transition-all font-bold"
+                            className="bg-slate-50 border-none rounded-xl pl-10 pr-4 py-2.5 text-xs w-full sm:w-48 lg:w-64 focus:ring-2 focus:ring-visuera-green/20 transition-all font-bold"
                           />
                           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300" size={16} />
                         </div>
@@ -1388,9 +1463,6 @@ const App = () => {
                         >
                           <Filter size={14} />
                           Filter
-                          {(filterStatus !== 'alla' || filterSchool !== 'alla' || filterDateStart || filterDateEnd) && (
-                            <span className="w-2 h-2 bg-white rounded-full"></span>
-                          )}
                         </button>
                      </div>
                   </div>
@@ -1403,7 +1475,7 @@ const App = () => {
                         exit={{ height: 0, opacity: 0 }}
                         className="overflow-hidden mb-8"
                       >
-                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 p-6 bg-slate-50 rounded-2xl border border-slate-100">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 p-6 bg-slate-50 rounded-2xl border border-slate-100">
                           <div className="space-y-1.5">
                             <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Status</label>
                             <select 
@@ -1481,20 +1553,20 @@ const App = () => {
                         filteredCases.map(c => (
                         <div 
                           key={c.id} 
-                          className="p-6 bg-slate-50 rounded-2xl border border-slate-100 flex items-center justify-between hover:border-visuera-green/30 transition-all cursor-pointer group"
+                          className="p-4 lg:p-6 bg-slate-50 rounded-2xl border border-slate-100 flex flex-col md:flex-row md:items-center justify-between hover:border-visuera-green/30 transition-all cursor-pointer group gap-4"
                           onClick={() => {
                             setSelectedCaseId(c.id);
                             setActiveTab('flow');
                           }}
                         >
-                           <div className="flex items-center gap-4">
-                              <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-visuera-green shadow-sm">
+                           <div className="flex items-start lg:items-center gap-4">
+                              <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-visuera-green shadow-sm shrink-0">
                                  <FileSearch size={20} />
                               </div>
-                              <div>
-                                 <div className="flex items-center gap-2">
-                                    <span className="text-[9px] font-black bg-white text-slate-400 px-2 py-0.5 rounded uppercase">ÄRE-{c.id.slice(-4).toUpperCase()}</span>
-                                    <h4 className="font-bold text-visuera-dark group-hover:text-visuera-green transition-colors">{c.title}</h4>
+                              <div className="min-w-0">
+                                 <div className="flex flex-wrap items-center gap-2">
+                                    <span className="text-[9px] font-black bg-white text-slate-400 px-2 py-0.5 rounded uppercase shrink-0">ÄRE-{c.id.slice(-4).toUpperCase()}</span>
+                                    <h4 className="font-bold text-visuera-dark group-hover:text-visuera-green transition-colors truncate">{c.title}</h4>
                                     {caseQuestions.includes(c.id) && (
                                        <div className="flex items-center gap-1 text-blue-500" title="Väntande fråga från rektor">
                                          <MessageSquare size={12} />
@@ -1504,17 +1576,14 @@ const App = () => {
                                  </div>
                                  <div className="text-[10px] text-slate-400 font-medium mt-1 flex flex-wrap gap-x-4 gap-y-1">
                                     <span className="flex items-center gap-1"><UserIcon size={12}/> {c.studentName}</span>
-                                    <span className="flex items-center gap-1"><Building2 size={12}/> {c.school}</span>
+                                    <span className="flex items-center gap-1 hidden sm:flex"><Building2 size={12}/> {c.school}</span>
                                     <span className="flex items-center gap-1" title="Anmälningsdatum">
                                        <Calendar size={12}/> {formatDate(c.createdAt)}
-                                    </span>
-                                    <span className="flex items-center gap-1" title="Senaste uppdatering">
-                                       <Clock size={12}/> {formatDate(c.updatedAt || c.createdAt)}
                                     </span>
                                  </div>
                               </div>
                            </div>
-                           <div className="flex items-center gap-6">
+                           <div className="flex items-center justify-between md:justify-end gap-x-4 lg:gap-x-6 border-t md:border-t-0 pt-4 md:pt-0 border-slate-100">
                               <span className={`text-[9px] font-black px-2 py-1 rounded uppercase tracking-wider ${
                                 c.status === 'anmäld' ? 'bg-blue-100 text-blue-600' :
                                 c.status === 'utredning' ? 'bg-amber-100 text-amber-600' :
@@ -1524,48 +1593,49 @@ const App = () => {
                                 {c.status}
                               </span>
                               <div className="flex items-center gap-4">
-                                <button onClick={(e) => { e.stopPropagation(); setActiveTab('flow'); setSelectedCaseId(c.id); }} className="text-visuera-green font-bold text-xs uppercase hover:underline">Öppna</button>
+                                <button className="text-visuera-green font-bold text-xs uppercase hover:underline">Hantera</button>
                                 
-                                <div className="flex items-center gap-1">
-                                  {confirmDeleteId === c.id ? (
-                                    <div className="flex items-center bg-red-50 rounded-xl overflow-hidden border border-red-100">
+                                {userProfile?.role === 'admin' && (
+                                  <div className="flex items-center gap-1">
+                                    {confirmDeleteId === c.id ? (
+                                      <div className="flex items-center bg-red-50 rounded-xl overflow-hidden border border-red-100">
+                                        <button 
+                                          onClick={(e) => handleDeleteCase(e, c.id)}
+                                          className="px-3 py-1.5 bg-red-500 text-white text-[10px] font-black uppercase tracking-widest hover:bg-red-600 transition-colors"
+                                        >
+                                          Radera?
+                                        </button>
+                                        <button 
+                                          onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(null); }}
+                                          className="px-2 py-1.5 text-slate-400 hover:text-slate-600 transition-colors"
+                                        >
+                                          <X size={14} />
+                                        </button>
+                                      </div>
+                                    ) : (
                                       <button 
-                                        onClick={(e) => handleDeleteCase(e, c.id)}
-                                        className="px-3 py-1.5 bg-red-500 text-white text-[10px] font-black uppercase tracking-widest hover:bg-red-600 transition-colors"
+                                        onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(c.id); }}
+                                        className="text-slate-200 hover:text-red-500 transition-colors p-2"
                                       >
-                                        Radera?
+                                        <Trash2 size={16} />
                                       </button>
-                                      <button 
-                                        onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(null); }}
-                                        className="px-2 py-1.5 text-slate-400 hover:text-slate-600 transition-colors"
-                                      >
-                                        <X size={14} />
-                                      </button>
-                                    </div>
-                                  ) : (
-                                    <button 
-                                      onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(c.id); }}
-                                      className="text-slate-300 hover:text-red-500 transition-colors p-2"
-                                      title="Ta bort ärende"
-                                    >
-                                      <Trash2 size={16} />
-                                    </button>
-                                  )}
-                                </div>
+                                    )}
+                                  </div>
+                                )}
                               </div>
                            </div>
                         </div>
                       ))
-                   )}
-                </div>
-              </div>
-            </div>
-          )}
+                    )}
+                 </div>
+               </div>
+             </div>
+           )}
             {activeTab === 'report' && (
               <div className="max-w-2xl mx-auto">
                 <div className="text-center mb-12">
-                   <h1 className="text-3xl font-black text-visuera-dark tracking-tight">Ny Snabb-anmälan</h1>
-                   <p className="text-sm text-slate-500 mt-2">Professionell anmälan inom 24h enligt Skollagen.</p>
+                   <h1 className="text-3xl font-black text-visuera-dark tracking-tight">Ny anmälan</h1>
+                   <p className="text-sm text-slate-500 mt-2">Anmälan ska göras skyndsamt och helst inom 24h</p>
                 </div>
                 {/* We'll use the Step 1 of TrygghetsFlow as the simplified reporter view */}
                 <TrygghetsFlow isQuickReport={true} cases={cases} />
