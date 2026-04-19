@@ -143,17 +143,14 @@ export const UtredningStep: React.FC<UtredningStepProps> = ({
           <textarea 
             value={formData.studentVersion}
             onChange={(e) => updateFormData('studentVersion', e.target.value)}
-            placeholder="Dokumentera elevens ord sakligt och fritt från tolkningar. Minst 150 tecken krävs."
+            placeholder="Dokumentera elevens ord sakligt och fritt från tolkningar."
             className="w-full h-48 p-6 bg-slate-50 rounded-3xl border-none focus:ring-2 focus:ring-blue-500/10 transition-all resize-none text-sm leading-relaxed text-slate-700 font-medium"
           />
-          <div className={`text-[9px] font-bold uppercase tracking-widest text-right mt-1 ${formData.studentVersion?.length >= 150 ? 'text-emerald-500' : 'text-slate-300'}`}>
-            Antal tecken: {formData.studentVersion?.length || 0} / 150
-          </div>
         </div>
       </StepCard>
 
-      {/* Card 2: Hörande */}
-      <StepCard title="HÖRANDE" icon={Users}>
+      {/* Card 2: Andras versioner */}
+      <StepCard title="ANDRAS VERSIONER" icon={Users}>
         <div className="space-y-6">
           <div className="space-y-2">
             <div className="flex items-center">
@@ -252,7 +249,7 @@ export const UtredningStep: React.FC<UtredningStepProps> = ({
             <textarea 
               value={formData.investigationAnalysis}
               onChange={(e) => updateFormData('investigationAnalysis', e.target.value)}
-              placeholder="Dokumentera bevisning, vittnesmål och de överväganden som lett till bedömningen..."
+              placeholder="Dokumentera de överväganden som lett till bedömningen..."
               className="w-full h-40 p-6 bg-slate-50 rounded-3xl border-none focus:ring-2 focus:ring-blue-500/10 transition-all resize-none text-sm leading-relaxed text-slate-700 font-medium"
             />
           </div>

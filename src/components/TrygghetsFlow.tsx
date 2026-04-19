@@ -29,13 +29,16 @@ import {
   X,
   MessageSquare,
   Send,
-  Check
+  Check,
+  History,
+  PlusCircle,
+  Bell
 } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { caseService } from '../services/caseService';
 import { auth, db } from '../lib/firebase';
-import { doc, getDoc, collection, getDocs, query, where, addDoc, serverTimestamp, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, collection, getDocs, query, where, addDoc, serverTimestamp, updateDoc, orderBy } from 'firebase/firestore';
 import { LegalGuidance } from './LegalGuidance';
 import { ContextualGuidance } from './ContextualGuidance';
 import { StudentVoiceModule } from './StudentVoiceModule';
@@ -154,6 +157,8 @@ export const TrygghetsFlow = ({ isQuickReport = false, onSuccess, initialCaseId,
   // Form State
   const [formData, setFormData] = React.useState(DEFAULT_FORM_DATA);
   const [showStats, setShowStats] = React.useState(false);
+  const [historyTab, setHistoryTab] = React.useState<'original' | 'audit'>('original');
+  const [auditLog, setAuditLog] = React.useState<any[]>([]);
   const [selectedActivities, setSelectedActivities] = React.useState<string[]>([]);
   const [successToast, setSuccessToast] = React.useState<{message: string, visible: boolean}>({ message: '', visible: false });
 
@@ -298,6 +303,21 @@ export const TrygghetsFlow = ({ isQuickReport = false, onSuccess, initialCaseId,
     };
     fetchProfile();
   }, [auth.currentUser]);
+
+  // Fetch audit log when drawer is open
+  React.useEffect(() => {
+    if (showStats && activeCaseId && historyTab === 'audit') {
+      const fetchAudit = async () => {
+        try {
+          const auditSnap = await getDocs(query(collection(db, `cases/${activeCaseId}/audit`), orderBy('timestamp', 'desc')));
+          setAuditLog(auditSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+        } catch (e) {
+          console.error("Failed to fetch audit log:", e);
+        }
+      };
+      fetchAudit();
+    }
+  }, [showStats, activeCaseId, historyTab]);
 
   // Load case data if activeCaseId exists
   React.useEffect(() => {
@@ -583,8 +603,7 @@ export const TrygghetsFlow = ({ isQuickReport = false, onSuccess, initialCaseId,
       case 1: // Tilldelning
         return !!formData.assignedTeacherUid;
       case 2: // Utredning
-        const isStudentVersionLongEnough = (formData.studentVersion || '').length >= 150;
-        return !!(formData.investigationText && isStudentVersionLongEnough && formData.incidentConfirmed && formData.ageAdaptedConfirmation);
+        return !!(formData.investigationText && formData.studentVersion && formData.incidentConfirmed && formData.ageAdaptedConfirmation);
       case 3: // Åtgärder
         if (formData.incidentConfirmed === 'Nej' || formData.incidentConfirmed === 'Kränkning kan ej konstateras') return true;
         return !!(formData.actionsText && formData.followUpScheduled);
@@ -839,7 +858,13 @@ export const TrygghetsFlow = ({ isQuickReport = false, onSuccess, initialCaseId,
                       formData={formData}
                       caseId={activeCaseId}
                       currentStepTitle={currentStep.title}
+                      onShowOriginal={() => {
+                        setHistoryTab('original');
+                        setShowStats(true);
+                        setShowMobileSidebar(false);
+                      }}
                       onShowAudit={() => {
+                        setHistoryTab('audit');
                         setShowStats(true);
                         setShowMobileSidebar(false);
                       }}
@@ -1012,7 +1037,14 @@ export const TrygghetsFlow = ({ isQuickReport = false, onSuccess, initialCaseId,
                         formData={formData}
                         caseId={activeCaseId}
                         currentStepTitle={currentStep.title}
-                        onShowAudit={() => setShowStats(true)}
+                        onShowOriginal={() => {
+                          setHistoryTab('original');
+                          setShowStats(true);
+                        }}
+                        onShowAudit={() => {
+                          setHistoryTab('audit');
+                          setShowStats(true);
+                        }}
                       />
                     </div>
                   )}
@@ -1024,6 +1056,216 @@ export const TrygghetsFlow = ({ isQuickReport = false, onSuccess, initialCaseId,
       </div>
 
     <AnimatePresence>
+        {showStats && (
+          <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 lg:p-10">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowStats(false)}
+              className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="relative w-full max-w-4xl bg-white rounded-[32px] lg:rounded-[40px] shadow-2xl overflow-hidden flex flex-col max-h-full"
+            >
+              <div className="p-6 lg:p-8 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 bg-visuera-dark text-white rounded-2xl flex items-center justify-center shadow-lg shadow-visuera-dark/20">
+                    <Layers size={24} />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-black text-visuera-dark uppercase tracking-tight">Ärende-detaljer</h3>
+                    <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-0.5">Historik & Dokumentation</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setShowStats(false)}
+                  className="w-10 h-10 rounded-xl bg-white border border-slate-200 text-slate-400 flex items-center justify-center hover:bg-slate-50 hover:text-slate-600 transition-all shadow-sm"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              <div className="flex border-b border-slate-100 px-6 lg:px-8">
+                {[
+                  { id: 'original', label: 'Ursprunglig anmälan', icon: ShieldCheck },
+                  { id: 'audit', label: 'Händelselogg', icon: History }
+                ].map((tab: any) => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setHistoryTab(tab.id)}
+                    className={`flex items-center gap-2 px-6 py-4 border-b-2 transition-all font-bold text-xs uppercase tracking-widest ${
+                      historyTab === tab.id 
+                        ? 'border-visuera-green text-visuera-green' 
+                        : 'border-transparent text-slate-400 hover:text-slate-600'
+                    }`}
+                  >
+                    <tab.icon size={14} />
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+
+              <div className="flex-1 overflow-y-auto custom-scrollbar p-6 lg:p-10">
+                {historyTab === 'original' ? (
+                  <div className="space-y-10">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                      <div className="space-y-4">
+                        <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                           <User size={12} className="text-visuera-green" /> Elev & Plats
+                        </h4>
+                        <div className="space-y-3">
+                          <div>
+                            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tighter">Fullständigt namn</p>
+                            <p className="text-sm font-bold text-slate-700">{formData.studentName || '-'}</p>
+                          </div>
+                          <div>
+                            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tighter">Klass/Grupp</p>
+                            <p className="text-sm font-bold text-slate-700">{formData.studentClass || '-'}</p>
+                          </div>
+                          <div>
+                            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tighter">Plats för incident</p>
+                            <p className="text-sm font-bold text-slate-700">
+                              {formData.incidentLocation === 'Annan plats' ? formData.incidentLocationOther : formData.incidentLocation || '-'}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="space-y-4">
+                        <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                           <Calendar size={12} className="text-visuera-green" /> Tid & Typ
+                        </h4>
+                        <div className="space-y-3">
+                          <div>
+                            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tighter">Incidentdatum</p>
+                            <p className="text-sm font-bold text-slate-700">{formData.incidentDate || '-'}</p>
+                          </div>
+                          <div>
+                            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tighter">Registrerad</p>
+                            <p className="text-sm font-bold text-slate-700">{formData.createdAt?.seconds ? new Date(formData.createdAt.seconds * 1000).toLocaleString('sv-SE') : formData.createdAt || '-'}</p>
+                          </div>
+                          <div>
+                            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tighter">Typ av händelse</p>
+                            <div className="flex flex-wrap gap-1 mt-1">
+                              {formData.reportType?.length > 0 ? formData.reportType.map((t: string) => (
+                                <span key={t} className="px-2 py-0.5 bg-slate-100 text-slate-600 rounded-md text-[9px] font-bold uppercase">{t}</span>
+                              )) : <span className="text-sm font-bold text-slate-700">-</span>}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="space-y-4">
+                        <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                           <Phone size={12} className="text-visuera-green" /> Kontaktpersoner
+                        </h4>
+                        <div className="space-y-3">
+                          <div>
+                            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tighter">Anmälare</p>
+                            <p className="text-sm font-bold text-slate-700">{formData.reporterName || '-'}</p>
+                          </div>
+                          <div>
+                            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tighter">Vårdnadshavare kontaktad</p>
+                            <p className="text-sm font-bold text-slate-700">{formData.guardianContacted || 'Ej angivet'}</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="bg-slate-50 rounded-[28px] p-8 border border-slate-100">
+                      <div className="flex items-center gap-2 mb-4">
+                        <FileText size={16} className="text-visuera-green" />
+                        <h4 className="text-[11px] font-black text-slate-900 uppercase tracking-widest">Händelseförlopp</h4>
+                      </div>
+                      <p className="text-sm leading-relaxed text-slate-600 font-medium whitespace-pre-wrap">
+                        {formData.incidentDescription || 'Ingen beskrivning tillgänglig.'}
+                      </p>
+                    </div>
+
+                    {formData.actionsTaken?.length > 0 && (
+                      <div className="space-y-4">
+                        <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Omedelbara åtgärder vidtagna</h4>
+                        <div className="flex flex-wrap gap-2">
+                          {formData.actionsTaken.map((a: string) => (
+                            <div key={a} className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-600">
+                              <CheckCircle2 size={12} className="text-visuera-green" />
+                              {a}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="space-y-6">
+                    {auditLog.length > 0 ? (
+                      <div className="relative before:absolute before:inset-y-0 before:left-4 before:w-px before:bg-slate-100 space-y-8 pl-12 pr-4">
+                        {auditLog.map((log, idx) => (
+                          <div key={log.id || idx} className="relative">
+                            <div className="absolute -left-12 top-0 w-8 h-8 rounded-full bg-white border-2 border-slate-100 flex items-center justify-center z-10 text-slate-400">
+                              {log.action === 'Created' ? <PlusCircle size={14} className="text-emerald-500" /> : 
+                               log.action === 'Updated' ? <PenTool size={14} className="text-blue-500" /> :
+                               log.action === 'NOTIFIERING_SKICKAD' ? <Bell size={14} className="text-amber-500" /> :
+                               <Clock size={14} />}
+                            </div>
+                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 mb-1">
+                              <span className="text-[10px] font-black text-slate-900 uppercase tracking-widest">{log.action || 'Händelse'}</span>
+                              <span className="text-[10px] font-mono font-medium text-slate-400">
+                                {log.timestamp?.seconds ? new Date(log.timestamp.seconds * 1000).toLocaleString('sv-SE') : '-'}
+                              </span>
+                            </div>
+                            <div className="p-4 bg-slate-50 border border-slate-100 rounded-2xl">
+                              <p className="text-[11px] font-bold text-slate-600 mb-2">Utförd av: <span className="text-slate-900">{log.userName || log.userId}</span></p>
+                              {log.message && <p className="text-xs text-slate-500 leading-relaxed italic border-l-2 border-slate-200 pl-3">"{log.message}"</p>}
+                              {log.oldStatus && log.newStatus && (
+                                <div className="flex items-center gap-2 mt-2">
+                                  <span className="px-2 py-0.5 bg-slate-200 text-slate-500 rounded text-[9px] font-bold uppercase">{log.oldStatus}</span>
+                                  <ArrowRight size={10} className="text-slate-300" />
+                                  <span className="px-2 py-0.5 bg-visuera-green/10 text-visuera-green rounded text-[9px] font-bold uppercase">{log.newStatus}</span>
+                                </div>
+                              )}
+                              {log.changes && log.changes.length > 0 && historyTab === 'audit' && (
+                                <div className="mt-2 flex flex-wrap gap-1">
+                                  {log.changes.map((field: string) => (
+                                    <span key={field} className="text-[9px] text-slate-400 font-medium">#{field}</span>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-20">
+                        <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-300">
+                          <History size={32} />
+                        </div>
+                        <p className="text-sm font-bold text-slate-400 uppercase tracking-widest">Ingen händelselogg tillgänglig ännu</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <div className="p-6 lg:p-8 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
+                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest leading-none">
+                   Sekretess & Spårbarhet enligt GDPR
+                </p>
+                <button 
+                  onClick={() => setShowStats(false)}
+                  className="px-8 py-3 bg-visuera-dark text-white rounded-xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-slate-800 transition-all shadow-lg shadow-slate-900/10"
+                >
+                  Stäng
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+
         {successToast.visible && (
           <motion.div 
             initial={{ opacity: 0, y: 50, scale: 0.9 }}
