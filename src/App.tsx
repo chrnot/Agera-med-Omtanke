@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { HotspotAnalysis } from './components/dashboard/HotspotAnalysis';
 import { 
   PlusCircle, 
   LayoutDashboard, 
@@ -589,51 +590,7 @@ const Dashboard = ({ onNewReport, cases: allCases, onOpenCase, onNavigate, caseQ
                 className="px-8 pb-8 space-y-8"
               >
                 <div className="h-px bg-white/5 w-full" />
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                  <div className="space-y-4">
-                    <h4 className="text-[10px] font-black text-white/60 uppercase tracking-widest">Anmälningsfrekvens per månad</h4>
-                    <div className="h-[200px] w-full bg-white/5 rounded-2xl p-4">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <LineChart data={trendData}>
-                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#ffffff10" />
-                          <XAxis 
-                            dataKey="name" 
-                            axisLine={false} 
-                            tickLine={false} 
-                            tick={{ fontSize: 9, fill: '#ffffff40', fontWeight: 600 }}
-                          />
-                          <Tooltip 
-                            contentStyle={{ borderRadius: '12px', border: 'none', background: '#1c252a', color: '#fff', fontSize: '10px' }}
-                          />
-                          <Line 
-                            type="monotone" 
-                            dataKey="antal" 
-                            stroke="#10B981" 
-                            strokeWidth={3} 
-                            dot={{ r: 4, fill: '#10B981', strokeWidth: 0 }}
-                          />
-                        </LineChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </div>
-
-                  <div className="space-y-4">
-                    <h4 className="text-[10px] font-black text-white/60 uppercase tracking-widest">Identifierade Risky-Locs (Hotspots)</h4>
-                    <div className="space-y-3">
-                      {hotspotData.map((loc, i) => (
-                        <div key={i} className="flex items-center justify-between p-3 bg-white/5 rounded-xl border border-white/5">
-                          <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-lg bg-visuera-green/20 flex items-center justify-center text-visuera-green text-xs font-bold">
-                              {i + 1}
-                            </div>
-                            <span className="text-xs font-bold text-white/80">{loc.name}</span>
-                          </div>
-                          <span className="text-xs font-black text-white">{loc.value} ärenden</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
+                <HotspotAnalysis cases={cases} />
               </motion.div>
             )}
           </AnimatePresence>
