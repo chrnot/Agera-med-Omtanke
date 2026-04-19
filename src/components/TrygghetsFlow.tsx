@@ -1553,26 +1553,7 @@ export const TrygghetsFlow = ({ isQuickReport = false, onSuccess, initialCaseId,
                     )}
                   </div>
 
-                  {/* Guided Incident Type Selection */}
-                  <div className="space-y-4">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Typ av händelse (Välj en eller flera) *</label>
-                    <div className="grid grid-cols-2 lg:grid-cols-3 gap-2">
-                       {INCIDENT_CATEGORIES.map(cat => (
-                         <button
-                           key={cat.id}
-                           type="button"
-                           onClick={() => toggleReportType(cat.label)}
-                           className={`p-4 rounded-2xl text-[11px] font-bold transition-all border text-left h-full flex items-center ${
-                             formData.reportType.includes(cat.label)
-                               ? 'bg-visuera-green text-white border-visuera-green shadow-lg shadow-visuera-green/20'
-                               : 'bg-white border-slate-100 text-slate-500 hover:border-visuera-green/30 hover:bg-slate-50/50'
-                           }`}
-                         >
-                           {cat.label}
-                         </button>
-                       ))}
-                    </div>
-                  </div>
+                  {/* Guided Incident Type Selection MOVED TO INVESTIGATION STEP */}
 
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
@@ -1592,19 +1573,6 @@ export const TrygghetsFlow = ({ isQuickReport = false, onSuccess, initialCaseId,
                   <AnimatePresence>
                     {isDescriptionFocused && (
                       <ContextualGuidance type="incident" />
-                    )}
-                  </AnimatePresence>
-
-                  <AnimatePresence mode="wait">
-                    {formData.reportType.length > 0 && (
-                      <motion.div
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: 'auto' }}
-                        exit={{ opacity: 0, height: 0 }}
-                        className="overflow-hidden"
-                      >
-                        <LegalGuidance incidentTypes={formData.reportType} />
-                      </motion.div>
                     )}
                   </AnimatePresence>
 
@@ -1962,40 +1930,73 @@ export const TrygghetsFlow = ({ isQuickReport = false, onSuccess, initialCaseId,
                         exit={{ opacity: 0, y: 10 }}
                         className="space-y-4 pt-4"
                       >
-                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Vilken diskrimineringsgrund?</label>
-                        <div 
-                          className="grid grid-cols-1 gap-2"
-                          onFocus={() => setIsDiscriminationFocused(true)}
-                          onBlur={() => setIsDiscriminationFocused(false)}
-                          tabIndex={0}
-                        >
-                          {[
-                            'Kränkande behandling, SL 6: 10',
-                            'Trakasserier, DiskrL 1:4',
-                            'Sexuella trakasserier, DiskrL 1:4',
-                            'Direkt diskriminering, DiskrL 1:4',
-                            'Indirekt diskriminering, DiskrL 1:4',
-                            'Instruktioner att diskriminera, DiskrL 1:4',
-                            'Vet inte'
-                          ].map(ground => (
-                            <button
-                              key={ground}
-                              onClick={() => updateFormData('discriminationGround', ground)}
-                              className={`flex items-center gap-3 p-3 rounded-xl text-[11px] transition-all border text-left ${
-                                formData.discriminationGround === ground
-                                  ? 'bg-visuera-green/5 border-visuera-green text-visuera-green font-bold'
-                                  : 'bg-white border-slate-100 text-slate-500'
-                              }`}
-                            >
-                              {ground}
-                            </button>
-                          ))}
+                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Typ av händelse / Juridisk klassificering *</label>
+                        <div className="grid grid-cols-2 lg:grid-cols-3 gap-2">
+                           {INCIDENT_CATEGORIES.map(cat => (
+                             <button
+                               key={cat.id}
+                               type="button"
+                               onClick={() => toggleReportType(cat.label)}
+                               className={`p-4 rounded-2xl text-[11px] font-bold transition-all border text-left h-full flex items-center ${
+                                 formData.reportType.includes(cat.label)
+                                   ? 'bg-visuera-green text-white border-visuera-green shadow-lg shadow-visuera-green/20'
+                                   : 'bg-white border-slate-100 text-slate-500 hover:border-visuera-green/30 hover:bg-slate-50/50'
+                               }`}
+                             >
+                               {cat.label}
+                             </button>
+                           ))}
                         </div>
-                        <AnimatePresence>
-                          {isDiscriminationFocused && (
-                            <ContextualGuidance type="discrimination" />
+
+                        <AnimatePresence mode="wait">
+                          {formData.reportType.length > 0 && (
+                            <motion.div
+                              initial={{ opacity: 0, height: 0 }}
+                              animate={{ opacity: 1, height: 'auto' }}
+                              exit={{ opacity: 0, height: 0 }}
+                              className="overflow-hidden"
+                            >
+                              <LegalGuidance incidentTypes={formData.reportType} />
+                            </motion.div>
                           )}
                         </AnimatePresence>
+
+                        <div className="hidden">
+                         <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Vilken diskrimineringsgrund?</label>
+                         <div 
+                           className="grid grid-cols-1 gap-2"
+                           onFocus={() => setIsDiscriminationFocused(true)}
+                           onBlur={() => setIsDiscriminationFocused(false)}
+                           tabIndex={0}
+                         >
+                           {[
+                             'Kränkande behandling, SL 6: 10',
+                             'Trakasserier, DiskrL 1:4',
+                             'Sexuella trakasserier, DiskrL 1:4',
+                             'Direkt diskriminering, DiskrL 1:4',
+                             'Indirekt diskriminering, DiskrL 1:4',
+                             'Instruktioner att diskriminera, DiskrL 1:4',
+                             'Vet inte'
+                           ].map(ground => (
+                             <button
+                               key={ground}
+                               onClick={() => updateFormData('discriminationGround', ground)}
+                               className={`flex items-center gap-3 p-3 rounded-xl text-[11px] transition-all border text-left ${
+                                 formData.discriminationGround === ground
+                                   ? 'bg-visuera-green/5 border-visuera-green text-visuera-green font-bold'
+                                   : 'bg-white border-slate-100 text-slate-500'
+                               }`}
+                             >
+                               {ground}
+                             </button>
+                           ))}
+                         </div>
+                         <AnimatePresence>
+                           {isDiscriminationFocused && (
+                             <ContextualGuidance type="discrimination" />
+                           )}
+                         </AnimatePresence>
+                        </div>
                       </motion.div>
                     )}
                   </AnimatePresence>
