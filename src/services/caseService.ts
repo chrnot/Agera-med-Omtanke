@@ -294,9 +294,19 @@ export const caseService = {
     }
   },
 
-  subscribeToCases: (callback: (cases: any[]) => void) => {
+  subscribeToCases: (callback: (cases: any[]) => void, filters?: { school?: string, assignedToUid?: string, reporterUid?: string }) => {
     const path = 'cases';
-    const q = query(collection(db, path));
+    let q = query(collection(db, path));
+    
+    if (filters?.school && filters.school !== 'alla') {
+      q = query(q, where('school', '==', filters.school));
+    }
+    if (filters?.assignedToUid) {
+      q = query(q, where('assignedToUid', '==', filters.assignedToUid));
+    }
+    if (filters?.reporterUid) {
+      q = query(q, where('reporterUid', '==', filters.reporterUid));
+    }
     
     return onSnapshot(q, (snapshot) => {
       const cases = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));

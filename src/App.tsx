@@ -1016,13 +1016,26 @@ const App = () => {
 
   // Subscribe to real-time cases
   useEffect(() => {
-    if (user) {
+    if (user && userProfile) {
+      // If global admin, we can subscribe to all cases. 
+      // Otherwise, we MUST filter to avoid permission-denied errors.
+      const filters: any = {};
+      
+      if (userProfile.globalRole !== 'admin' && userProfile.role !== 'admin') {
+        if (userProfile.school) {
+          filters.school = userProfile.school;
+        } else {
+          // If no school and not admin, try only cases reported by or assigned to user
+          filters.reporterUid = user.uid;
+        }
+      }
+
       const unsubscribe = caseService.subscribeToCases((fetchedCases) => {
         setCases(fetchedCases);
-      });
+      }, filters);
       return unsubscribe;
     }
-  }, [user]);
+  }, [user, userProfile]);
 
   // Subscribe to notifications for unread count
   useEffect(() => {

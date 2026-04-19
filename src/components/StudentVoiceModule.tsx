@@ -85,6 +85,7 @@ export const StudentVoiceModule: React.FC<StudentVoiceModuleProps> = ({
   onToggleConfirmation,
   studentVersion
 }) => {
+  const [showSupport, setShowSupport] = React.useState(false);
   const currentTemplate = templates[selectedStage];
   const charCount = studentVersion.length;
   const isMinCharsMet = charCount >= 150;
@@ -96,99 +97,123 @@ export const StudentVoiceModule: React.FC<StudentVoiceModuleProps> = ({
   ];
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-700">
+    <div className="space-y-6 animate-in fade-in duration-700 bg-white rounded-3xl border border-slate-100 p-8 shadow-sm">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-visuera-green/10 rounded-2xl flex items-center justify-center text-visuera-green">
+            <MessageSquare size={20} />
+          </div>
+          <div>
+            <h3 className="text-sm font-black text-visuera-dark uppercase tracking-widest">Elevens Röst</h3>
+            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">Säkerställ dokumentation enligt Barnkonventionen</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+           <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded-lg border ${isMinCharsMet ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-orange-50 text-orange-600 border-orange-100'}`}>
+             {isMinCharsMet ? 'Rättssäker volym' : 'För ytligt'}
+           </span>
+        </div>
+      </div>
+
       {/* Stage Selection */}
-      <div className="space-y-4">
-        <label className="text-[10px] font-black text-slate-400极 uppercase tracking-[0.2em] ml-1">Välj elevens stadium för anpassad guide</label>
+      <div className="space-y-3">
+        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Välj elevens stadium</label>
         <div className="grid grid-cols-3 gap-3">
           {Object.values(templates).map(t => (
             <button
               key={t.id}
-              onClick={() => onStageChange(t.id)}
-              className={`p-4 rounded-2xl border-2 transition-all flex flex-col items-center gap-2 text-center group ${
+              onClick={() => {
+                onStageChange(t.id);
+                setShowSupport(true);
+              }}
+              className={`p-3 rounded-2xl border-2 transition-all flex flex-col items-center gap-2 text-center group ${
                 selectedStage === t.id
                   ? 'bg-visuera-green/5 border-visuera-green text-visuera-green shadow-sm'
-                  : 'bg-white border-slate-100 text-slate-400 hover:border-visuera-green/30'
+                  : 'bg-slate-50 border-transparent text-slate-400 hover:border-slate-200'
               }`}
             >
-              <div className={`p-2 rounded-xl transition-colors ${
-                selectedStage === t.id ? 'bg-visuera-green text-white' : 'bg-slate-50 text-slate-300 group-hover:text-visuera-green'
+              <div className={`p-1.5 rounded-lg transition-colors ${
+                selectedStage === t.id ? 'bg-visuera-green text-white shadow-lg shadow-visuera-green/20' : 'bg-white text-slate-300 group-hover:text-visuera-green shadow-sm'
               }`}>
                 {t.icon}
               </div>
-              <span className="text-[11px] font-bold">{t.label}</span>
+              <span className="text-[10px] font-black uppercase tracking-widest">{t.label}</span>
             </button>
           ))}
         </div>
       </div>
 
       <AnimatePresence mode="wait">
-        {currentTemplate && (
+        {selectedStage && (
           <motion.div
-            key={currentTemplate.id}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            className="space-y-6"
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="space-y-4"
           >
-            {/* Interactive Question Card */}
-            <div className="bg-slate-50 rounded-3xl p-6 border border-slate-100 border-l-4 border-l-visuera-green shadow-sm">
-              <div className="flex items-center gap-3 mb-4">
-                 <div className="w-8 h-8 bg-visuera-green/10 rounded-xl flex items-center justify-center text-visuera-green">
-                   <MessageSquare size={16} />
-                 </div>
-                 <div>
-                   <h4 className="text-xs font-black text-visuera-dark uppercase tracking-widest leading-none">Intervjuguide: {currentTemplate.label}</h4>
-                   <p className="text-[10px] text-slate-500 font-medium mt-1 italic">{currentTemplate.purpose}</p>
-                 </div>
+            <button
+              onClick={() => setShowSupport(!showSupport)}
+              className={`w-full flex items-center justify-between p-4 rounded-2xl transition-all border font-black uppercase tracking-widest text-[10px] ${
+                showSupport ? 'bg-visuera-dark text-white border-visuera-dark shadow-xl shadow-visuera-dark/20' : 'bg-slate-50 border-slate-100 text-slate-500 hover:bg-slate-100'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <ShieldAlert size={14} />
+                <span>Samtalsstöd för {currentTemplate?.label}</span>
               </div>
+              <ChevronDown size={14} className={`transition-transform duration-300 ${showSupport ? 'rotate-180' : ''}`} />
+            </button>
 
-              <div className="space-y-3">
-                {currentTemplate.questions.map((q, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => onToggleQuestion(q)}
-                    className={`w-full p-4 rounded-2xl border transition-all text-left flex items-start gap-3 group/q ${
-                      checkedQuestions.includes(q)
-                        ? 'bg-white border-visuera-green text-visuera-green shadow-sm'
-                        : 'bg-white/50 border-slate-100 text-slate-600 hover:border-visuera-green/20'
-                    }`}
-                  >
-                    <div className={`mt-0.5 w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors ${
-                      checkedQuestions.includes(q) ? 'bg-visuera-green border-visuera-green text-white shadow-sm' : 'border-slate-200 bg-white group-hover/q:border-visuera-green/50'
-                    }`}>
-                      {checkedQuestions.includes(q) && <CheckCircle2 size={12} strokeWidth={3} />}
-                    </div>
-                    <span className="text-xs font-semibold leading-relaxed">{q}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Visual Progress Indicator */}
-            <div className="px-2 space-y-2">
-              <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-widest">
-                <span className="text-slate-400">Fokus på barnets perspektiv</span>
-                <span className={isMinCharsMet ? 'text-visuera-green' : 'text-slate-400'}>
-                  {charCount} / 150 tecken
-                </span>
-              </div>
-              <div className="h-2 bg-slate-100 rounded-full overflow-hidden flex">
-                <motion.div 
-                  initial={{ width: 0 }}
-                  animate={{ width: `${Math.min((charCount / 150) * 100, 100)}%` }}
-                  className={`h-full transition-colors duration-500 ${isMinCharsMet ? 'bg-visuera-green shadow-[0_0_10px_rgba(5,150,105,0.3)]' : 'bg-orange-400'}`}
-                />
-              </div>
-              {!isMinCharsMet && (
-                <p className="text-[9px] text-orange-500 font-bold italic animate-pulse">
-                  Fortsätt dokumentera elevens röst – fördjupad dokumentation krävs för rättssäkerhet.
+            {showSupport && currentTemplate && (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-slate-50 rounded-2xl p-6 border border-slate-100 space-y-4 shadow-inner"
+              >
+                <p className="text-[10px] text-slate-500 font-bold italic leading-relaxed text-center px-4">
+                  "{currentTemplate.purpose}"
                 </p>
-              )}
-            </div>
+                <div className="space-y-2">
+                  {currentTemplate.questions.map((q, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => onToggleQuestion(q)}
+                      className={`w-full p-4 rounded-xl border transition-all text-left flex items-start gap-3 group/q ${
+                        checkedQuestions.includes(q)
+                          ? 'bg-white border-visuera-green text-visuera-green shadow-sm'
+                          : 'bg-white/50 border-slate-200/50 text-slate-600 hover:border-visuera-green/30'
+                      }`}
+                    >
+                      <div className={`mt-0.5 w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors ${
+                        checkedQuestions.includes(q) ? 'bg-visuera-green border-visuera-green text-white' : 'border-slate-300 bg-white'
+                      }`}>
+                        {checkedQuestions.includes(q) && <CheckCircle2 size={10} strokeWidth={4} />}
+                      </div>
+                      <span className="text-[11px] font-bold leading-relaxed">{q}</span>
+                    </button>
+                  ))}
+                </div>
+              </motion.div>
+            )}
           </motion.div>
         )}
       </AnimatePresence>
+
+      <div className="space-y-2 pt-2 border-t border-slate-50">
+        <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-widest text-slate-400">
+          <span>Skriven dokumentation</span>
+          <span className={isMinCharsMet ? 'text-emerald-600' : 'text-orange-500'}>
+            {charCount} / 150
+          </span>
+        </div>
+        <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+          <motion.div 
+            initial={{ width: 0 }}
+            animate={{ width: `${Math.min((charCount / 150) * 100, 100)}%` }}
+            className={`h-full transition-colors duration-500 ${isMinCharsMet ? 'bg-emerald-500' : 'bg-orange-500'}`}
+          />
+        </div>
+      </div>
 
       {/* Multimedia Mockup */}
       <div className="p-6 bg-slate-50/50 rounded-3xl border border-slate-100 border-dashed space-y-4">

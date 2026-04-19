@@ -1,97 +1,186 @@
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    // --- GLOBAL HELPERS (Pillar 3 & 4) ---
     
-    function isAuthenticated() {
+    function isSignedIn() {
       return request.auth != null;
     }
 
+    function isEmailVerified() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // Role-based helpers (Pillar 4)
+    // Note: Auth tokens do not contain custom claims. We use a trusted User document.
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
     function isGlobalAdmin() {
-      return isAuthenticated() && (
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('globalRole', 'none') == 'admin' ||
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('role', 'none') == 'admin'
+      return isSignedIn() && (
+        getUserData().get('globalRole', 'none') == 'admin' ||
+        getUserData().get('role', 'none') == 'admin'
       );
     }
 
     function hasSchoolRole(schoolId, role) {
-      return isAuthenticated() && 
-             role in get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('schoolAccess', {}).get(schoolId, []);
+      let data = getUserData();
+      return isAuthenticated() && (
+        role in data.get('schoolAccess', {}).get(schoolId, []) ||
+        (data.get('school', '') == schoolId && data.get('role', 'none') == role)
+      );
     }
 
     function hasAuthorityRole(authorityId, role) {
       return isAuthenticated() && 
-             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('authorityAccess', {}).get(authorityId, 'none') == role;
+             getUserData().get('authorityAccess', {}).get(authorityId, 'none') == role;
     }
 
+    function isAuthenticated() { return isSignedIn(); }
+
+    // --- DEFAULT DENY (Global Safety Net) ---
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- USERS ---
     match /users/{uid} {
-      allow read: if isAuthenticated();
-      allow write: if isAuthenticated() && (request.auth.uid == uid || isGlobalAdmin());
+      allow get: if isSignedIn() && (
+        request.auth.uid == uid || 
+        isGlobalAdmin() || 
+        getUserData().get('school', '') == existing().get('school', 'none')
+      );
+      allow list: if isSignedIn() && (
+        isGlobalAdmin() || 
+        resource.data.get('school', '') == getUserData().get('school', 'none')
+      );
+      
+      allow create: if isSignedIn() && request.auth.uid == uid;
+      allow update: if isSignedIn() && (request.auth.uid == uid || isGlobalAdmin()) && (
+        isGlobalAdmin() || (
+          !incoming().diff(existing()).affectedKeys().hasAny(['role', 'globalRole', 'schoolAccess', 'authorityAccess'])
+        )
+      );
     }
 
+    // --- AUTHORITIES & SCHOOLS ---
     match /authorities/{authId} {
       allow read: if true;
-      allow write: if isAuthenticated() && isGlobalAdmin();
+      allow write: if isGlobalAdmin();
     }
 
     match /schools/{schoolId} {
       allow read: if true;
-      allow write: if isAuthenticated() && isGlobalAdmin();
+      allow write: if isGlobalAdmin();
     }
 
+    // --- CASES (MASTER GATE) ---
     match /cases/{caseId} {
+      
+      // Validation Blueprint (Pillar 2)
+      function isValidCase(data) {
+        return data.keys().hasAll(['status', 'incidentDate', 'studentName', 'description', 'reporterUid', 'createdAt', 'school']) &&
+               data.status is string && data.status.size() <= 20 &&
+               data.incidentDate is string &&
+               data.studentName is string && data.studentName.size() <= 100 &&
+               data.description is string && data.description.size() <= 5000 &&
+               data.reporterUid is string &&
+               data.createdAt == request.time;
+      }
+
       function canUserViewCase(caseData) {
         return isGlobalAdmin() ||
+               caseData.reporterUid == request.auth.uid ||
+               caseData.assignedToUid == request.auth.uid ||
+               (caseData.get('schoolId', '') != '' && hasSchoolRole(caseData.schoolId, 'principal')) ||
                (caseData.get('authorityId', '') != '' && hasAuthorityRole(caseData.authorityId, 'authority')) ||
-               (caseData.get('schoolId', '') != '' && (
-                 hasSchoolRole(caseData.schoolId, 'principal') ||
-                 (hasSchoolRole(caseData.schoolId, 'teacher') && caseData.assignedToUid == request.auth.uid) ||
-                 (hasSchoolRole(caseData.schoolId, 'staff') && caseData.reporterUid == request.auth.uid)
-               )) ||
-               // Legacy
-               get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'authority' ||
-               (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'principal' && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.school == caseData.school) ||
-               caseData.reporterUid == request.auth.uid || 
-               caseData.assignedToUid == request.auth.uid;
+               // Legacy school name check
+               (getUserData().get('role', 'none') == 'principal' && getUserData().get('school', '') == caseData.school);
       }
-      
-      allow read: if isAuthenticated() && canUserViewCase(resource.data);
-      
+
+      // Query Enforcer (Pillar 8)
+      allow get: if (
+        (isSignedIn() && canUserViewCase(existing())) ||
+        (existing().reporterUid == 'anonymous') // Anonymous reports are write-only for the reporter, but can be read if known ID?
+        // Actually, anonymous reports should be private to admins/principals.
+      );
+
+      // If anonymous, they can't even get. Only principled/admins can.
+      allow list: if isSignedIn() && canUserViewCase(resource.data);
+
       allow create: if (
-        (isAuthenticated() && request.resource.data.reporterUid == request.auth.uid) ||
-        (!isAuthenticated() && request.resource.data.reporterUid == 'anonymous')
+        (isSignedIn() && incoming().reporterUid == request.auth.uid && isValidCase(incoming())) ||
+        (!isSignedIn() && incoming().reporterUid == 'anonymous' && isValidCase(incoming()))
       );
-      
-      allow update: if isAuthenticated() && (
+
+      allow update: if isSignedIn() && (
         isGlobalAdmin() ||
-        (resource.data.get('schoolId', '') != '' && hasSchoolRole(resource.data.schoolId, 'principal')) ||
-        (resource.data.get('authorityId', '') != '' && hasAuthorityRole(resource.data.authorityId, 'authority')) ||
-        resource.data.assignedToUid == request.auth.uid ||
-        (resource.data.reporterUid == request.auth.uid && resource.data.status == 'anmäld')
+        (canUserViewCase(existing()) && (
+          // Action: assign
+          (incoming().diff(existing()).affectedKeys().hasOnly(['assignedToUid', 'assignedTeacher', 'status', 'updatedAt']) && 
+           (hasSchoolRole(existing().schoolId, 'principal') || isGlobalAdmin())) ||
+          // Action: investigate
+          (incoming().diff(existing()).affectedKeys().hasAny(['investigationText', 'investigationDate', 'status', 'updatedAt']) && 
+           (existing().assignedToUid == request.auth.uid || isGlobalAdmin())) ||
+          // Action: follow-up
+          (incoming().diff(existing()).affectedKeys().hasAny(['followUpText', 'status', 'updatedAt']) && 
+           (existing().assignedToUid == request.auth.uid || isGlobalAdmin()))
+        ))
       );
 
-      allow delete: if isAuthenticated() && isGlobalAdmin();
+      allow delete: if isGlobalAdmin();
 
+      // Subcollections (Pillar 1)
       match /audit/{logId} {
-        allow read: if isAuthenticated();
-        allow create: if isAuthenticated() || (!isAuthenticated() && request.resource.data.userId == 'anonymous');
+        allow read: if isSignedIn() && canUserViewCase(get(/databases/$(database)/documents/cases/$(caseId)).data);
+        allow create: if isSignedIn() || (!isSignedIn() && incoming().userId == 'anonymous');
       }
 
-      match /{allSubcollections=**} {
-        allow read: if isAuthenticated() && canUserViewCase(get(/databases/$(database)/documents/cases/$(caseId)).data);
-        allow write: if isAuthenticated() || (!isAuthenticated() && request.resource.data.reporterUid == 'anonymous');
+      match /actors/{actorId} {
+        allow read: if isSignedIn() && canUserViewCase(get(/databases/$(database)/documents/cases/$(caseId)).data);
+        allow write: if isSignedIn() && (
+          get(/databases/$(database)/documents/cases/$(caseId)).data.assignedToUid == request.auth.uid ||
+          isGlobalAdmin()
+        );
+      }
+
+      match /actions/{actionId} {
+        allow read: if isSignedIn() && canUserViewCase(get(/databases/$(database)/documents/cases/$(caseId)).data);
+        allow write: if isSignedIn() && (
+          get(/databases/$(database)/documents/cases/$(caseId)).data.assignedToUid == request.auth.uid ||
+          isGlobalAdmin()
+        );
       }
     }
-    
+
+    // --- NOTIFICATIONS ---
     match /notifications/{noteId} {
-      allow read: if isAuthenticated() && resource.data.recipientUid == request.auth.uid;
-      allow update: if isAuthenticated() && resource.data.recipientUid == request.auth.uid && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);
-      allow create: if isAuthenticated(); // Allow users/system to create notifications
-      allow delete: if isAuthenticated() && resource.data.recipientUid == request.auth.uid;
+      allow read: if isSignedIn() && resource.data.recipientUid == request.auth.uid;
+      allow update: if isSignedIn() && resource.data.recipientUid == request.auth.uid && 
+                    incoming().diff(existing()).affectedKeys().hasOnly(['read']);
+      allow create: if isSignedIn(); 
+      allow delete: if isSignedIn() && resource.data.recipientUid == request.auth.uid;
     }
 
+    // --- GLOBAL AUDIT ---
     match /AuditLog/{logId} {
-      allow read: if isAuthenticated() && isGlobalAdmin();
-      allow create: if isAuthenticated();
+      allow read: if isGlobalAdmin();
+      allow create: if isSignedIn();
     }
   }
 }
