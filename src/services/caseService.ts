@@ -416,5 +416,118 @@ export const caseService = {
       console.error('Error sending direct message:', error);
       throw error;
     }
+  },
+
+  analyzeEarlyWarning: (cases: any[]) => {
+    const now = Date.now();
+    const thirtyDaysAgo = now - (30 * 24 * 60 * 60 * 1000);
+    const tenDaysAgo = now - (10 * 24 * 60 * 60 * 1000);
+
+    const recentCases = cases.filter(c => {
+      const date = c.incidentDate?.seconds ? c.incidentDate.seconds * 1000 : new Date(c.incidentDate || c.createdAt).getTime();
+      return date > thirtyDaysAgo;
+    });
+
+    const alerts: any[] = [];
+
+    // 1. Group by Location (Threshold: 3 in 10 days)
+    const locMap: Record<string, any[]> = {};
+    recentCases.filter(c => {
+       const date = c.incidentDate?.seconds ? c.incidentDate.seconds * 1000 : new Date(c.incidentDate || c.createdAt).getTime();
+       return date > tenDaysAgo;
+    }).forEach(c => {
+      const loc = c.incidentLocation || c.location || 'Okänd';
+      if (!locMap[loc]) locMap[loc] = [];
+      locMap[loc].push(c);
+    });
+
+    Object.entries(locMap).forEach(([loc, cluster]) => {
+      if (cluster.length >= 3) {
+        alerts.push({
+          id: `ews-loc-${loc}-${now}`,
+          type: 'LOCATION',
+          title: `Hög frekvens vid: ${loc}`,
+          description: `${cluster.length} incidenter rapporterade på samma plats inom 10 dagar.`,
+          cases: cluster,
+          severity: cluster.length > 5 ? 'CRITICAL' : 'WARNING',
+          timestamp: now
+        });
+      }
+    });
+
+    // 2. Group by Discrimination Ground (Threshold: 3 in 30 days)
+    const groundMap: Record<string, any[]> = {};
+    recentCases.forEach(c => {
+      if (c.discriminationGround && c.discriminationGround !== 'none') {
+        if (!groundMap[c.discriminationGround]) groundMap[c.discriminationGround] = [];
+        groundMap[c.discriminationGround].push(c);
+      }
+    });
+
+    Object.entries(groundMap).forEach(([ground, cluster]) => {
+      if (cluster.length >= 3) {
+        alerts.push({
+          id: `ews-ground-${ground}-${now}`,
+          type: 'GROUND',
+          title: `Mönster av diskriminering: ${ground}`,
+          description: `${cluster.length} fall av kränkningar kopplat till ${ground.toLowerCase()} på 30 dagar.`,
+          cases: cluster,
+          severity: cluster.length > 4 ? 'CRITICAL' : 'WARNING',
+          timestamp: now
+        });
+      }
+    });
+
+    // 3. Group by Student (Threshold: 3 in 30 days)
+    // We use studentName/studentId if available. Let's assume studentName for now if ID is missing
+    const studentMap: Record<string, any[]> = {};
+    recentCases.forEach(c => {
+      const id = c.studentId || c.studentName;
+      if (id) {
+        if (!studentMap[id]) studentMap[id] = [];
+        studentMap[id].push(c);
+      }
+    });
+
+    Object.entries(studentMap).forEach(([student, cluster]) => {
+      if (cluster.length >= 3) {
+        alerts.push({
+          id: `ews-student-${student}-${now}`,
+          type: 'PERSON',
+          title: `Individuellt mönster identifierat`,
+          description: `Upprepad exponering/inblandning (${cluster.length} ggr) för elev i ${cluster[0].studentGrade || 'okänd årskurs'} under 30 dagar.`,
+          cases: cluster,
+          severity: cluster.length > 4 ? 'CRITICAL' : 'WARNING',
+          timestamp: now
+        });
+      }
+    });
+
+    return alerts.sort((a, b) => {
+      if (a.severity === 'CRITICAL' && b.severity !== 'CRITICAL') return -1;
+      if (a.severity !== 'CRITICAL' && b.severity === 'CRITICAL') return 1;
+      return b.cases.length - a.cases.length;
+    }).slice(0, 3);
+  },
+
+  createCollectionCase: async (alert: any, currentUserId: string, school: string) => {
+    try {
+      const caseData = {
+        title: `EWS: Samlingsärende - ${alert.title}`,
+        description: `Automatiskt genererat samlingsärende baserat på Early Warning System.\n\nAnalys: ${alert.description}\n\nKopplade ärenden: ${alert.cases.map((c: any) => c.id).join(', ')}`,
+        status: 'anmäld',
+        type: 'samling',
+        school,
+        reporterUid: currentUserId,
+        linkedCaseIds: alert.cases.map((c: any) => c.id),
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+        priority: alert.severity === 'CRITICAL' ? 'high' : 'medium'
+      };
+      const docRef = await addDoc(collection(db, 'cases'), caseData);
+      return docRef.id;
+    } catch (error) {
+      return handleFirestoreError(error, OperationType.CREATE, 'cases');
+    }
   }
 };

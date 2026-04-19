@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { HotspotAnalysis } from './components/dashboard/HotspotAnalysis';
+import { SafetyRadar } from './components/dashboard/SafetyRadar';
 import { 
   PlusCircle, 
   LayoutDashboard, 
@@ -561,19 +562,24 @@ const Dashboard = ({ onNewReport, cases: allCases, onOpenCase, onNavigate, caseQ
         ))}
       </div>
 
-      {(userProfile?.role === 'principal' || userProfile?.role === 'authority') && (
-        <div className="bg-visuera-dark rounded-[32px] overflow-hidden border border-white/5 shadow-2xl">
+      {userProfile && (
+        userProfile.globalRole === 'admin' || 
+        userProfile.role === 'admin' ||
+        ['admin', 'principal', 'authority', 'rektor', 'huvudman', 'huvudmannarepresentant'].includes(userProfile.role?.toLowerCase()) ||
+        (userProfile.authorityAccess && Object.keys(userProfile.authorityAccess).length > 0)
+      ) && (
+        <div className="bg-visuera-dark rounded-[32px] overflow-hidden border border-white/10 shadow-2xl ring-1 ring-white/10">
           <button 
             onClick={() => setShowAnalysis(!showAnalysis)}
-            className="w-full px-8 py-6 flex items-center justify-between group transition-all"
+            className="w-full px-8 py-7 flex items-center justify-between group transition-all hover:bg-white/[0.02]"
           >
-            <div className="flex items-center gap-4 text-white">
-              <div className="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center text-visuera-green">
-                <TrendingUp size={20} />
+            <div className="flex items-center gap-5 text-white">
+              <div className="w-12 h-12 bg-visuera-green rounded-2xl flex items-center justify-center text-visuera-dark shadow-lg shadow-visuera-green/20 group-hover:scale-110 transition-transform">
+                <TrendingUp size={24} />
               </div>
               <div className="text-left">
-                <h3 className="font-black text-sm uppercase tracking-widest">Strategisk Analysvy</h3>
-                <p className="text-[10px] text-white/40 font-bold uppercase tracking-tighter mt-1">Underlag för systematiskt kvalitetsarbete</p>
+                <h3 className="font-black text-lg uppercase tracking-wider">Strategisk Analysvy</h3>
+                <p className="text-[10px] text-visuera-green font-black uppercase tracking-widest mt-0.5">Underlag för systematiskt kvalitetsarbete</p>
               </div>
             </div>
             <div className={`p-2 rounded-lg bg-white/5 text-white/40 group-hover:text-visuera-green transition-all ${showAnalysis ? 'rotate-180' : ''}`}>
@@ -589,6 +595,13 @@ const Dashboard = ({ onNewReport, cases: allCases, onOpenCase, onNavigate, caseQ
                 exit={{ height: 0, opacity: 0 }}
                 className="px-8 pb-8 space-y-8"
               >
+                <div className="h-px bg-white/5 w-full" />
+                <SafetyRadar 
+                  cases={cases} 
+                  userId={userProfile.uid} 
+                  school={userProfile.school || 'Danderyds Skola'} 
+                  onOpenCase={onOpenCase} 
+                />
                 <div className="h-px bg-white/5 w-full" />
                 <HotspotAnalysis cases={cases} />
               </motion.div>
