@@ -47,7 +47,7 @@ export const ProgressHeader: React.FC<ProgressHeaderProps> = ({
                       : 'bg-slate-100 text-slate-300'
                 }`}>
                   {isCompleted ? (
-                    <CheckCircle2 size={12} lg:size={14} strokeWidth={3} />
+                    <CheckCircle2 size={13} strokeWidth={3} />
                   ) : (
                     <span className="text-[10px] lg:text-[11px] font-black">{step.id}</span>
                   )}
