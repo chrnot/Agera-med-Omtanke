@@ -96,22 +96,22 @@ export const StudentVoiceModule: React.FC<StudentVoiceModuleProps> = ({
   ];
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-700 bg-white rounded-3xl border border-slate-100 p-8 shadow-sm">
+    <div className="space-y-6 animate-in fade-in duration-700 bg-white dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-700 p-8 shadow-sm">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 bg-visuera-green/10 rounded-2xl flex items-center justify-center text-visuera-green">
             <MessageSquare size={20} />
           </div>
-          <div>
-            <h3 className="text-sm font-black text-visuera-dark uppercase tracking-widest">Elevens Röst</h3>
-            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">Säkerställ dokumentation enligt Barnkonventionen</p>
+          <div className="text-left">
+            <h3 className="text-sm font-black text-visuera-dark dark:text-slate-100 uppercase tracking-widest">Elevens Röst</h3>
+            <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-widest mt-1">Säkerställ dokumentation enligt Barnkonventionen</p>
           </div>
         </div>
       </div>
 
       {/* Stage Selection */}
       <div className="space-y-3">
-        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Välj elevens stadium</label>
+        <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-1 text-left block">Välj elevens stadium</label>
         <div className="grid grid-cols-3 gap-3">
           {Object.values(templates).map(t => (
             <button
@@ -122,12 +122,12 @@ export const StudentVoiceModule: React.FC<StudentVoiceModuleProps> = ({
               }}
               className={`p-3 rounded-2xl border-2 transition-all flex flex-col items-center gap-2 text-center group ${
                 selectedStage === t.id
-                  ? 'bg-visuera-green/5 border-visuera-green text-visuera-green shadow-sm'
-                  : 'bg-slate-50 border-transparent text-slate-400 hover:border-slate-200'
+                  ? 'bg-visuera-green/5 dark:bg-visuera-green/10 border-visuera-green text-visuera-green shadow-sm'
+                  : 'bg-slate-50 dark:bg-slate-900 border-transparent text-slate-400 dark:text-slate-600 hover:border-slate-200 dark:hover:border-slate-700'
               }`}
             >
               <div className={`p-1.5 rounded-lg transition-colors ${
-                selectedStage === t.id ? 'bg-visuera-green text-white shadow-lg shadow-visuera-green/20' : 'bg-white text-slate-300 group-hover:text-visuera-green shadow-sm'
+                selectedStage === t.id ? 'bg-visuera-green text-white shadow-lg shadow-visuera-green/20' : 'bg-white dark:bg-slate-800 text-slate-300 dark:text-slate-700 group-hover:text-visuera-green shadow-sm'
               }`}>
                 {t.icon}
               </div>
@@ -148,7 +148,7 @@ export const StudentVoiceModule: React.FC<StudentVoiceModuleProps> = ({
             <button
               onClick={() => setShowSupport(!showSupport)}
               className={`w-full flex items-center justify-between p-4 rounded-2xl transition-all border font-black uppercase tracking-widest text-[10px] ${
-                showSupport ? 'bg-visuera-dark text-white border-visuera-dark shadow-xl shadow-visuera-dark/20' : 'bg-slate-50 border-slate-100 text-slate-500 hover:bg-slate-100'
+                showSupport ? 'bg-visuera-dark dark:bg-slate-900 text-white border-visuera-dark dark:border-slate-700 shadow-xl shadow-visuera-dark/20' : 'bg-slate-50 dark:bg-slate-900 border-slate-100 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
               }`}
             >
               <div className="flex items-center gap-3">
@@ -162,9 +162,9 @@ export const StudentVoiceModule: React.FC<StudentVoiceModuleProps> = ({
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="bg-slate-50 rounded-2xl p-6 border border-slate-100 space-y-4 shadow-inner"
+                className="bg-slate-50 dark:bg-slate-900/50 rounded-2xl p-6 border border-slate-100 dark:border-slate-700 space-y-4 shadow-inner"
               >
-                <p className="text-[10px] text-slate-500 font-bold italic leading-relaxed text-center px-4">
+                <p className="text-[10px] text-slate-500 dark:text-slate-400 font-bold italic leading-relaxed text-center px-4">
                   "{currentTemplate.purpose}"
                 </p>
                 <div className="space-y-2">
@@ -174,12 +174,12 @@ export const StudentVoiceModule: React.FC<StudentVoiceModuleProps> = ({
                       onClick={() => onToggleQuestion(q)}
                       className={`w-full p-4 rounded-xl border transition-all text-left flex items-start gap-3 group/q ${
                         checkedQuestions.includes(q)
-                          ? 'bg-white border-visuera-green text-visuera-green shadow-sm'
-                          : 'bg-white/50 border-slate-200/50 text-slate-600 hover:border-visuera-green/30'
+                          ? 'bg-white dark:bg-slate-800 border-visuera-green text-visuera-green shadow-sm'
+                          : 'bg-white/50 dark:bg-slate-800/50 border-slate-200/50 dark:border-slate-700/50 text-slate-600 dark:text-slate-400 hover:border-visuera-green/30'
                       }`}
                     >
                       <div className={`mt-0.5 w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors ${
-                        checkedQuestions.includes(q) ? 'bg-visuera-green border-visuera-green text-white' : 'border-slate-300 bg-white'
+                        checkedQuestions.includes(q) ? 'bg-visuera-green border-visuera-green text-white' : 'border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900'
                       }`}>
                         {checkedQuestions.includes(q) && <CheckCircle2 size={10} strokeWidth={4} />}
                       </div>
@@ -193,11 +193,11 @@ export const StudentVoiceModule: React.FC<StudentVoiceModuleProps> = ({
         )}
       </AnimatePresence>
 
-      <div className="space-y-2 pt-2 border-t border-slate-50">
-        <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-widest text-slate-400">
+      <div className="space-y-2 pt-2 border-t border-slate-50 dark:border-slate-700">
+        <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">
           <span>Skriven dokumentation</span>
         </div>
-        <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+        <div className="h-1.5 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
           <motion.div 
             initial={{ width: 0 }}
             animate={{ width: `${Math.min((charCount / 500) * 100, 100)}%` }}
@@ -207,32 +207,32 @@ export const StudentVoiceModule: React.FC<StudentVoiceModuleProps> = ({
       </div>
 
       {/* Multimedia Mockup */}
-      <div className="p-6 bg-slate-50/50 rounded-3xl border border-slate-100 border-dashed space-y-4">
-        <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
-          <ImageIcon size={14} className="text-slate-300" />
+      <div className="p-6 bg-slate-50/50 dark:bg-slate-900/50 rounded-3xl border border-slate-100 dark:border-slate-700 border-dashed space-y-4">
+        <h4 className="text-[10px] font-black text-slate-400 dark:text-slate-600 uppercase tracking-widest flex items-center gap-2">
+          <ImageIcon size={14} className="text-slate-300 dark:text-slate-700" />
           Kompletterande dokumentation
         </h4>
         <div className="grid grid-cols-2 gap-4">
-          <button className="p-4 bg-white border border-slate-100 rounded-2xl flex flex-col items-center gap-2 text-[10px] font-bold text-slate-500 hover:border-visuera-green/30 hover:text-visuera-green transition-all group shadow-sm">
-            <Mic size={20} className="text-slate-300 group-hover:text-visuera-green transition-colors" />
+          <button className="p-4 bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-2xl flex flex-col items-center gap-2 text-[10px] font-bold text-slate-500 dark:text-slate-400 hover:border-visuera-green/30 hover:text-visuera-green transition-all group shadow-sm">
+            <Mic size={20} className="text-slate-300 dark:text-slate-700 group-hover:text-visuera-green transition-colors" />
             Ljudfil (Intervju)
           </button>
-          <button className="p-4 bg-white border border-slate-100 rounded-2xl flex flex-col items-center gap-2 text-[10px] font-bold text-slate-500 hover:border-visuera-green/30 hover:text-visuera-green transition-all group shadow-sm">
-            <ImageIcon size={20} className="text-slate-300 group-hover:text-visuera-green transition-colors" />
+          <button className="p-4 bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-2xl flex flex-col items-center gap-2 text-[10px] font-bold text-slate-500 dark:text-slate-400 hover:border-visuera-green/30 hover:text-visuera-green transition-all group shadow-sm">
+            <ImageIcon size={20} className="text-slate-300 dark:text-slate-700 group-hover:text-visuera-green transition-colors" />
             Bild (Teckning)
           </button>
         </div>
       </div>
 
       {/* Child Rights Checklist */}
-      <div className="bg-blue-50/50 rounded-3xl p-6 border border-blue-100 space-y-6">
-        <div className="flex items-center gap-3">
-           <div className="w-8 h-8 bg-blue-100 rounded-xl flex items-center justify-center text-blue-600">
+      <div className="bg-blue-50/50 dark:bg-blue-900/10 rounded-3xl p-6 border border-blue-100 dark:border-blue-900/20 space-y-6">
+        <div className="flex items-center gap-3 text-left">
+           <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900/30 rounded-xl flex items-center justify-center text-blue-600 dark:text-blue-400">
              <Heart size={16} fill="currentColor" />
            </div>
            <div>
-             <h4 className="text-xs font-black text-blue-900 uppercase tracking-widest leading-none">Barnrättsperspektiv</h4>
-             <p className="text-[10px] text-blue-700/60 font-medium mt-1">Säkerställ att samtalet följer Barnkonventionen</p>
+             <h4 className="text-xs font-black text-blue-900 dark:text-blue-400 uppercase tracking-widest leading-none">Barnrättsperspektiv</h4>
+             <p className="text-[10px] text-blue-700/60 dark:text-blue-500/60 font-medium mt-1">Säkerställ att samtalet följer Barnkonventionen</p>
            </div>
         </div>
 
@@ -240,18 +240,18 @@ export const StudentVoiceModule: React.FC<StudentVoiceModuleProps> = ({
           {childRightsPoints.map(point => (
             <label 
               key={point.id}
-              className="flex items-start gap-3 cursor-pointer group"
+              className="flex items-start gap-3 cursor-pointer group text-left"
             >
               <div className="relative flex items-center mt-0.5">
                 <input 
                   type="checkbox"
                   checked={childRightsStatus.includes(point.id)}
                   onChange={() => onToggleChildRight(point.id)}
-                  className="w-5 h-5 rounded-lg border-2 border-blue-200 text-blue-600 focus:ring-blue-500/20 cursor-pointer transition-colors"
+                  className="w-5 h-5 rounded-lg border-2 border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-500 focus:ring-blue-500/20 cursor-pointer transition-colors"
                 />
               </div>
               <span className={`text-[11px] font-medium leading-relaxed transition-colors ${
-                childRightsStatus.includes(point.id) ? 'text-blue-900' : 'text-blue-700/70 group-hover:text-blue-800'
+                childRightsStatus.includes(point.id) ? 'text-blue-900 dark:text-blue-300' : 'text-blue-700/70 dark:text-blue-500 group-hover:text-blue-800 dark:group-hover:text-blue-400'
               }`}>
                 {point.text}
               </span>
@@ -259,16 +259,16 @@ export const StudentVoiceModule: React.FC<StudentVoiceModuleProps> = ({
           ))}
         </div>
 
-        <div className="pt-4 border-t border-blue-100/30">
-          <label className="flex items-center gap-3 p-4 bg-white/60 rounded-2xl border border-blue-100 cursor-pointer hover:bg-white transition-all">
+        <div className="pt-4 border-t border-blue-100/30 dark:border-blue-800/30">
+          <label className="flex items-center gap-3 p-4 bg-white/60 dark:bg-slate-800/60 rounded-2xl border border-blue-100 dark:border-blue-900/30 cursor-pointer hover:bg-white dark:hover:bg-slate-800 transition-all text-left">
             <input 
               type="checkbox"
               required
               checked={ageAdaptedConfirmation}
               onChange={(e) => onToggleConfirmation(e.target.checked)}
-              className="w-5 h-5 rounded-lg border-2 border-blue-300 text-visuera-green focus:ring-visuera-green/20 cursor-pointer"
+              className="w-5 h-5 rounded-lg border-2 border-blue-300 dark:border-blue-700 text-visuera-green focus:ring-visuera-green/20 cursor-pointer"
             />
-            <span className="text-[10px] font-black text-blue-900 uppercase tracking-widest">
+            <span className="text-[10px] font-black text-blue-900 dark:text-blue-300 uppercase tracking-widest">
               Jag bekräftar att frågorna har anpassats efter barnets ålder och mognad
             </span>
           </label>

@@ -64,6 +64,16 @@ export const TeamContributions: React.FC<TeamContributionsProps> = ({
     const quoteText = `\n\nObservation från ${contrib.authorName}: "${contrib.text}"`;
     const currentText = formData.investigationText || '';
     updateFormData('investigationText', currentText + quoteText);
+    
+    // Smooth alert to show it worked
+    const toast = document.createElement('div');
+    toast.className = 'fixed bottom-8 left-1/2 -translate-x-1/2 px-6 py-3 bg-slate-900 text-white rounded-2xl text-xs font-bold shadow-2xl z-50 animate-in fade-in slide-in-from-bottom-4 duration-300';
+    toast.innerText = 'Text kopierad till "Andras versioner"';
+    document.body.appendChild(toast);
+    setTimeout(() => {
+      toast.classList.add('animate-out', 'fade-out', 'slide-out-to-bottom-4');
+      setTimeout(() => document.body.removeChild(toast), 300);
+    }, 2000);
   };
 
   return (
@@ -99,14 +109,14 @@ export const TeamContributions: React.FC<TeamContributionsProps> = ({
 
       {/* Main Contributions Log */}
       {(formData.requestTeamContribution || contributions.length > 0) && (
-        <div className="bg-slate-50 border border-slate-200 rounded-[32px] overflow-hidden shadow-sm">
-          <div className="p-6 border-b border-slate-200 bg-white/50 backdrop-blur-sm flex items-center justify-between">
+        <div className="bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-[32px] overflow-hidden shadow-sm transition-colors">
+          <div className="p-6 border-b border-slate-200 dark:border-slate-700 bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-visuera-green/10 rounded-xl flex items-center justify-center text-visuera-green">
                 <Users size={20} />
               </div>
               <div>
-                <h3 className="text-sm font-black text-visuera-dark tracking-tight">ARBETSLAGETS INSIKTER</h3>
+                <h3 className="text-sm font-black text-visuera-dark dark:text-slate-100 tracking-tight">ARBETSLAGETS INSIKTER</h3>
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Observationer & Bidrag</p>
               </div>
             </div>
@@ -117,13 +127,13 @@ export const TeamContributions: React.FC<TeamContributionsProps> = ({
           </div>
 
           <div className="p-6 space-y-6">
-            <div className="bg-blue-50/50 p-4 rounded-2xl border border-blue-100/50">
-              <p className="text-[10px] text-blue-700 leading-relaxed font-medium">
+            <div className="bg-blue-50/50 dark:bg-blue-900/10 p-4 rounded-2xl border border-blue-100/50 dark:border-blue-900/20">
+              <p className="text-[10px] text-blue-700 dark:text-blue-400 leading-relaxed font-medium">
                 Dessa bidrag är interna arbetsnoteringar och utgör underlag för den officiella utredningen. De kan inte ändras i efterhand.
               </p>
             </div>
 
-            <div className="relative pl-4 space-y-8 before:absolute before:left-0 before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-200">
+            <div className="relative pl-4 space-y-8 before:absolute before:left-0 before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-200 dark:before:bg-slate-700">
               {contributions.length === 0 ? (
                 <div className="py-12 text-center">
                   <Clock className="mx-auto text-slate-300 mb-2 animate-pulse" size={32} />
@@ -138,18 +148,18 @@ export const TeamContributions: React.FC<TeamContributionsProps> = ({
                     className="relative"
                   >
                     {/* Timeline Dot */}
-                    <div className="absolute -left-[21px] top-4 w-4 h-4 bg-white border-2 border-visuera-green rounded-full shadow-sm z-10" />
+                    <div className="absolute -left-[21px] top-4 w-4 h-4 bg-white dark:bg-slate-900 border-2 border-visuera-green rounded-full shadow-sm z-10" />
                     
-                    <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 group transition-all hover:shadow-md hover:border-visuera-green/20">
+                    <div className="bg-white dark:bg-slate-800 rounded-2xl p-5 shadow-sm border border-slate-100 dark:border-slate-700 group transition-all hover:shadow-md hover:border-visuera-green/20">
                       <div className="flex items-start justify-between mb-3">
                         <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 bg-slate-900 rounded-lg flex items-center justify-center text-white text-[10px] font-black">
+                          <div className="w-8 h-8 bg-slate-900 dark:bg-slate-700 rounded-lg flex items-center justify-center text-white text-[10px] font-black">
                             {c.authorName?.substring(0, 2).toUpperCase()}
                           </div>
                           <div>
                             <div className="flex items-center gap-2">
-                              <span className="text-[11px] font-black text-visuera-dark">{c.authorName}</span>
-                              <span className="px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded text-[7px] font-black uppercase tracking-tight">
+                              <span className="text-[11px] font-black text-visuera-dark dark:text-slate-100">{c.authorName}</span>
+                              <span className="px-1.5 py-0.5 bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 rounded text-[7px] font-black uppercase tracking-tight">
                                 {c.authorRole || (userProfile?.uid === c.authorUid ? userProfile.role : 'Lärare')}
                               </span>
                             </div>
@@ -165,18 +175,18 @@ export const TeamContributions: React.FC<TeamContributionsProps> = ({
                         {isInvestigator && (
                           <button 
                             onClick={() => handleQuote(c)}
-                            className="p-2 text-slate-300 hover:text-visuera-green hover:bg-visuera-green/5 rounded-lg transition-all flex items-center gap-2 group/btn"
-                            title="Citera i utredningen"
+                            className="p-2 text-slate-300 dark:text-slate-600 hover:text-green-600 dark:hover:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/10 rounded-lg transition-all flex items-center gap-2 group/btn"
+                            title='Citera observationen i avsnittet "Andras versioner"'
                           >
                             <Quote size={14} className="group-hover/btn:scale-110 transition-transform" />
-                            <span className="text-[9px] font-black uppercase tracking-widest hidden group-hover/btn:block">Citera</span>
+                            <span className="text-[9px] font-black uppercase tracking-widest hidden group-hover/btn:block">Citera till "Andras versioner"</span>
                           </button>
                         )}
                       </div>
                       
                       <div className="relative">
                         <div className="absolute -left-2 top-0 h-full w-0.5 bg-visuera-green/10" />
-                        <p className="text-xs text-slate-600 leading-relaxed font-medium pl-3">
+                        <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-medium pl-3">
                           {c.text}
                         </p>
                       </div>
@@ -188,12 +198,12 @@ export const TeamContributions: React.FC<TeamContributionsProps> = ({
 
             {/* Input Section for Team Members */}
             {isTeamMember && (
-              <div className="pt-6 border-t border-slate-200 mt-8">
+              <div className="pt-6 border-t border-slate-200 dark:border-slate-700 mt-8">
                 <div className="flex items-center gap-3 mb-4">
                   <div className="w-8 h-8 bg-visuera-green text-white rounded-lg flex items-center justify-center shadow-lg shadow-visuera-green/20">
                     <Plus size={18} />
                   </div>
-                  <h4 className="text-[10px] font-black text-visuera-dark uppercase tracking-[0.2em]">Lägg till din observation</h4>
+                  <h4 className="text-[10px] font-black text-visuera-dark dark:text-slate-100 uppercase tracking-[0.2em]">Lägg till din observation</h4>
                 </div>
                 
                 <div className="relative">
@@ -201,10 +211,10 @@ export const TeamContributions: React.FC<TeamContributionsProps> = ({
                     value={newContribution}
                     onChange={(e) => setNewContribution(e.target.value)}
                     placeholder="Beskriv vad du har sett eller hört som är relevant för ärendet..."
-                    className="w-full h-32 p-5 bg-white rounded-2xl border-2 border-slate-100 focus:border-visuera-green/20 focus:ring-4 focus:ring-visuera-green/5 transition-all resize-none text-[11px] font-medium text-slate-700 placeholder:text-slate-300"
+                    className="w-full h-32 p-5 bg-white dark:bg-slate-800 rounded-2xl border-2 border-slate-100 dark:border-slate-700 focus:border-visuera-green/20 focus:ring-4 focus:ring-visuera-green/5 transition-all resize-none text-[11px] font-medium text-slate-700 dark:text-slate-100 placeholder:text-slate-300 dark:placeholder:text-slate-500"
                   />
                   <div className="absolute bottom-4 right-4 flex items-center gap-3">
-                     <span className="text-[9px] font-bold text-slate-300">{newContribution.length} tecken</span>
+                     <span className="text-[9px] font-bold text-slate-300 dark:text-slate-500">{newContribution.length} tecken</span>
                      <button
                         onClick={handleAddContribution}
                         disabled={isSubmittingContrib || !newContribution.trim()}

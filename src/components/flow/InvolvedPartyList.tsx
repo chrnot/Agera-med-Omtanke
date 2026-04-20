@@ -4,7 +4,7 @@ import { User, Users, Trash2, PlusCircle, AlertCircle, ChevronDown } from 'lucid
 interface InvolvedParty {
   id: string;
   name: string;
-  role: 'Utsatt' | 'Utövare' | 'Vittne';
+  role: 'Utsatt' | 'Utövare' | 'Observatör';
   type: 'Elev' | 'Vuxen';
   class?: string;
 }
@@ -48,18 +48,18 @@ export const InvolvedPartyList: React.FC<InvolvedPartyListProps> = ({ parties, o
       </div>
 
       {parties.length === 0 ? (
-        <div className="p-8 bg-slate-50 rounded-[32px] border-2 border-dashed border-slate-200 text-center space-y-3">
-          <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center mx-auto text-slate-300">
+        <div className="p-8 bg-slate-50 dark:bg-slate-900 rounded-[32px] border-2 border-dashed border-slate-200 dark:border-slate-700 text-center space-y-3">
+          <div className="w-12 h-12 bg-white dark:bg-slate-800 rounded-2xl flex items-center justify-center mx-auto text-slate-300 dark:text-slate-600">
             <Users size={24} />
           </div>
-          <p className="text-xs font-bold text-slate-400">Inga personer tillagda än.</p>
+          <p className="text-xs font-bold text-slate-400 dark:text-slate-500">Inga personer tillagda än.</p>
         </div>
       ) : (
         <div className="space-y-3">
           {parties.map((party) => (
             <div 
               key={party.id}
-              className="group bg-white p-4 rounded-3xl border border-slate-100 shadow-sm hover:shadow-md transition-all flex flex-col lg:flex-row gap-4 items-start lg:items-center"
+              className="group bg-white dark:bg-slate-800 p-4 rounded-3xl border border-slate-100 dark:border-slate-700 shadow-sm hover:shadow-md transition-all flex flex-col lg:flex-row gap-4 items-start lg:items-center"
             >
               <div className="flex-1 w-full grid grid-cols-1 md:grid-cols-12 gap-4">
                 <div className="space-y-1.5 md:col-span-6">
@@ -70,7 +70,7 @@ export const InvolvedPartyList: React.FC<InvolvedPartyListProps> = ({ parties, o
                       placeholder="Namn..."
                       value={party.name}
                       onChange={(e) => updateParty(party.id, 'name', e.target.value)}
-                      className="w-full pl-9 p-2.5 bg-slate-50 rounded-xl border-none focus:ring-2 focus:ring-visuera-green/20 text-xs font-bold text-slate-700"
+                      className="w-full pl-9 p-2.5 bg-slate-50 dark:bg-slate-900 rounded-xl border-none focus:ring-2 focus:ring-visuera-green/20 text-xs font-bold text-slate-700 dark:text-slate-200"
                     />
                   </div>
                 </div>
@@ -80,11 +80,11 @@ export const InvolvedPartyList: React.FC<InvolvedPartyListProps> = ({ parties, o
                     <select 
                       value={party.role}
                       onChange={(e) => updateParty(party.id, 'role', e.target.value as any)}
-                      className="w-full p-2.5 pr-8 bg-slate-50 rounded-xl border-none focus:ring-2 focus:ring-visuera-green/20 text-[10px] font-black uppercase tracking-wider text-slate-600 appearance-none cursor-pointer"
+                      className="w-full p-2.5 pr-8 bg-slate-50 dark:bg-slate-900 rounded-xl border-none focus:ring-2 focus:ring-visuera-green/20 text-[10px] font-black uppercase tracking-wider text-slate-600 dark:text-slate-400 appearance-none cursor-pointer"
                     >
                       <option value="Utsatt">Utsatt</option>
                       <option value="Utövare">Utövare</option>
-                      <option value="Vittne">Vittne</option>
+                      <option value="Observatör">Observatör</option>
                     </select>
                     <div className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-300">
                       <ChevronDown size={14} />
@@ -97,7 +97,7 @@ export const InvolvedPartyList: React.FC<InvolvedPartyListProps> = ({ parties, o
                     <select 
                       value={party.type}
                       onChange={(e) => updateParty(party.id, 'type', e.target.value as any)}
-                      className="w-full p-2.5 pr-8 bg-slate-50 rounded-xl border-none focus:ring-2 focus:ring-visuera-green/20 text-[10px] font-black uppercase tracking-wider text-slate-600 appearance-none cursor-pointer"
+                      className="w-full p-2.5 pr-8 bg-slate-50 dark:bg-slate-900 rounded-xl border-none focus:ring-2 focus:ring-visuera-green/20 text-[10px] font-black uppercase tracking-wider text-slate-600 dark:text-slate-400 appearance-none cursor-pointer"
                     >
                       <option value="Elev">Elev</option>
                       <option value="Vuxen">Vuxen</option>
@@ -117,14 +117,14 @@ export const InvolvedPartyList: React.FC<InvolvedPartyListProps> = ({ parties, o
                       placeholder="Klass..."
                       value={party.class || ''}
                       onChange={(e) => updateParty(party.id, 'class', e.target.value)}
-                      className="w-full p-2.5 bg-slate-50 rounded-xl border-none focus:ring-2 focus:ring-visuera-green/20 text-xs font-bold text-slate-700"
+                      className="w-full p-2.5 bg-slate-50 dark:bg-slate-900 rounded-xl border-none focus:ring-2 focus:ring-visuera-green/20 text-xs font-bold text-slate-700 dark:text-slate-200"
                     />
                   </div>
                 )}
 
                 <button 
                   onClick={() => removeParty(party.id)}
-                  className="p-2.5 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all ml-auto lg:ml-0"
+                  className="p-2.5 text-slate-300 dark:text-slate-600 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-all ml-auto lg:ml-0"
                   title="Ta bort person"
                 >
                   <Trash2 size={16} />
@@ -136,9 +136,9 @@ export const InvolvedPartyList: React.FC<InvolvedPartyListProps> = ({ parties, o
       )}
 
       {parties.length > 0 && parties.filter(p => !p.name.trim()).length > 0 && (
-        <div className="flex items-center gap-2 p-3 bg-amber-50 rounded-2xl border border-amber-100/50">
+        <div className="flex items-center gap-2 p-3 bg-amber-50 dark:bg-amber-900/10 rounded-2xl border border-amber-100/50 dark:border-amber-900/20">
           <AlertCircle size={14} className="text-amber-500" />
-          <p className="text-[10px] font-bold text-amber-600 uppercase tracking-widest">Fyll i namn på alla inblandade</p>
+          <p className="text-[10px] font-bold text-amber-600 dark:text-amber-500 uppercase tracking-widest">Fyll i namn på alla inblandade</p>
         </div>
       )}
     </div>

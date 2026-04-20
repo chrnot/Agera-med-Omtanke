@@ -39,7 +39,7 @@ export const AnmalanStep: React.FC<AnmalanStepProps> = ({
                   updateFormData('schoolId', '');
                   updateFormData('authorityId', e.target.value);
                 }}
-                className="w-full pl-12 p-4 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-blue-500/10 transition-all text-sm appearance-none cursor-pointer font-medium text-slate-700"
+                className="w-full pl-12 p-4 bg-slate-50 dark:bg-slate-900 rounded-2xl border-none focus:ring-2 focus:ring-visuera-green/20 transition-all text-sm appearance-none cursor-pointer font-medium text-slate-700 dark:text-slate-200"
               >
                 <option value="">Välj huvudman...</option>
                 {authorities.map(auth => (
@@ -67,7 +67,7 @@ export const AnmalanStep: React.FC<AnmalanStepProps> = ({
                     updateFormData('authorityId', school.authorityId);
                   }
                 }}
-                className={`w-full pl-12 p-4 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-blue-500/10 transition-all text-sm appearance-none cursor-pointer font-medium text-slate-700 ${!selectedAuthority ? 'opacity-50 grayscale' : ''}`}
+                className={`w-full pl-12 p-4 bg-slate-50 dark:bg-slate-900 rounded-2xl border-none focus:ring-2 focus:ring-visuera-green/20 transition-all text-sm appearance-none cursor-pointer font-medium text-slate-700 dark:text-slate-200 ${!selectedAuthority ? 'opacity-50 grayscale' : ''}`}
               >
                 <option value="">{selectedAuthority ? 'Välj en skola...' : 'Välj huvudman först...'}</option>
                 {availableSchools
@@ -93,7 +93,7 @@ export const AnmalanStep: React.FC<AnmalanStepProps> = ({
                 required
                 value={formData.incidentDate}
                 onChange={(e) => updateFormData('incidentDate', e.target.value)}
-                className="w-full pl-12 p-4 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-blue-500/10 transition-all text-sm font-medium text-slate-700"
+                className="w-full pl-12 p-4 bg-slate-50 dark:bg-slate-900 rounded-2xl border-none focus:ring-2 focus:ring-visuera-green/20 transition-all text-sm font-medium text-slate-700 dark:text-slate-200"
               />
             </div>
           </div>
@@ -104,7 +104,7 @@ export const AnmalanStep: React.FC<AnmalanStepProps> = ({
               <select 
                 value={formData.incidentLocation}
                 onChange={(e) => updateFormData('incidentLocation', e.target.value)}
-                className="w-full pl-12 p-4 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-blue-500/10 transition-all text-sm appearance-none cursor-pointer font-medium text-slate-700"
+                className="w-full pl-12 p-4 bg-slate-50 dark:bg-slate-900 rounded-2xl border-none focus:ring-2 focus:ring-visuera-green/20 transition-all text-sm appearance-none cursor-pointer font-medium text-slate-700 dark:text-slate-200"
               >
                 <option value="">Välj plats...</option>
                 <option value="Skolgården">Skolgården</option>
@@ -150,7 +150,7 @@ export const AnmalanStep: React.FC<AnmalanStepProps> = ({
               value={formData.incidentDescription}
               onChange={(e) => updateFormData('incidentDescription', e.target.value)}
               placeholder="Beskriv sakligt och kortfattat vad som hände..."
-              className="w-full h-40 p-6 bg-slate-50 rounded-3xl border-none focus:ring-2 focus:ring-blue-500/10 transition-all resize-none text-sm leading-relaxed text-slate-700 font-medium"
+              className="w-full h-40 p-6 bg-slate-50 dark:bg-slate-900 rounded-3xl border-none focus:ring-2 focus:ring-visuera-green/20 transition-all resize-none text-sm leading-relaxed text-slate-700 dark:text-slate-200 font-medium"
             />
           </div>
         </div>
@@ -165,7 +165,7 @@ export const AnmalanStep: React.FC<AnmalanStepProps> = ({
               type="text"
               value={formData.reporterName}
               onChange={(e) => updateFormData('reporterName', e.target.value)}
-              className="w-full p-4 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-blue-500/10 transition-all text-sm font-medium text-slate-700"
+              className="w-full p-4 bg-slate-50 dark:bg-slate-900 rounded-2xl border-none focus:ring-2 focus:ring-visuera-green/20 transition-all text-sm font-medium text-slate-700 dark:text-slate-200"
             />
           </div>
           <div className="space-y-2">
@@ -174,7 +174,7 @@ export const AnmalanStep: React.FC<AnmalanStepProps> = ({
               type="email"
               value={formData.reporterEmail}
               onChange={(e) => updateFormData('reporterEmail', e.target.value)}
-              className="w-full p-4 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-blue-500/10 transition-all text-sm font-medium text-slate-700"
+              className="w-full p-4 bg-slate-50 dark:bg-slate-900 rounded-2xl border-none focus:ring-2 focus:ring-visuera-green/20 transition-all text-sm font-medium text-slate-700 dark:text-slate-200"
             />
           </div>
         </div>

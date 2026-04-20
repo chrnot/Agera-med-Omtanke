@@ -114,18 +114,18 @@ export const NotificationInbox = ({ userId, onOpenCase, onClose }: NotificationI
   const unreadCount = notifications.filter(n => !n.read).length;
 
   return (
-    <div className="flex flex-col h-full bg-white">
-      <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+    <div className="flex flex-col h-full bg-white dark:bg-slate-800 transition-colors duration-500">
+      <div className="p-6 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between bg-slate-50/50 dark:bg-slate-900/50">
         <div className="flex items-center gap-3">
           <div className="relative">
-            <Bell size={20} className="text-visuera-dark" />
+            <Bell size={20} className="text-visuera-dark dark:text-slate-100" />
             {unreadCount > 0 && (
               <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[8px] font-black rounded-full flex items-center justify-center">
                 {unreadCount}
               </span>
             )}
           </div>
-          <h2 className="font-black text-visuera-dark uppercase tracking-widest text-sm">Notifieringar</h2>
+          <h2 className="font-black text-visuera-dark dark:text-slate-100 uppercase tracking-widest text-sm">Notifieringar</h2>
         </div>
         <div className="flex items-center gap-2">
           {unreadCount > 0 && (
@@ -136,30 +136,30 @@ export const NotificationInbox = ({ userId, onOpenCase, onClose }: NotificationI
               Markera alla som lästa
             </button>
           )}
-          <button onClick={onClose} className="p-2 hover:bg-slate-200 rounded-xl transition-all">
-            <X size={18} className="text-slate-400" />
+          <button onClick={onClose} className="p-2 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl transition-all">
+            <X size={18} className="text-slate-400 dark:text-slate-500" />
           </button>
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto no-scrollbar">
         {loading ? (
           <div className="p-12 text-center">
             <div className="w-8 h-8 border-2 border-visuera-green/20 border-t-visuera-green rounded-full animate-spin mx-auto"></div>
           </div>
         ) : notifications.length === 0 ? (
           <div className="p-12 text-center space-y-4">
-            <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto text-slate-200">
+            <div className="w-16 h-16 bg-slate-50 dark:bg-slate-900 rounded-full flex items-center justify-center mx-auto text-slate-200 dark:text-slate-700">
               <Bell size={32} />
             </div>
-            <p className="text-slate-400 text-sm italic">Här var det tomt! Du har inga notifieringar just nu.</p>
+            <p className="text-slate-400 dark:text-slate-500 text-sm italic pr-4 pl-4">Här var det tomt! Du har inga notifieringar just nu.</p>
           </div>
         ) : (
-          <div className="divide-y divide-slate-50">
+          <div className="divide-y divide-slate-50 dark:divide-slate-700/50">
             {notifications.map((n) => (
               <div 
                 key={n.id} 
-                className={`p-6 transition-all hover:bg-slate-50 cursor-pointer group relative ${!n.read ? 'bg-visuera-green/5' : ''}`}
+                className={`p-6 transition-all hover:bg-slate-50 dark:hover:bg-slate-700/30 cursor-pointer group relative ${!n.read ? 'bg-visuera-green/5 dark:bg-visuera-green/10' : ''}`}
                 onClick={() => {
                   if (n.caseId) onOpenCase(n.caseId);
                   if (n.id) markAsRead(n.id);
@@ -167,21 +167,21 @@ export const NotificationInbox = ({ userId, onOpenCase, onClose }: NotificationI
                 }}
               >
                 <div className="flex gap-4">
-                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-sm ${!n.read ? 'bg-white' : 'bg-slate-50'}`}>
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-sm ${!n.read ? 'bg-white dark:bg-slate-700' : 'bg-slate-50 dark:bg-slate-900/50'}`}>
                     {getIcon(n.type)}
                   </div>
                   <div className="flex-1 space-y-1">
                     <div className="flex justify-between items-start">
-                      <h4 className={`text-sm tracking-tight ${!n.read ? 'font-black text-visuera-dark' : 'font-bold text-slate-600'}`}>
-                        {n.title} {n.senderName && <span className="text-slate-400 font-medium">från {n.senderName}</span>}
+                      <h4 className={`text-sm tracking-tight ${!n.read ? 'font-black text-visuera-dark dark:text-slate-100' : 'font-bold text-slate-600 dark:text-slate-300'}`}>
+                        {n.title} {n.senderName && <span className="text-slate-400 dark:text-slate-500 font-medium">från {n.senderName}</span>}
                       </h4>
-                      <span className="text-[9px] font-bold text-slate-400 uppercase flex items-center gap-1">
+                      <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase flex items-center gap-1">
                         <Clock size={10} /> {getTimeMessage(n.createdAt)}
                       </span>
                     </div>
-                    <p className="text-xs text-slate-500 leading-relaxed pr-6">{n.message}</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed pr-6">{n.message}</p>
                     {n.school && (
-                      <span className="text-[9px] font-black text-visuera-green uppercase bg-visuera-green/10 px-2 py-0.5 rounded tracking-widest inline-block mt-2">
+                      <span className="text-[9px] font-black text-visuera-green uppercase bg-visuera-green/10 dark:bg-visuera-green/20 px-2 py-0.5 rounded tracking-widest inline-block mt-2">
                         {n.school}
                       </span>
                     )}
@@ -191,7 +191,7 @@ export const NotificationInbox = ({ userId, onOpenCase, onClose }: NotificationI
                 <div className="absolute right-4 top-1/2 -translate-y-1/2 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                    <button 
                     onClick={(e) => { e.stopPropagation(); if(n.id) deleteNotification(n.id); }}
-                    className="p-1.5 hover:bg-red-50 text-slate-300 hover:text-red-500 rounded-lg"
+                    className="p-1.5 hover:bg-red-50 dark:hover:bg-red-900/20 text-slate-300 dark:text-slate-600 hover:text-red-500 dark:hover:text-red-400 rounded-lg"
                     title="Ta bort"
                    >
                      <Trash2 size={12} />
@@ -199,7 +199,7 @@ export const NotificationInbox = ({ userId, onOpenCase, onClose }: NotificationI
                    {!n.read && (
                       <button 
                         onClick={(e) => { e.stopPropagation(); if(n.id) markAsRead(n.id); }}
-                        className="p-1.5 hover:bg-visuera-green/10 text-slate-300 hover:text-visuera-green rounded-lg"
+                        className="p-1.5 hover:bg-visuera-green/10 text-slate-300 dark:text-slate-600 hover:text-visuera-green rounded-lg"
                         title="Markera som läst"
                       >
                         <Check size={12} />

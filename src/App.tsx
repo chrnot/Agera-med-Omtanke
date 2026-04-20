@@ -49,7 +49,9 @@ import {
   Mail,
   Shield,
   Eye,
-  CreditCard
+  CreditCard,
+  Sun,
+  Moon
 } from 'lucide-react';
 import { 
   LineChart, 
@@ -74,6 +76,7 @@ import { NotificationInbox } from './components/NotificationInbox';
 import { caseService } from './services/caseService';
 import { setupService } from './services/setupService';
 import { onSnapshot, collection, query, orderBy, limit, where, getDocs } from 'firebase/firestore';
+import { useTheme } from './context/ThemeContext';
 
 interface UserProfile {
   uid: string;
@@ -114,11 +117,11 @@ const BankIDModal = ({ isOpen, onClose, onAuthenticated }: { isOpen: boolean, on
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 backdrop-blur-md bg-visuera-dark/40">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 backdrop-blur-md bg-visuera-dark/40 dark:bg-black/60 transition-all duration-500">
       <motion.div 
         initial={{ opacity: 0, scale: 0.9, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
-        className="bg-white w-full max-w-sm rounded-[40px] overflow-hidden shadow-2xl"
+        className="bg-white dark:bg-slate-800 w-full max-w-sm rounded-[40px] overflow-hidden shadow-2xl transition-colors"
       >
         <div className="p-8 text-center space-y-6">
           <div className="w-20 h-20 bg-[#003da5] rounded-3xl flex items-center justify-center mx-auto shadow-xl shadow-[#003da5]/20">
@@ -126,8 +129,8 @@ const BankIDModal = ({ isOpen, onClose, onAuthenticated }: { isOpen: boolean, on
           </div>
           
           <div className="space-y-2">
-            <h2 className="text-2xl font-black text-[#003da5]">BankID</h2>
-            <p className="text-slate-500 text-sm font-medium">Säker inloggning med e-legitimation</p>
+            <h2 className="text-2xl font-black text-[#003da5] dark:text-[#5c99ff]">BankID</h2>
+            <p className="text-slate-500 dark:text-slate-400 text-sm font-medium">Säker inloggning med e-legitimation</p>
           </div>
 
           <div className="py-2">
@@ -143,7 +146,7 @@ const BankIDModal = ({ isOpen, onClose, onAuthenticated }: { isOpen: boolean, on
                       setPnr(e.target.value);
                       setError('');
                     }}
-                    className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl p-4 text-center text-lg font-black tracking-widest focus:border-[#003da5] transition-all outline-none"
+                    className="w-full bg-slate-50 dark:bg-slate-900 border-2 border-slate-100 dark:border-slate-700 rounded-2xl p-4 text-center text-lg font-black tracking-widest focus:border-[#003da5] dark:focus:border-[#5c99ff] transition-all outline-none text-slate-900 dark:text-slate-100 placeholder:text-slate-300 dark:placeholder:text-slate-600"
                   />
                   {error && <p className="text-red-500 text-[10px] font-bold text-center mt-2">{error}</p>}
                 </div>
@@ -160,10 +163,10 @@ const BankIDModal = ({ isOpen, onClose, onAuthenticated }: { isOpen: boolean, on
               <div className="py-8 space-y-6">
                 <div className="relative w-16 h-16 mx-auto">
                    <div className="absolute inset-0 border-4 border-[#003da5]/10 rounded-full"></div>
-                   <div className="absolute inset-0 border-4 border-[#003da5] border-t-transparent rounded-full animate-spin"></div>
+                   <div className="absolute inset-0 border-4 border-[#003da5] dark:border-[#5c99ff] border-t-transparent rounded-full animate-spin"></div>
                 </div>
                 <div className="space-y-2">
-                  <p className="font-bold text-visuera-dark">Starta BankID-appen</p>
+                  <p className="font-bold text-visuera-dark dark:text-slate-100">Starta BankID-appen</p>
                   <p className="text-xs text-slate-400">Väntar på att du ska signera i din BankID-app...</p>
                 </div>
               </div>
@@ -175,7 +178,7 @@ const BankIDModal = ({ isOpen, onClose, onAuthenticated }: { isOpen: boolean, on
                   <CheckCircle2 size={32} />
                 </div>
                 <div className="space-y-1">
-                  <p className="font-bold text-visuera-dark">Legitimering klar</p>
+                  <p className="font-bold text-visuera-dark dark:text-slate-100">Legitimering klar</p>
                   <p className="text-xs text-slate-400">Du skickas nu vidare...</p>
                 </div>
               </div>
@@ -184,7 +187,7 @@ const BankIDModal = ({ isOpen, onClose, onAuthenticated }: { isOpen: boolean, on
 
           <button 
             onClick={onClose}
-            className="text-slate-400 text-xs font-bold hover:text-slate-600 transition-all uppercase tracking-widest"
+            className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-xs font-bold transition-all uppercase tracking-widest"
           >
             Avbryt
           </button>
@@ -265,22 +268,22 @@ const Login = ({ onQuickReport, onBankIDLogin }: { onQuickReport: () => void, on
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6 bg-[url('https://picsum.photos/seed/danderyd/1920/1080?blur=10')] bg-cover">
-      <div className="absolute inset-0 bg-visuera-green/10 backdrop-blur-[2px]"></div>
-      <div className="bg-white p-12 rounded-[40px] shadow-2xl border border-white/50 w-full max-w-xl relative z-10 text-center space-y-8">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex items-center justify-center p-6 bg-[url('https://picsum.photos/seed/danderyd/1920/1080?blur=10')] bg-cover transition-colors duration-500">
+      <div className="absolute inset-0 bg-visuera-green/10 dark:bg-visuera-dark/40 backdrop-blur-[2px]"></div>
+      <div className="bg-white dark:bg-slate-800 p-12 rounded-[40px] shadow-2xl border border-white/50 dark:border-slate-700 w-full max-w-xl relative z-10 text-center space-y-8 transition-colors">
         <div className="w-20 h-20 bg-visuera-green rounded-[24px] flex items-center justify-center mx-auto shadow-xl shadow-visuera-green/20">
           <span className="text-white font-bold text-3xl">AmO</span>
         </div>
         <div>
-          <h1 className="text-4xl font-black text-visuera-dark tracking-tight">Agera med Omtanke</h1>
-          <p className="text-slate-500 font-medium mt-2">Trygghetsärenden i Danderyds Kommun</p>
+          <h1 className="text-4xl font-black text-visuera-dark dark:text-slate-100 tracking-tight">Agera med Omtanke</h1>
+          <p className="text-slate-500 dark:text-slate-400 font-medium mt-2">Trygghetsärenden i Danderyds Kommun</p>
         </div>
         
         {error && (
           <motion.div 
             initial={{ opacity: 0, y: -10 }} 
             animate={{ opacity: 1, y: 0 }}
-            className="p-4 bg-red-50 border border-red-100 rounded-2xl text-red-600 text-sm font-bold flex items-center gap-3"
+            className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-900/30 rounded-2xl text-red-600 dark:text-red-400 text-sm font-bold flex items-center gap-3"
           >
             <AlertCircle size={18} />
             {error}
@@ -289,23 +292,23 @@ const Login = ({ onQuickReport, onBankIDLogin }: { onQuickReport: () => void, on
         <div className="py-4 space-y-4">
           <button 
             onClick={onQuickReport}
-            className="w-full py-4 bg-white text-visuera-green border-2 border-visuera-green rounded-2xl font-bold text-base hover:bg-visuera-green/5 transition-all flex items-center justify-center gap-3"
+            className="w-full py-4 bg-white dark:bg-slate-900 text-visuera-green dark:text-visuera-green border-2 border-visuera-green rounded-2xl font-bold text-base hover:bg-visuera-green/5 transition-all flex items-center justify-center gap-3"
           >
             <PlusCircle size={20} />
             Snabb-anmälan (Utan inloggning)
           </button>
 
           <div className="flex items-center gap-4 py-2">
-            <div className="flex-1 h-px bg-slate-100"></div>
-            <span className="text-[10px] font-bold text-slate-300 uppercase tracking-widest">Eller logga in</span>
-            <div className="flex-1 h-px bg-slate-100"></div>
+            <div className="flex-1 h-px bg-slate-100 dark:bg-slate-700"></div>
+            <span className="text-[10px] font-bold text-slate-300 dark:text-slate-600 uppercase tracking-widest">Eller logga in</span>
+            <div className="flex-1 h-px bg-slate-100 dark:bg-slate-700"></div>
           </div>
 
           <div className="grid grid-cols-1 gap-4">
             <button 
               onClick={handleLogin}
               disabled={loading}
-              className="w-full py-4 bg-slate-50 text-slate-600 border border-slate-200 rounded-2xl font-bold text-base hover:bg-slate-100 transition-all flex items-center justify-center gap-3 disabled:opacity-50"
+              className="w-full py-4 bg-slate-50 dark:bg-slate-900/50 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded-2xl font-bold text-base hover:bg-slate-100 dark:hover:bg-slate-800 transition-all flex items-center justify-center gap-3 disabled:opacity-50"
             >
               {loading ? (
                 <div className="w-6 h-6 border-2 border-slate-300 border-t-slate-600 rounded-full animate-spin"></div>
@@ -355,13 +358,13 @@ const ROLE_LABELS: Record<string, string> = {
 const ActiveCasesList = ({ cases: myCases, onOpenCase }: { cases: any[], onOpenCase: (id: string) => void }) => {
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div className="bg-white rounded-[40px] p-8 lg:p-12 border border-slate-100 shadow-sm relative overflow-hidden">
+      <div className="bg-white dark:bg-slate-800 rounded-[40px] p-8 lg:p-12 border border-slate-100 dark:border-slate-700 shadow-sm relative overflow-hidden transition-colors">
         <div className="absolute top-0 right-0 w-64 h-64 bg-visuera-green/5 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl -z-10" />
         
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 mb-10">
           <div>
-            <h2 className="text-3xl font-black text-visuera-dark tracking-tight">Aktiva ärenden</h2>
-            <p className="text-sm text-slate-500 mt-2">Här visas alla dina pågående ärenden och utredningar.</p>
+            <h2 className="text-3xl font-black text-visuera-dark dark:text-slate-100 tracking-tight text-left">Aktiva ärenden</h2>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mt-2 text-left">Här visas alla dina pågående ärenden och utredningar.</p>
           </div>
           <div className="flex items-center gap-2 px-4 py-2 bg-visuera-green/5 text-visuera-green rounded-2xl border border-visuera-green/10">
              <Layers size={16} />
@@ -372,35 +375,35 @@ const ActiveCasesList = ({ cases: myCases, onOpenCase }: { cases: any[], onOpenC
         <div className="space-y-4">
           {myCases.length === 0 ? (
             <div className="py-20 text-center">
-               <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-200">
+               <div className="w-20 h-20 bg-slate-50 dark:bg-slate-900 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-200 dark:text-slate-700">
                   <CheckCircle2 size={40} />
                </div>
-               <p className="text-slate-400 font-medium italic">Du har inga pågående ärenden just nu.</p>
+               <p className="text-slate-400 dark:text-slate-500 font-medium italic">Du har inga pågående ärenden just nu.</p>
             </div>
           ) : (
             myCases.map(c => (
               <motion.div
                 key={c.id}
                 whileHover={{ x: 4 }}
-                className="bg-slate-50 rounded-2xl p-5 border border-slate-100 hover:border-visuera-green hover:bg-white hover:shadow-lg hover:shadow-visuera-green/5 transition-all cursor-pointer group flex flex-col md:flex-row md:items-center justify-between gap-4"
+                className="bg-slate-50 dark:bg-slate-900 rounded-2xl p-5 border border-slate-100 dark:border-slate-700 hover:border-visuera-green hover:bg-white dark:hover:bg-slate-800 hover:shadow-lg hover:shadow-visuera-green/5 transition-all cursor-pointer group flex flex-col md:flex-row md:items-center justify-between gap-4"
                 onClick={() => onOpenCase(c.id)}
               >
                 <div className="flex items-center gap-4 flex-1 min-w-0">
-                  <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center text-visuera-green shadow-sm shrink-0 group-hover:scale-110 transition-transform">
+                  <div className="w-12 h-12 bg-white dark:bg-slate-800 rounded-xl flex items-center justify-center text-visuera-green shadow-sm shrink-0 group-hover:scale-110 transition-transform">
                      <Layers size={22} />
                   </div>
-                  <div className="min-w-0">
+                  <div className="min-w-0 flex flex-col items-start">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-[9px] font-black bg-white text-slate-400 px-2 py-0.5 rounded uppercase tracking-tighter shadow-sm">
+                      <span className="text-[9px] font-black bg-white dark:bg-slate-800 text-slate-400 dark:text-slate-500 px-2 py-0.5 rounded uppercase tracking-tighter shadow-sm border dark:border-slate-700">
                         ÄRE-{c.id.slice(-4).toUpperCase()}
                       </span>
-                      <h4 className="font-bold text-visuera-dark group-hover:text-visuera-green transition-colors truncate">
+                      <h4 className="font-bold text-visuera-dark dark:text-slate-100 group-hover:text-visuera-green transition-colors truncate">
                          {c.title}
                       </h4>
                     </div>
-                    <div className="text-[10px] text-slate-400 font-bold mt-1 flex items-center gap-4">
-                      <span className="flex items-center gap-1"><UserIcon size={12} className="text-slate-300" /> {c.studentName}</span>
-                      <span className="flex items-center gap-1"><Calendar size={12} className="text-slate-300" /> {new Date(c.createdAt?.seconds ? c.createdAt.seconds * 1000 : c.createdAt).toLocaleDateString('sv-SE')}</span>
+                    <div className="text-[10px] text-slate-400 dark:text-slate-500 font-bold mt-1 flex items-center gap-4">
+                      <span className="flex items-center gap-1"><UserIcon size={12} className="text-slate-300 dark:text-slate-600" /> {c.studentName}</span>
+                      <span className="flex items-center gap-1"><Calendar size={12} className="text-slate-300 dark:text-slate-600" /> {new Date(c.createdAt?.seconds ? c.createdAt.seconds * 1000 : c.createdAt).toLocaleDateString('sv-SE')}</span>
                     </div>
                   </div>
                 </div>
@@ -414,7 +417,7 @@ const ActiveCasesList = ({ cases: myCases, onOpenCase }: { cases: any[], onOpenC
                   }`}>
                     {c.status}
                   </span>
-                  <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-visuera-green shadow-sm group-hover:bg-visuera-green group-hover:text-white transition-all transform group-hover:rotate-12">
+                  <div className="w-10 h-10 bg-white dark:bg-slate-800 rounded-xl flex items-center justify-center text-visuera-green shadow-sm group-hover:bg-visuera-green group-hover:text-white transition-all transform group-hover:rotate-12 border dark:border-slate-700">
                     <ArrowRight size={20} />
                   </div>
                 </div>
@@ -593,19 +596,19 @@ const Dashboard = ({ onNewReport, cases: allCases, onOpenCase, onNavigate, caseQ
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-6">
         <div>
           <p className="text-[10px] font-bold text-visuera-green uppercase tracking-widest mb-1">Välkommen tillbaka</p>
-          <h1 className="text-3xl font-black text-visuera-dark tracking-tight">Instrumentpanel</h1>
+          <h1 className="text-3xl font-black text-visuera-dark dark:text-slate-100 tracking-tight">Instrumentpanel</h1>
         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 lg:gap-6">
         {dashboardStats.map((stat, i) => (
-          <motion.div 
+            <motion.div 
             key={i} 
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.1 }}
             whileHover={{ y: -4 }}
-            className="bg-white p-6 rounded-[28px] border border-slate-100 shadow-sm flex items-center gap-5 group"
+            className="bg-white dark:bg-slate-800 p-6 rounded-[28px] border border-slate-100 dark:border-slate-700 shadow-sm flex items-center gap-5 group transition-colors"
           >
             <div className={`w-14 h-14 ${stat.bg} ${stat.color} rounded-2xl flex items-center justify-center shrink-0 transition-transform group-hover:scale-110`}>
               <stat.icon size={24} />
@@ -672,19 +675,19 @@ const Dashboard = ({ onNewReport, cases: allCases, onOpenCase, onNavigate, caseQ
         </div>
       )}
 
-      <div className="bg-white rounded-[40px] p-6 lg:p-8 border border-slate-100 shadow-sm space-y-6">
+      <div className="bg-white dark:bg-slate-800 rounded-[40px] p-6 lg:p-8 border border-slate-100 dark:border-slate-700 shadow-sm space-y-6 transition-colors">
         {/* Status Levels Overview */}
         <div className="flex items-center gap-3 overflow-x-auto no-scrollbar pb-2 -mx-2 px-2">
           <button
             onClick={() => setStatusFilter('all')}
             className={`flex items-center gap-3 px-4 py-2.5 rounded-2xl transition-all whitespace-nowrap border-2 ${
               statusFilter === 'all' 
-                ? 'bg-visuera-dark border-visuera-dark text-white shadow-lg' 
-                : 'bg-slate-50 border-transparent text-slate-500 hover:border-slate-200'
+                ? 'bg-visuera-dark dark:bg-slate-900 border-visuera-dark dark:border-slate-700 text-white shadow-lg' 
+                : 'bg-slate-50 dark:bg-slate-900/50 border-transparent text-slate-500 dark:text-slate-400 hover:border-slate-200 dark:hover:border-slate-700'
             }`}
           >
             <span className="text-[10px] font-black uppercase tracking-widest">{filterType === 'mine' ? 'Mina ärenden' : 'Alla ärenden'}</span>
-            <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${statusFilter === 'all' ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-500'}`}>
+            <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${statusFilter === 'all' ? 'bg-white/20 text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400'}`}>
               {cases.length}
             </div>
           </button>
@@ -705,13 +708,13 @@ const Dashboard = ({ onNewReport, cases: allCases, onOpenCase, onNavigate, caseQ
                 className={`flex items-center gap-3 px-4 py-2.5 rounded-2xl transition-all whitespace-nowrap border-2 ${
                   isActive 
                     ? `${level.bgColor} border-current ${level.textColor} shadow-md` 
-                    : 'bg-slate-50 border-transparent text-slate-400 hover:border-slate-200'
+                    : 'bg-slate-50 dark:bg-slate-900/50 border-transparent text-slate-400 dark:text-slate-500 hover:border-slate-200 dark:hover:border-slate-700'
                 }`}
                 style={isActive ? { borderColor: 'currentColor' } : {}}
               >
                 <span className="text-[10px] font-black uppercase tracking-widest">{level.label}</span>
                 <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${
-                  isActive ? `${level.ringColor} text-white` : 'bg-slate-200 text-slate-400'
+                  isActive ? `${level.ringColor} text-white` : 'bg-slate-200 dark:bg-slate-700 text-slate-400 dark:text-slate-500'
                 }`}>
                   {count}
                 </div>
@@ -722,18 +725,18 @@ const Dashboard = ({ onNewReport, cases: allCases, onOpenCase, onNavigate, caseQ
 
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
           <div className="flex items-center gap-4">
-            <h3 className="font-black text-visuera-dark uppercase tracking-widest">Ärendelista</h3>
+            <h3 className="font-black text-visuera-dark dark:text-slate-100 uppercase tracking-widest text-left">Ärendelista</h3>
             {(userProfile?.role === 'principal' || userProfile?.globalRole === 'admin' || userProfile?.role === 'admin') && (
-              <div className="flex bg-slate-50 p-1 rounded-xl border border-slate-200">
+              <div className="flex bg-slate-50 dark:bg-slate-900 p-1 rounded-xl border border-slate-200 dark:border-slate-700">
                 <button 
                   onClick={() => setFilterType('mine')}
-                  className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${filterType === 'mine' ? 'bg-white text-visuera-dark shadow-sm' : 'text-slate-400 hover:text-visuera-dark'}`}
+                  className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${filterType === 'mine' ? 'bg-white dark:bg-slate-800 text-visuera-dark dark:text-slate-100 shadow-sm' : 'text-slate-400 hover:text-visuera-dark dark:hover:text-slate-100'}`}
                 >
                   Mina ärenden
                 </button>
                 <button 
                   onClick={() => setFilterType('all')}
-                  className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${filterType === 'all' ? 'bg-white text-visuera-dark shadow-sm' : 'text-slate-400 hover:text-visuera-dark'}`}
+                  className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${filterType === 'all' ? 'bg-white dark:bg-slate-800 text-visuera-dark dark:text-slate-100 shadow-sm' : 'text-slate-400 hover:text-visuera-dark dark:hover:text-slate-100'}`}
                 >
                   Visa hela skolan
                 </button>
@@ -748,24 +751,24 @@ const Dashboard = ({ onNewReport, cases: allCases, onOpenCase, onNavigate, caseQ
                 placeholder="Sök ärende..." 
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-slate-50 border-none rounded-xl pl-10 pr-4 py-2.5 text-xs font-bold focus:ring-2 focus:ring-visuera-green/20 transition-all placeholder:text-slate-300"
+                className="w-full bg-slate-50 dark:bg-slate-900 border-none rounded-xl pl-10 pr-4 py-2.5 text-xs font-bold dark:text-slate-100 focus:ring-2 focus:ring-visuera-green/20 transition-all placeholder:text-slate-400"
               />
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300" size={16} />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
             </div>
-            <div className="hidden sm:flex bg-slate-50 p-1 rounded-xl border border-slate-200">
-              <button 
-                onClick={() => setViewMode('table')}
-                className={`p-2 rounded-lg transition-all ${viewMode === 'table' ? 'bg-white text-visuera-dark shadow-sm' : 'text-slate-400'}`}
-              >
-                <List size={16} />
-              </button>
-              <button 
-                onClick={() => setViewMode('cards')}
-                className={`p-2 rounded-lg transition-all ${viewMode === 'cards' ? 'bg-white text-visuera-dark shadow-sm' : 'text-slate-400'}`}
-              >
-                <LayoutGrid size={16} />
-              </button>
-            </div>
+                  <div className="hidden sm:flex bg-slate-50 dark:bg-slate-900 p-1 rounded-xl border border-slate-200 dark:border-slate-700">
+                  <button 
+                    onClick={() => setViewMode('table')}
+                    className={`p-2 rounded-lg transition-all ${viewMode === 'table' ? 'bg-white dark:bg-slate-800 text-visuera-dark dark:text-slate-100 shadow-sm' : 'text-slate-400'}`}
+                  >
+                    <List size={16} />
+                  </button>
+                  <button 
+                    onClick={() => setViewMode('cards')}
+                    className={`p-2 rounded-lg transition-all ${viewMode === 'cards' ? 'bg-white dark:bg-slate-800 text-visuera-dark dark:text-slate-100 shadow-sm' : 'text-slate-400'}`}
+                  >
+                    <LayoutGrid size={16} />
+                  </button>
+                </div>
           </div>
         </div>
 
@@ -774,15 +777,15 @@ const Dashboard = ({ onNewReport, cases: allCases, onOpenCase, onNavigate, caseQ
             <div className="w-20 h-20 bg-visuera-green/5 rounded-full flex items-center justify-center mx-auto mb-6">
               <ShieldCheck className="text-visuera-green/20" size={40} />
             </div>
-            <h4 className="text-xl font-black text-visuera-dark">Skolan är just nu trygg</h4>
-            <p className="text-sm text-slate-400 mt-2">Inga rapporterade incidenter hittades för detta filter.</p>
+            <h4 className="text-xl font-black text-visuera-dark dark:text-slate-100">Skolan är just nu trygg</h4>
+            <p className="text-sm text-slate-400 dark:text-slate-500 mt-2">Inga rapporterade incidenter hittades för detta filter.</p>
           </div>
         ) : (
           <>
             <div className="hidden lg:block overflow-x-auto no-scrollbar">
               <table className="w-full border-separate border-spacing-y-3">
                 <thead>
-                  <tr className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">
+                  <tr className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em]">
                     <th className="text-left px-4">Referens & Titel</th>
                     <th className="text-left px-4">Elev</th>
                     <th className="text-left px-4">Status</th>
@@ -795,17 +798,17 @@ const Dashboard = ({ onNewReport, cases: allCases, onOpenCase, onNavigate, caseQ
                     <tr 
                       key={c.id} 
                       onClick={() => onOpenCase(c.id)}
-                      className="group bg-slate-50 hover:bg-white hover:shadow-xl hover:shadow-slate-200/50 border border-transparent hover:border-slate-100 transition-all cursor-pointer"
+                      className="group bg-slate-50 dark:bg-slate-900/50 hover:bg-white dark:hover:bg-slate-700 hover:shadow-xl dark:hover:shadow-none hover:shadow-slate-200/50 border border-transparent hover:border-slate-100 dark:hover:border-slate-600 transition-all cursor-pointer"
                     >
                       <td className="px-4 py-5 rounded-l-[20px]">
-                        <div className="flex items-center gap-4">
-                          <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-visuera-green shadow-sm border border-slate-100 group-hover:scale-110 transition-transform">
+                        <div className="flex items-center gap-4 text-left">
+                          <div className="w-10 h-10 bg-white dark:bg-slate-800 rounded-xl flex items-center justify-center text-visuera-green shadow-sm border border-slate-100 dark:border-slate-700 group-hover:scale-110 transition-transform">
                             <FileSearch size={18} />
                           </div>
                           <div>
-                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">ÄRE-{c.id.slice(-4).toUpperCase()}</p>
+                            <p className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest leading-none mb-1">ÄRE-{c.id.slice(-4).toUpperCase()}</p>
                             <div className="flex items-center gap-2">
-                              <span className="font-extrabold text-sm text-visuera-dark">{c.title}</span>
+                              <span className="font-extrabold text-sm text-visuera-dark dark:text-slate-100">{c.title}</span>
                               {isOld(c.createdAt) && c.status === 'anmäld' && (
                                 <AlertTriangle size={14} className="text-red-500" />
                               )}
@@ -813,19 +816,19 @@ const Dashboard = ({ onNewReport, cases: allCases, onOpenCase, onNavigate, caseQ
                           </div>
                         </div>
                       </td>
-                      <td className="px-4 py-5">
-                        <span className="text-xs font-bold text-slate-600">{c.studentName}</span>
+                      <td className="px-4 py-5 text-left">
+                        <span className="text-xs font-bold text-slate-600 dark:text-slate-300">{c.studentName}</span>
                       </td>
-                      <td className="px-4 py-5">
+                      <td className="px-4 py-5 text-left">
                         <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border ${getStatusStyle(c.status)}`}>
                           {c.status}
                         </span>
                       </td>
-                      <td className="px-4 py-5 font-bold text-xs text-slate-500">
+                      <td className="px-4 py-5 font-bold text-xs text-slate-500 dark:text-slate-400 text-left">
                         {formatDate(c.createdAt)}
                       </td>
                       <td className="px-4 py-5 rounded-r-[20px] text-right">
-                        <button className="p-2 text-slate-300 hover:text-visuera-green transition-colors">
+                        <button className="p-2 text-slate-300 dark:text-slate-600 hover:text-visuera-green transition-colors">
                           <ChevronRight size={20} />
                         </button>
                       </td>
@@ -841,7 +844,7 @@ const Dashboard = ({ onNewReport, cases: allCases, onOpenCase, onNavigate, caseQ
                   key={c.id}
                   whileHover={{ y: -2 }}
                   onClick={() => onOpenCase(c.id)}
-                  className="bg-slate-50 p-5 rounded-[28px] border border-slate-100 space-y-4"
+                  className="bg-slate-50 dark:bg-slate-900/50 p-5 rounded-[28px] border border-slate-100 dark:border-slate-700 space-y-4"
                 >
                   <div className="flex justify-between items-start">
                     <div className={`px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest border ${getStatusStyle(c.status)}`}>
@@ -880,6 +883,7 @@ const Dashboard = ({ onNewReport, cases: allCases, onOpenCase, onNavigate, caseQ
 };
 
 const App = () => {
+  const { theme, toggleTheme } = useTheme();
   const [user, setUser] = useState<User | null>(null);
   const [userProfile, setUserProfile] = useState<any>(null);
   const [isAnonymous, setIsAnonymous] = useState(false);
@@ -1274,7 +1278,7 @@ const App = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex items-center justify-center transition-colors duration-500">
         <div className="w-12 h-12 border-4 border-visuera-green/20 border-t-visuera-green rounded-full animate-spin"></div>
       </div>
     );
@@ -1282,25 +1286,25 @@ const App = () => {
 
   if (isAnonymous && !user) {
     return (
-      <div className="min-h-screen bg-slate-50 p-6 lg:p-12 relative">
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-900 p-6 lg:p-12 relative transition-colors duration-500">
         <div className="max-w-4xl mx-auto space-y-8">
           <div className="flex justify-between items-center">
             <div className="flex items-center gap-3">
               <div className="w-12 h-10 bg-visuera-green rounded-xl flex items-center justify-center text-white font-bold text-sm px-2">AmO</div>
-              <h1 className="text-2xl font-black text-visuera-dark">Agera med Omtanke</h1>
+              <h1 className="text-2xl font-black text-visuera-dark dark:text-slate-100">Agera med Omtanke</h1>
             </div>
             <button 
               onClick={() => setIsAnonymous(false)}
-              className="text-xs font-bold text-slate-400 hover:text-visuera-green uppercase tracking-widest flex items-center gap-2"
+              className="text-xs font-bold text-slate-400 hover:text-visuera-green dark:hover:text-visuera-green uppercase tracking-widest flex items-center gap-2"
             >
               Tillbaka till loginvyn <ArrowRight size={14} />
             </button>
           </div>
           
-          <div className="bg-white rounded-[40px] p-8 lg:p-12 shadow-xl border border-slate-100">
+          <div className="bg-white dark:bg-slate-800 rounded-[40px] p-8 lg:p-12 shadow-xl border border-slate-100 dark:border-slate-700 transition-colors">
             <div className="max-w-2xl mx-auto text-center mb-12">
-              <h2 className="text-3xl font-black text-visuera-dark tracking-tight">Anonym Snabb-anmälan</h2>
-              <p className="text-sm text-slate-500 mt-2">Här kan du anmäla en incident direkt utan att logga in. Din anmälan går direkt till skolans rektor.</p>
+              <h2 className="text-3xl font-black text-visuera-dark dark:text-slate-100 tracking-tight">Anonym Snabb-anmälan</h2>
+              <p className="text-sm text-slate-500 dark:text-slate-400 mt-2">Här kan du anmäla en incident direkt utan att logga in. Din anmälan går direkt till skolans rektor.</p>
             </div>
             <TrygghetsFlow isQuickReport={true} />
           </div>
@@ -1328,7 +1332,7 @@ const App = () => {
 
   return (
     <ErrorBoundary>
-      <div className="min-h-screen bg-slate-50 flex overflow-x-hidden">
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex overflow-x-hidden transition-colors duration-500">
         {/* Mobile Sidebar Overlay */}
         <AnimatePresence>
           {isSidebarOpen && (
@@ -1345,16 +1349,16 @@ const App = () => {
                 animate={{ x: 0 }}
                 exit={{ x: '-100%' }}
                 transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-                className="fixed left-0 top-0 bottom-0 w-64 bg-white shadow-2xl z-[90] p-8 flex flex-col lg:hidden"
+                className="fixed left-0 top-0 bottom-0 w-64 bg-white dark:bg-slate-800 shadow-2xl z-[90] p-8 flex flex-col lg:hidden border-r border-slate-100 dark:border-slate-700"
               >
                 <div className="flex items-center justify-between mb-12">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 bg-visuera-green rounded-[14px] flex items-center justify-center text-white font-bold text-xs shadow-lg shadow-visuera-green/20">
                       AmO
                     </div>
-                    <span className="text-xl font-extrabold text-visuera-dark tracking-tight">Agera med Omtanke</span>
+                    <span className="text-xl font-extrabold text-visuera-dark dark:text-slate-100 tracking-tight">Agera med</span>
                   </div>
-                  <button onClick={() => setIsSidebarOpen(false)} className="p-2 text-slate-400 hover:text-slate-600 transition-all">
+                  <button onClick={() => setIsSidebarOpen(false)} className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-all">
                     <X size={20} />
                   </button>
                 </div>
@@ -1384,7 +1388,7 @@ const App = () => {
                       className={`w-full flex items-center gap-4 p-4 rounded-2xl transition-all ${
                         (activeTab === item.id || (item.id === 'flow' && activeTab === 'active-list'))
                           ? 'bg-visuera-green text-white shadow-xl shadow-visuera-green/20' 
-                          : 'text-slate-400 hover:bg-slate-50 hover:text-visuera-green'
+                          : 'text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700 hover:text-visuera-green'
                       }`}
                     >
                       <item.icon size={20} />
@@ -1398,7 +1402,7 @@ const App = () => {
                     signOut(auth);
                     setIsSidebarOpen(false);
                   }}
-                  className="w-full flex items-center gap-4 p-4 rounded-2xl text-slate-400 hover:bg-red-50 hover:text-red-500 transition-all mt-auto"
+                  className="w-full flex items-center gap-4 p-4 rounded-2xl text-slate-400 hover:bg-red-50 dark:hover:bg-red-900/10 hover:text-red-500 transition-all mt-auto"
                 >
                   <LogOut size={20} />
                   <span className="font-bold text-sm">Logga ut</span>
@@ -1409,11 +1413,11 @@ const App = () => {
         </AnimatePresence>
 
         {/* Desktop Sidebar (Fixed) */}
-        <aside className={`hidden md:flex bg-white border-r border-slate-100 flex-col py-8 fixed h-full z-20 transition-all duration-500 ${isSidebarCollapsed ? 'w-20 items-center px-2' : 'w-20 lg:w-72 items-center lg:items-stretch px-4 lg:px-6'}`}>
+        <aside className={`hidden md:flex bg-white dark:bg-slate-800 border-r border-slate-100 dark:border-slate-700 flex-col py-8 fixed h-full z-20 transition-all duration-500 ${isSidebarCollapsed ? 'w-20 items-center px-2' : 'w-20 lg:w-72 items-center lg:items-stretch px-4 lg:px-6'}`}>
           {/* Main Sidebar Collapse Button (Floating on border) */}
           <button 
             onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-            className="hidden lg:flex absolute -right-3 top-10 w-6 h-6 bg-white border border-slate-200 rounded-full items-center justify-center text-slate-400 hover:text-visuera-green shadow-sm z-50 transition-all hover:scale-110"
+            className="hidden lg:flex absolute -right-3 top-10 w-6 h-6 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-full items-center justify-center text-slate-400 hover:text-visuera-green shadow-sm z-50 transition-all hover:scale-110"
             title={isSidebarCollapsed ? "Expandera meny" : "Minimera meny"}
           >
             {isSidebarCollapsed ? <ChevronRight size={12} /> : <ChevronLeft size={12} />}
@@ -1429,7 +1433,7 @@ const App = () => {
                   <div className="h-[1px] w-4 bg-visuera-green/50" />
                   <span className="text-[9px] font-extrabold text-visuera-green uppercase tracking-[0.2em] whitespace-nowrap">Agera med</span>
                 </div>
-                <span className="text-2xl font-black text-visuera-dark tracking-tighter">Omtanke<span className="text-visuera-green">.</span></span>
+                <span className="text-2xl font-black text-visuera-dark dark:text-slate-100 tracking-tighter">Omtanke<span className="text-visuera-green">.</span></span>
               </div>
             )}
           </div>
@@ -1460,7 +1464,7 @@ const App = () => {
                 } ${
                   (activeTab === item.id || (item.id === 'flow' && activeTab === 'active-list'))
                     ? 'bg-visuera-green text-white shadow-xl shadow-visuera-green/20' 
-                    : 'text-slate-400 hover:bg-slate-50 hover:text-visuera-green'
+                    : 'text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700/50 hover:text-visuera-green'
                 }`}
                 title={isSidebarCollapsed ? item.label : undefined}
               >
@@ -1474,7 +1478,7 @@ const App = () => {
 
           <button 
             onClick={() => signOut(auth)}
-            className={`flex items-center rounded-2xl text-slate-400 hover:bg-red-50 hover:text-red-500 transition-all mt-auto ${
+            className={`flex items-center rounded-2xl text-slate-400 hover:bg-red-50 dark:hover:bg-red-900/10 hover:text-red-500 transition-all mt-auto ${
               isSidebarCollapsed ? 'w-12 h-12 justify-center' : 'w-full gap-4 p-4'
             }`}
             title={isSidebarCollapsed ? "Logga ut" : undefined}
@@ -1487,7 +1491,7 @@ const App = () => {
         </aside>
 
         {/* Main Content Area */}
-        <main className={`flex-1 transition-all duration-500 ml-0 md:ml-20 ${isSidebarCollapsed ? 'lg:ml-20' : 'lg:ml-72'} p-4 sm:p-6 lg:p-12 min-w-0`}>
+        <main className={`flex-1 transition-all duration-500 ml-0 md:ml-20 ${isSidebarCollapsed ? 'lg:ml-20' : 'lg:ml-72'} p-4 sm:p-6 lg:p-12 min-w-0 bg-slate-50 dark:bg-slate-900`}>
           {/* Notification Sidebar / Overlay */}
           <AnimatePresence>
             {isNotificationsOpen && (
@@ -1504,7 +1508,7 @@ const App = () => {
                   animate={{ x: 0 }}
                   exit={{ x: '100%' }}
                   transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-                  className="fixed right-0 top-0 bottom-0 w-full max-w-sm bg-white shadow-2xl z-[70] border-l border-slate-100"
+                  className="fixed right-0 top-0 bottom-0 w-full max-w-sm bg-white dark:bg-slate-800 shadow-2xl z-[70] border-l border-slate-100 dark:border-slate-700"
                 >
                   <NotificationInbox 
                     userId={user.uid} 
@@ -1519,11 +1523,11 @@ const App = () => {
             )}
           </AnimatePresence>
 
-          <header className="flex justify-between items-center mb-8 lg:mb-12">
+          <header className="flex justify-between items-center mb-8 lg:mb-12 transition-colors duration-500">
             <div className="flex items-center gap-4">
               <button 
                 onClick={() => setIsSidebarOpen(true)}
-                className="p-3 bg-white border border-slate-100 rounded-2xl shadow-sm text-slate-400 hover:text-visuera-green lg:hidden"
+                className="p-3 bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-2xl shadow-sm text-slate-400 hover:text-visuera-green lg:hidden transition-colors"
               >
                 <Database size={20} />
               </button>
@@ -1543,7 +1547,7 @@ const App = () => {
             <div className="flex items-center gap-4">
               <button 
                 onClick={() => setIsNotificationsOpen(true)}
-                className="relative p-3 bg-white hover:bg-slate-50 border border-slate-100 rounded-2xl shadow-sm transition-all group"
+                className="relative p-3 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 border border-slate-100 dark:border-slate-700 rounded-2xl shadow-sm transition-all group"
                 title="Notifieringar"
               >
                 <Bell size={20} className="text-slate-400 group-hover:text-visuera-green transition-colors" />
@@ -1557,16 +1561,16 @@ const App = () => {
               <div className="relative">
                 <button 
                   onClick={() => setIsProfileOpen(!isProfileOpen)}
-                  className="flex items-center gap-3 bg-white p-1.5 pr-4 rounded-[20px] border border-slate-100 hover:border-visuera-green transition-all shadow-sm active:scale-95"
+                  className="flex items-center gap-3 bg-white dark:bg-slate-800 p-1.5 pr-4 rounded-[20px] border border-slate-100 dark:border-slate-700 hover:border-visuera-green dark:hover:border-visuera-green transition-all shadow-sm active:scale-95"
                 >
                   <img 
                     src={user.photoURL || `https://ui-avatars.com/api/?name=${user.displayName}`} 
                     alt="Profile" 
-                    className="w-10 h-10 rounded-2xl border border-white shadow-sm"
+                    className="w-10 h-10 rounded-2xl border border-white dark:border-slate-700 shadow-sm"
                     referrerPolicy="no-referrer"
                   />
                   <div className="text-right hidden sm:block">
-                    <div className="text-sm font-bold text-visuera-dark leading-tight">{user.displayName}</div>
+                    <div className="text-sm font-bold text-visuera-dark dark:text-slate-100 leading-tight">{user.displayName}</div>
                     <div className="flex items-center justify-end gap-1">
                       <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full" />
                       <span className="text-[9px] font-bold text-emerald-600 uppercase tracking-widest">BankID-verifierad</span>
@@ -1587,23 +1591,48 @@ const App = () => {
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: 10, scale: 0.95 }}
                         transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-                        className="absolute right-0 mt-3 w-80 bg-white border border-slate-200 rounded-[28px] shadow-2xl z-50 overflow-hidden"
+                        className="absolute right-0 mt-3 w-80 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-[28px] shadow-2xl z-50 overflow-hidden"
                       >
                         {/* Section 1: Profil & Identitet */}
-                        <div className="p-6 border-bottom border-slate-100 bg-slate-50/50">
+                        <div className="p-6 border-bottom border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/50">
                           <div className="flex items-center gap-4 mb-4">
                             <div className="w-14 h-14 bg-visuera-green rounded-2xl flex items-center justify-center text-white text-xl font-bold shadow-lg shadow-visuera-green/20">
                               {user.displayName?.charAt(0)}
                             </div>
                             <div>
-                              <h3 className="text-lg font-black text-visuera-dark leading-tight">{user.displayName}</h3>
+                              <h3 className="text-lg font-black text-visuera-dark dark:text-slate-100 leading-tight">{user.displayName}</h3>
                               <p className="text-xs text-visuera-green font-bold uppercase tracking-wider">
                                 {userProfile?.role === 'admin' ? 'Systemadministratör' : ROLE_LABELS[userProfile?.role || ''] || 'Användare'}
                               </p>
                               <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tight">{userProfile?.school || 'Danderyds Skola'}</p>
                             </div>
                           </div>
-                          <button className="w-full flex items-center justify-center gap-2 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-50 transition-all">
+                          
+                          <div className="flex items-center justify-between p-2.5 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 mb-3 shadow-sm">
+                            <div className="flex items-center gap-3">
+                              <div className={`p-2 rounded-lg transition-all ${
+                                theme === 'dark' ? 'bg-indigo-500/10 text-indigo-400' : 'bg-amber-500/10 text-amber-500'
+                              }`}>
+                                {theme === 'dark' ? <Moon size={14} /> : <Sun size={14} />}
+                              </div>
+                              <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200">Mörkt läge</span>
+                            </div>
+                            <button 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toggleTheme();
+                              }}
+                              className={`w-10 h-5 rounded-full relative transition-all duration-300 ${
+                                theme === 'dark' ? 'bg-indigo-500' : 'bg-slate-200'
+                              }`}
+                            >
+                              <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-all duration-300 ${
+                                theme === 'dark' ? 'left-6' : 'left-1'
+                              }`} />
+                            </button>
+                          </div>
+
+                          <button className="w-full flex items-center justify-center gap-2 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-all">
                             <UserIcon size={14} /> Visa Profil
                           </button>
                         </div>
@@ -1631,9 +1660,9 @@ const App = () => {
                             <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
                               <Bell size={12} className="text-visuera-green" /> Inställningar
                             </h4>
-                            <div className="flex items-center justify-between p-3 bg-slate-50 rounded-2xl border border-slate-100">
+                            <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-100 dark:border-slate-700">
                               <div className="flex items-center gap-3">
-                                <div className="p-2 bg-white rounded-lg border border-slate-100 shadow-sm">
+                                <div className="p-2 bg-white dark:bg-slate-800 rounded-lg border border-slate-100 dark:border-slate-700 shadow-sm">
                                   <Mail size={14} className="text-visuera-green" />
                                 </div>
                                 <div>
@@ -1664,7 +1693,7 @@ const App = () => {
                             </div>
                             <button 
                               onClick={() => signOut(auth)}
-                              className="w-full flex items-center justify-center gap-2 py-3 bg-red-50 text-red-500 rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-red-100 transition-all"
+                              className="w-full flex items-center justify-center gap-2 py-3 bg-red-50 dark:bg-red-900/10 text-red-500 rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-red-100 dark:hover:bg-red-900/20 transition-all"
                             >
                               <LogOut size={14} /> Logga ut
                             </button>
@@ -1694,11 +1723,11 @@ const App = () => {
             )}
             {activeTab === 'cases' && (
               <div className="space-y-6">
-                <div className="bg-white rounded-[32px] p-8 border border-slate-100 shadow-sm">
+                <div className="bg-white dark:bg-slate-800 rounded-[32px] p-8 border border-slate-100 dark:border-slate-700 shadow-sm transition-colors">
                   <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
-                     <div>
-                        <h2 className="text-xl lg:text-2xl font-black text-visuera-dark tracking-tight">Ärendehantering</h2>
-                        <p className="text-[11px] lg:text-sm text-slate-500 mt-1">Här visas alla ärenden som du har rättigheter att se.</p>
+                     <div className="text-left">
+                        <h2 className="text-xl lg:text-2xl font-black text-visuera-dark dark:text-slate-100 tracking-tight">Ärendehantering</h2>
+                        <p className="text-[11px] lg:text-sm text-slate-500 dark:text-slate-400 mt-1">Här visas alla ärenden som du har rättigheter att se.</p>
                      </div>
                      <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
                         <div className="relative flex-1 sm:flex-initial">
@@ -1707,16 +1736,16 @@ const App = () => {
                             placeholder="Sök..." 
                             value={filterQuery}
                             onChange={(e) => setFilterQuery(e.target.value)}
-                            className="bg-slate-50 border-none rounded-xl pl-10 pr-4 py-2.5 text-xs w-full sm:w-48 lg:w-64 focus:ring-2 focus:ring-visuera-green/20 transition-all font-bold"
+                            className="bg-slate-50 dark:bg-slate-900 border-none rounded-xl pl-10 pr-4 py-2.5 text-xs w-full sm:w-48 lg:w-64 focus:ring-2 focus:ring-visuera-green/20 transition-all font-bold dark:text-slate-100"
                           />
-                          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300" size={16} />
+                          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300 dark:text-slate-600" size={16} />
                         </div>
                         <button 
                           onClick={() => setIsFilterExpanded(!isFilterExpanded)}
                           className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${
-                            isFilterExpanded || filterStatus !== 'alla' || filterSchool !== 'alla' || filterDateStart || filterDateEnd
+                            isFilterExpanded || filterStatus !== 'alla' || filterStatus !== 'alla' || filterSchool !== 'alla' || filterDateStart || filterDateEnd
                               ? 'bg-visuera-green text-white shadow-lg shadow-visuera-green/20' 
-                              : 'bg-slate-50 text-slate-500 hover:bg-slate-100'
+                              : 'bg-slate-50 dark:bg-slate-900 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700'
                           }`}
                         >
                           <Filter size={14} />
@@ -1733,13 +1762,13 @@ const App = () => {
                         exit={{ height: 0, opacity: 0 }}
                         className="overflow-hidden mb-8"
                       >
-                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 p-6 bg-slate-50 rounded-2xl border border-slate-100">
-                          <div className="space-y-1.5">
-                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Status</label>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 p-6 bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-100 dark:border-slate-700">
+                          <div className="space-y-1.5 text-left">
+                            <label className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-1">Status</label>
                             <select 
                               value={filterStatus}
                               onChange={(e) => setFilterStatus(e.target.value)}
-                              className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold focus:ring-2 focus:ring-visuera-green/20 transition-all appearance-none cursor-pointer"
+                              className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-bold focus:ring-2 focus:ring-visuera-green/20 transition-all appearance-none cursor-pointer dark:text-slate-100"
                             >
                               <option value="alla">Alla statusar</option>
                               <option value="anmäld">Inkomna anmälningar</option>
@@ -1751,37 +1780,37 @@ const App = () => {
                             </select>
                           </div>
 
-                          <div className="space-y-1.5">
-                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Skola</label>
+                          <div className="space-y-1.5 text-left">
+                            <label className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-1">Skola</label>
                             <select 
                               value={filterSchool}
                               onChange={(e) => setFilterSchool(e.target.value)}
-                              className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold focus:ring-2 focus:ring-visuera-green/20 transition-all appearance-none cursor-pointer"
+                              className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-bold focus:ring-2 focus:ring-visuera-green/20 transition-all appearance-none cursor-pointer dark:text-slate-100"
                             >
                               <option value="alla">Alla skolor</option>
                               {schools.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
                             </select>
                           </div>
 
-                          <div className="space-y-1.5">
-                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Från datum</label>
+                          <div className="space-y-1.5 text-left">
+                            <label className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-1">Från datum</label>
                             <div className="relative">
                               <input 
                                 type="date" 
                                 value={filterDateStart}
                                 onChange={(e) => setFilterDateStart(e.target.value)}
-                                className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold focus:ring-2 focus:ring-visuera-green/20 transition-all appearance-none"
+                                className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-bold focus:ring-2 focus:ring-visuera-green/20 transition-all appearance-none dark:text-slate-100"
                               />
                             </div>
                           </div>
 
-                          <div className="space-y-1.5">
-                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Till datum</label>
+                          <div className="space-y-1.5 text-left">
+                            <label className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-1">Till datum</label>
                             <input 
                               type="date" 
                               value={filterDateEnd}
                               onChange={(e) => setFilterDateEnd(e.target.value)}
-                              className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold focus:ring-2 focus:ring-visuera-green/20 transition-all appearance-none"
+                              className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-bold focus:ring-2 focus:ring-visuera-green/20 transition-all appearance-none dark:text-slate-100"
                             />
                           </div>
 
@@ -1794,7 +1823,7 @@ const App = () => {
                                  setFilterDateEnd('');
                                  setFilterQuery('');
                                }}
-                               className="text-[10px] font-bold text-slate-400 hover:text-visuera-green uppercase tracking-widest"
+                               className="text-[10px] font-bold text-slate-400 dark:text-slate-500 hover:text-visuera-green uppercase tracking-widest"
                              >
                                Rensa alla
                              </button>
@@ -1811,20 +1840,20 @@ const App = () => {
                         filteredCases.map(c => (
                         <div 
                           key={c.id} 
-                          className="p-4 lg:p-6 bg-slate-50 rounded-2xl border border-slate-100 flex flex-col md:flex-row md:items-center justify-between hover:border-visuera-green/30 transition-all cursor-pointer group gap-4"
+                          className="p-4 lg:p-6 bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-100 dark:border-slate-700 flex flex-col md:flex-row md:items-center justify-between hover:border-visuera-green/30 hover:bg-white dark:hover:bg-slate-800 transition-all cursor-pointer group gap-4 shadow-sm"
                           onClick={() => {
                             setSelectedCaseId(c.id);
                             setActiveTab('flow');
                           }}
                         >
-                           <div className="flex items-start lg:items-center gap-4">
-                              <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-visuera-green shadow-sm shrink-0">
+                           <div className="flex items-start lg:items-center gap-4 text-left">
+                              <div className="w-10 h-10 bg-white dark:bg-slate-800 rounded-xl flex items-center justify-center text-visuera-green shadow-sm shrink-0 border dark:border-slate-700">
                                  <FileSearch size={20} />
                               </div>
                               <div className="min-w-0">
                                  <div className="flex flex-wrap items-center gap-2">
-                                    <span className="text-[9px] font-black bg-white text-slate-400 px-2 py-0.5 rounded uppercase shrink-0">ÄRE-{c.id.slice(-4).toUpperCase()}</span>
-                                    <h4 className="font-bold text-visuera-dark group-hover:text-visuera-green transition-colors truncate">{c.title}</h4>
+                                    <span className="text-[9px] font-black bg-white dark:bg-slate-700 text-slate-400 dark:text-slate-400 px-2 py-0.5 rounded uppercase shrink-0">ÄRE-{c.id.slice(-4).toUpperCase()}</span>
+                                    <h4 className="font-bold text-visuera-dark dark:text-slate-100 group-hover:text-visuera-green transition-colors truncate">{c.title}</h4>
                                     {caseQuestions.includes(c.id) && (
                                        <div className="flex items-center gap-1 text-blue-500" title="Väntande fråga från rektor">
                                          <MessageSquare size={12} />
@@ -1832,7 +1861,7 @@ const App = () => {
                                        </div>
                                     )}
                                  </div>
-                                 <div className="text-[10px] text-slate-400 font-medium mt-1 flex flex-wrap gap-x-4 gap-y-1">
+                                 <div className="text-[10px] text-slate-400 dark:text-slate-500 font-medium mt-1 flex flex-wrap gap-x-4 gap-y-1">
                                     <span className="flex items-center gap-1"><UserIcon size={12}/> {c.studentName}</span>
                                     <span className="flex items-center gap-1 hidden sm:flex"><Building2 size={12}/> {c.school}</span>
                                     <span className="flex items-center gap-1" title="Anmälningsdatum">
@@ -1841,12 +1870,12 @@ const App = () => {
                                  </div>
                               </div>
                            </div>
-                           <div className="flex items-center justify-between md:justify-end gap-x-4 lg:gap-x-6 border-t md:border-t-0 pt-4 md:pt-0 border-slate-100">
+                           <div className="flex items-center justify-between md:justify-end gap-x-4 lg:gap-x-6 border-t md:border-t-0 pt-4 md:pt-0 border-slate-100 dark:border-slate-700">
                               <span className={`text-[9px] font-black px-2 py-1 rounded uppercase tracking-wider ${
-                                c.status === 'anmäld' ? 'bg-blue-100 text-blue-600' :
-                                c.status === 'utredning' ? 'bg-amber-100 text-amber-600' :
-                                c.status === 'avslutat' ? 'bg-slate-100 text-slate-500' :
-                                'bg-visuera-green/10 text-visuera-green'
+                                c.status === 'anmäld' ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400' :
+                                c.status === 'utredning' ? 'bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400' :
+                                c.status === 'avslutat' ? 'bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-400' :
+                                'bg-visuera-green/10 text-visuera-green dark:bg-visuera-green/20 dark:text-visuera-green'
                               }`}>
                                 {c.status}
                               </span>
@@ -1892,8 +1921,8 @@ const App = () => {
             {activeTab === 'report' && (
               <div className="max-w-2xl mx-auto">
                 <div className="text-center mb-12">
-                   <h1 className="text-3xl font-black text-visuera-dark tracking-tight">Ny anmälan</h1>
-                   <p className="text-sm text-slate-500 mt-2">Anmälan ska göras skyndsamt och helst inom 24h</p>
+                   <h1 className="text-3xl font-black text-visuera-dark dark:text-slate-100 tracking-tight">Ny anmälan</h1>
+                   <p className="text-sm text-slate-500 dark:text-slate-400 mt-2">Anmälan ska göras skyndsamt och helst inom 24h</p>
                 </div>
                 {/* We'll use the Step 1 of TrygghetsFlow as the simplified reporter view */}
                 <TrygghetsFlow isQuickReport={true} cases={cases} />

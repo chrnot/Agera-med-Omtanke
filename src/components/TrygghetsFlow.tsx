@@ -103,7 +103,7 @@ const DEFAULT_FORM_DATA = {
   incidentDate: '',
   incidentLocation: '',
   incidentLocationOther: '',
-  involvedParties: [{ id: 'party-1', name: '', role: 'Utsatt', type: 'Elev', class: '' }] as { id: string, name: string, role: 'Utsatt' | 'Utövare' | 'Vittne', type: 'Elev' | 'Vuxen', class?: string }[],
+  involvedParties: [{ id: 'party-1', name: '', role: 'Utsatt', type: 'Elev', class: '' }] as { id: string, name: string, role: 'Utsatt' | 'Utövare' | 'Observatör', type: 'Elev' | 'Vuxen', class?: string }[],
   incidentDescription: '',
   actionsTaken: [] as string[],
   actionsTakenOther: '',
@@ -928,19 +928,18 @@ export const TrygghetsFlow = ({ isQuickReport = false, onSuccess, initialCaseId,
     }
   };
 
-
   if (isSubmitted) {
     return (
       <motion.div 
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="text-center py-20 px-6"
+        className="text-center py-20 px-6 bg-white dark:bg-slate-800 rounded-[40px] shadow-sm border border-slate-100 dark:border-slate-700 transition-colors"
       >
         <div className="w-20 h-20 bg-visuera-green/10 text-visuera-green rounded-full flex items-center justify-center mx-auto mb-8">
           <CheckCircle2 size={40} />
         </div>
-        <h3 className="text-2xl font-black text-visuera-dark tracking-tight mb-4">Anmälan Skickad!</h3>
-        <p className="text-slate-500 max-w-md mx-auto leading-relaxed mb-12">
+        <h3 className="text-2xl font-black text-visuera-dark dark:text-slate-100 tracking-tight mb-4">Anmälan Skickad!</h3>
+        <p className="text-slate-500 dark:text-slate-400 max-w-md mx-auto leading-relaxed mb-12">
           Din anmälan har registrerats och skickats till rektorn för vidare hantering enligt Skollagen 6 kap.
         </p>
         <div className="flex flex-col gap-4 max-w-xs mx-auto">
@@ -960,7 +959,7 @@ export const TrygghetsFlow = ({ isQuickReport = false, onSuccess, initialCaseId,
   }
 
   return (
-    <div className={`${!isQuickReport ? 'min-h-screen bg-[#FDFDFD]' : ''} flex flex-col font-sans`}>
+    <div className={`${!isQuickReport ? 'min-h-screen bg-slate-50 dark:bg-slate-900' : ''} flex flex-col font-sans transition-colors duration-500`}>
       {!isQuickReport && (
         <ProgressHeader 
           steps={steps.map((s, i) => ({
@@ -977,28 +976,28 @@ export const TrygghetsFlow = ({ isQuickReport = false, onSuccess, initialCaseId,
         />
       )}
 
-      <div className={`${!isQuickReport ? 'flex-1 flex overflow-hidden' : ''} bg-[#FDFDFD]`}>
+      <div className={`${!isQuickReport ? 'flex-1 flex overflow-hidden' : ''} bg-transparent`}>
         {/* Main Workspace Area */}
-        <div className={`${!isQuickReport ? 'flex-1 overflow-y-auto custom-scrollbar' : 'w-full'}`}>
+        <div className={`${!isQuickReport ? 'flex-1 overflow-y-auto no-scrollbar' : 'w-full'}`}>
           <div className={`${isQuickReport ? 'w-full' : 'max-w-6xl mx-auto px-4 py-8 lg:p-8'} flex flex-col lg:flex-row gap-8 lg:gap-12 items-start h-full`}>
             
             {/* Mobile Sidebar Toggle Button */}
             {!isQuickReport && activeCaseId && (
               <button 
                 onClick={() => setShowMobileSidebar(!showMobileSidebar)}
-                className="lg:hidden w-full p-4 bg-white border border-slate-100 rounded-2xl shadow-sm flex items-center justify-between group active:scale-95 transition-all"
+                className="lg:hidden w-full p-4 bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-2xl shadow-sm flex items-center justify-between group active:scale-95 transition-all"
               >
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 text-left">
                   <div className="w-8 h-8 bg-visuera-green/10 rounded-xl flex items-center justify-center text-visuera-green">
                     <Info size={16} />
                   </div>
                   <div>
-                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block text-left">Ärendeinformation</span>
-                    <span className="text-sm font-bold text-visuera-dark">Visa detaljer & verktyg</span>
+                    <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest block">Ärendeinformation</span>
+                    <span className="text-sm font-bold text-visuera-dark dark:text-slate-100">Visa detaljer & verktyg</span>
                   </div>
                 </div>
-                <div className={`p-2 rounded-lg bg-slate-50 text-slate-400 group-hover:text-visuera-green transition-all ${showMobileSidebar ? 'rotate-180' : ''}`}>
-                  <ChevronDown size={20} />
+                <div className={`p-2 rounded-lg bg-slate-50 dark:bg-slate-900 text-slate-400 group-hover:text-visuera-green transition-all ${showMobileSidebar ? 'rotate-180' : ''}`}>
+                  <ChevronDown size={18} />
                 </div>
               </button>
             )}
@@ -1052,8 +1051,8 @@ export const TrygghetsFlow = ({ isQuickReport = false, onSuccess, initialCaseId,
                         <ClipboardList size={20} />
                       </div>
                       <div>
-                        <h2 className="text-lg lg:text-xl font-black text-visuera-dark uppercase tracking-widest">{currentStep.title}</h2>
-                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">Dokumenteras enligt legal standard</p>
+                        <h2 className="text-lg lg:text-xl font-black text-visuera-dark dark:text-slate-100 uppercase tracking-widest">{currentStep.title}</h2>
+                        <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-widest mt-1 text-left">Dokumenteras enligt legal standard</p>
                       </div>
                     </div>
                   )}
@@ -1063,7 +1062,7 @@ export const TrygghetsFlow = ({ isQuickReport = false, onSuccess, initialCaseId,
                       <button
                         onClick={generatePDF}
                         disabled={isGeneratingPDF}
-                        className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 py-2 bg-white hover:bg-slate-50 text-slate-600 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border border-slate-100 shadow-sm"
+                        className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 py-2 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border border-slate-100 dark:border-slate-700 shadow-sm"
                       >
                         {isGeneratingPDF ? (
                           <div className="w-4 h-4 border-2 border-visuera-green border-t-transparent rounded-full animate-spin" />
@@ -1089,7 +1088,7 @@ export const TrygghetsFlow = ({ isQuickReport = false, onSuccess, initialCaseId,
                           onClick={() => setIsSidebarOpen(!isSidebarOpen)}
                           className={`hidden lg:flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border shadow-sm hover:-translate-y-0.5 active:translate-y-0 ${
                             isSidebarOpen 
-                              ? 'bg-white hover:bg-slate-50 text-slate-600 border-slate-100' 
+                              ? 'bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 border-slate-100 dark:border-slate-700' 
                               : 'bg-visuera-green text-white border-visuera-green shadow-visuera-green/20'
                           }`}
                           title={isSidebarOpen ? "Dölj verktyg för att fokusera" : "Visa ärendeverktyg"}

@@ -31,7 +31,7 @@ export const AtgarderStep: React.FC<AtgarderStepProps> = ({
               value={formData.actionsText}
               onChange={(e) => updateFormData('actionsText', e.target.value)}
               placeholder="Beskriv stödinsatser och disciplinära åtgärder på individnivå..."
-              className="w-full h-40 p-6 bg-slate-50 rounded-3xl border-none focus:ring-2 focus:ring-blue-500/10 transition-all resize-none text-sm leading-relaxed text-slate-700 font-medium"
+              className="w-full h-40 p-6 bg-slate-50 dark:bg-slate-900 rounded-3xl border-none focus:ring-2 focus:ring-visuera-green/20 transition-all resize-none text-sm leading-relaxed text-slate-700 dark:text-slate-100 font-medium"
             />
           </div>
 
@@ -45,8 +45,8 @@ export const AtgarderStep: React.FC<AtgarderStepProps> = ({
                   onClick={() => toggleActivity(template)}
                   className={`px-4 py-2 rounded-xl text-[10px] font-bold transition-all border ${
                     selectedActivities.includes(template)
-                      ? 'bg-blue-600 border-blue-600 text-white shadow-md shadow-blue-500/10'
-                      : 'bg-white border-slate-100 text-slate-500 hover:border-blue-300'
+                      ? 'bg-visuera-green border-visuera-green text-white shadow-md shadow-visuera-green/10'
+                      : 'bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:border-visuera-green/30'
                   }`}
                 >
                   {template}
@@ -69,7 +69,7 @@ export const AtgarderStep: React.FC<AtgarderStepProps> = ({
               value={formData.structuralActions || ''}
               onChange={(e) => updateFormData('structuralActions', e.target.value)}
               placeholder="Beskriv förändringar i den fysiska eller psykosociala miljön..."
-              className="w-full h-40 p-6 bg-slate-50 rounded-3xl border-none focus:ring-2 focus:ring-blue-500/10 transition-all resize-none text-sm leading-relaxed text-slate-700 font-medium"
+              className="w-full h-40 p-6 bg-slate-50 dark:bg-slate-900 rounded-3xl border-none focus:ring-2 focus:ring-visuera-green/20 transition-all resize-none text-sm leading-relaxed text-slate-700 dark:text-slate-100 font-medium"
             />
           </div>
 
@@ -83,8 +83,8 @@ export const AtgarderStep: React.FC<AtgarderStepProps> = ({
                   onClick={() => toggleActivity(template)}
                   className={`px-4 py-2 rounded-xl text-[10px] font-bold transition-all border ${
                     selectedActivities.includes(template)
-                      ? 'bg-slate-900 border-slate-900 text-white shadow-md'
-                      : 'bg-white border-slate-100 text-slate-500 hover:border-slate-300'
+                      ? 'bg-slate-900 dark:bg-slate-700 border-slate-900 dark:border-slate-600 text-white shadow-md'
+                      : 'bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-600'
                   }`}
                 >
                   {template}
@@ -104,7 +104,7 @@ export const AtgarderStep: React.FC<AtgarderStepProps> = ({
               type="text"
               value={formData.followUpResponsible || formData.assignedTeacher || ''}
               onChange={(e) => updateFormData('followUpResponsible', e.target.value)}
-              className="w-full p-4 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-blue-500/10 transition-all text-sm font-medium text-slate-700"
+              className="w-full p-4 bg-slate-50 dark:bg-slate-900 rounded-2xl border-none focus:ring-2 focus:ring-visuera-green/20 transition-all text-sm font-medium text-slate-700 dark:text-slate-100"
             />
           </div>
           <div className="space-y-2">
@@ -113,17 +113,17 @@ export const AtgarderStep: React.FC<AtgarderStepProps> = ({
               type="date"
               value={formData.followUpScheduled}
               onChange={(e) => updateFormData('followUpScheduled', e.target.value)}
-              className="w-full p-4 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-blue-500/10 transition-all text-sm font-medium text-slate-700"
+              className="w-full p-4 bg-slate-50 dark:bg-slate-900 rounded-2xl border-none focus:ring-2 focus:ring-visuera-green/20 transition-all text-sm font-medium text-slate-700 dark:text-slate-100"
             />
           </div>
         </div>
 
-        <div className="pt-4 border-t border-slate-50">
-           <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Dokument & Bilagor</label>
+        <div className="pt-4 border-t border-slate-50 dark:border-slate-700">
+           <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-1">Dokument & Bilagor</label>
            <div className="mt-3 relative group">
-              <div className="w-full h-32 border-2 border-dashed border-slate-100 rounded-3xl flex flex-col items-center justify-center gap-2 group-hover:border-blue-200 transition-colors bg-slate-50/50">
-                <FileText size={20} className="text-slate-300 group-hover:text-blue-400 transition-colors" />
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Ladda upp ev. Bilaga</span>
+              <div className="w-full h-32 border-2 border-dashed border-slate-100 dark:border-slate-800 rounded-3xl flex flex-col items-center justify-center gap-2 group-hover:border-visuera-green/30 transition-colors bg-slate-50/50 dark:bg-slate-900/50">
+                <FileText size={20} className="text-slate-300 dark:text-slate-700 group-hover:text-visuera-green transition-colors" />
+                <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Ladda upp ev. Bilaga</span>
               </div>
               <input type="file" className="absolute inset-0 opacity-0 cursor-pointer" />
             </div>

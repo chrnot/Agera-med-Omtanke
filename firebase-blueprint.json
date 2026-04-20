@@ -42,7 +42,7 @@
       "properties": {
         "caseId": { "type": "string" },
         "name": { "type": "string" },
-        "type": { "type": "string", "enum": ["utsatt", "den som utsatt", "vittne"] },
+        "type": { "type": "string", "enum": ["utsatt", "den som utsatt", "observatör"] },
         "interviewSummary": { "type": "string" },
         "interviewDate": { "type": "string", "format": "date-time" }
       },

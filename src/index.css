@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --color-visuera-green: #2D5A27;
@@ -9,10 +11,18 @@
 
 @layer base {
   body {
-    @apply font-sans text-visuera-dark bg-white;
+    @apply font-sans text-visuera-dark bg-white transition-colors duration-500;
+  }
+
+  .dark body {
+    @apply text-slate-100 bg-slate-900;
   }
 }
 
 .glass-card {
   @apply bg-white/80 backdrop-blur-md border border-white/20 shadow-lg;
+}
+
+.dark .glass-card {
+  @apply bg-slate-800/80 border-white/10;
 }

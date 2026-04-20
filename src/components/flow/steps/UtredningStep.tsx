@@ -48,17 +48,17 @@ export const UtredningStep: React.FC<UtredningStepProps> = ({
 
       {/* Principal Quick Message Panel */}
       {(userProfile?.role === 'principal' || userProfile?.globalRole === 'admin') && (
-        <div className="bg-slate-900 border border-slate-800 rounded-[32px] p-6 space-y-4 shadow-xl">
-          <div className="flex items-center gap-3 text-blue-400">
+        <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-[32px] p-6 space-y-4 shadow-xl transition-colors">
+          <div className="flex items-center gap-3 text-visuera-green">
             <MessageSquare size={18} />
-            <h4 className="text-[10px] font-black uppercase tracking-[0.2em]">Direktmeddelande till utredare</h4>
+            <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-visuera-dark dark:text-slate-100">Direktmeddelande till utredare</h4>
           </div>
           <div className="relative">
             <textarea 
               value={quickMessage}
               onChange={(e) => setQuickMessage(e.target.value.slice(0, 280))}
               placeholder="Skriv ett meddelande eller begär komplettering..."
-              className="w-full h-24 p-4 bg-slate-800 rounded-2xl border border-slate-700 focus:ring-2 focus:ring-blue-500/20 transition-all resize-none text-[11px] font-medium text-slate-100 placeholder:text-slate-500"
+              className="w-full h-24 p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 focus:ring-2 focus:ring-visuera-green/20 transition-all resize-none text-[11px] font-medium text-slate-700 dark:text-slate-100 placeholder:text-slate-500"
             />
             <div className="absolute bottom-3 right-3 text-[9px] text-slate-500 font-bold font-mono">
               {quickMessage.length}/280
@@ -69,7 +69,7 @@ export const UtredningStep: React.FC<UtredningStepProps> = ({
               <button 
                 key={t} 
                 onClick={() => setQuickMessage(t)} 
-                className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-[9px] font-bold text-slate-400 hover:text-blue-400 transition-all uppercase tracking-wider"
+                className="px-3 py-1.5 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-lg text-[9px] font-bold text-slate-400 dark:text-slate-500 hover:text-visuera-green dark:hover:text-visuera-green transition-all uppercase tracking-wider"
               >
                 {t}
               </button>
@@ -78,7 +78,7 @@ export const UtredningStep: React.FC<UtredningStepProps> = ({
           <button
             onClick={() => handleSendQuickMessage(quickMessage)}
             disabled={!quickMessage.trim()}
-            className="w-full py-3 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl text-[10px] font-black uppercase tracking-[0.2em] hover:shadow-lg transition-all flex items-center justify-center gap-2"
+            className="w-full py-3 bg-visuera-green hover:bg-visuera-green/90 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl text-[10px] font-black uppercase tracking-[0.2em] hover:shadow-lg transition-all flex items-center justify-center gap-2 shadow-lg shadow-visuera-green/20"
           >
             <Send size={14} /> Skicka
           </button>
@@ -94,7 +94,7 @@ export const UtredningStep: React.FC<UtredningStepProps> = ({
               type="text"
               readOnly
               value={formData.studentName}
-              className="w-full p-4 bg-slate-50 rounded-2xl border-none text-sm font-bold text-slate-700"
+              className="w-full p-4 bg-slate-50 dark:bg-slate-900 rounded-2xl border-none text-sm font-bold text-slate-700 dark:text-slate-100"
             />
           </div>
           <div className="space-y-2">
@@ -105,7 +105,7 @@ export const UtredningStep: React.FC<UtredningStepProps> = ({
               value={formData.studentSSN || ''}
               onChange={(e) => updateFormData('studentSSN', e.target.value)}
               placeholder={canEditMain ? "YYYYMMDD-XXXX" : "Ej ifyllt"}
-              className={`w-full p-4 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-blue-500/10 transition-all text-sm font-medium text-slate-700 ${!canEditMain ? 'cursor-not-allowed opacity-80' : ''}`}
+              className={`w-full p-4 bg-slate-50 dark:bg-slate-900 rounded-2xl border-none focus:ring-2 focus:ring-blue-500/10 transition-all text-sm font-medium text-slate-700 dark:text-slate-100 ${!canEditMain ? 'cursor-not-allowed opacity-80' : ''}`}
             />
           </div>
         </div>
@@ -115,7 +115,7 @@ export const UtredningStep: React.FC<UtredningStepProps> = ({
             <h5 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Samtalsstöd & Metod</h5>
             <button 
               onClick={() => setShowInterviewGuide(!showInterviewGuide)}
-              className="text-[10px] font-bold text-blue-600 hover:text-blue-700 uppercase tracking-widest flex items-center gap-2 transition-colors"
+              className="text-[10px] font-bold text-visuera-green uppercase tracking-widest flex items-center gap-2 transition-colors"
             >
               {showInterviewGuide ? 'Dölj samtalsstöd' : 'Visa samtalsstöd'}
             </button>
@@ -127,7 +127,7 @@ export const UtredningStep: React.FC<UtredningStepProps> = ({
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: 'auto' }}
                 exit={{ opacity: 0, height: 0 }}
-                className="overflow-hidden bg-slate-50 rounded-2xl border border-slate-100 mb-6"
+                className="overflow-hidden bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-700 mb-6"
               >
                 <div className="p-6">
                   <StudentVoiceModule
@@ -165,7 +165,7 @@ export const UtredningStep: React.FC<UtredningStepProps> = ({
             readOnly={!canEditMain}
             onChange={(e) => updateFormData('studentVersion', e.target.value)}
             placeholder={canEditMain ? "Dokumentera elevens ord sakligt och fritt från tolkningar." : "Ingen dokumentation ännu."}
-            className={`w-full h-48 p-6 bg-slate-50 rounded-3xl border-none focus:ring-2 focus:ring-blue-500/10 transition-all resize-none text-sm leading-relaxed text-slate-700 font-medium ${!canEditMain ? 'cursor-not-allowed opacity-80' : ''}`}
+            className={`w-full h-48 p-6 bg-slate-50 dark:bg-slate-900 rounded-3xl border-none focus:ring-2 focus:ring-visuera-green/20 transition-all resize-none text-sm leading-relaxed text-slate-700 dark:text-slate-100 font-medium ${!canEditMain ? 'cursor-not-allowed opacity-80' : ''}`}
           />
         </div>
       </StepCard>
@@ -176,14 +176,14 @@ export const UtredningStep: React.FC<UtredningStepProps> = ({
           <div className="space-y-2">
             <div className="flex items-center">
               <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Vårdnadshavares och andras versioner *</label>
-              <InfoPopover title="Dokumentation" content="Beskriv vad vårdnadshavare och eventuellt den anklagade/vittnen har uppgett under utredningen." />
+              <InfoPopover title="Dokumentation" content="Beskriv vad vårdnadshavare och eventuellt den anklagade/observatörer har uppgett under utredningen." />
             </div>
             <textarea 
               value={formData.investigationText}
               readOnly={!canEditMain}
               onChange={(e) => updateFormData('investigationText', e.target.value)}
               placeholder={canEditMain ? "Dokumentera sakligt vad övriga inblandade har uppgett..." : "Ingen dokumentation ännu."}
-              className={`w-full h-48 p-6 bg-slate-50 rounded-3xl border-none focus:ring-2 focus:ring-blue-500/10 transition-all resize-none text-sm leading-relaxed text-slate-700 font-medium ${!canEditMain ? 'cursor-not-allowed opacity-80' : ''}`}
+              className={`w-full h-48 p-6 bg-slate-50 dark:bg-slate-900 rounded-3xl border-none focus:ring-2 focus:ring-visuera-green/20 transition-all resize-none text-sm leading-relaxed text-slate-700 dark:text-slate-100 font-medium ${!canEditMain ? 'cursor-not-allowed opacity-80' : ''}`}
             />
           </div>
         </div>
@@ -212,8 +212,8 @@ export const UtredningStep: React.FC<UtredningStepProps> = ({
                   disabled={!canEditMain}
                   className={`p-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all border flex items-center justify-between ${
                     formData.incidentTypes?.includes(type.id)
-                      ? 'bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-500/10'
-                      : 'bg-slate-50 border-transparent text-slate-500 hover:bg-slate-100'
+                      ? 'bg-visuera-green text-white border-visuera-green shadow-md shadow-visuera-green/10'
+                      : 'bg-slate-50 dark:bg-slate-900 border-transparent text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700'
                   } ${!canEditMain ? 'opacity-80 cursor-not-allowed' : ''}`}
                 >
                   {type.label}
@@ -224,8 +224,8 @@ export const UtredningStep: React.FC<UtredningStepProps> = ({
           </div>
 
           {formData.incidentTypes?.includes('diskriminering') && (
-            <div className="p-6 bg-blue-50/50 border border-blue-100 rounded-[28px] space-y-4">
-              <label className="text-[10px] font-bold text-blue-600 uppercase tracking-[0.2em] ml-1">Diskrimineringsgrund *</label>
+            <div className="p-6 bg-visuera-green/5 dark:bg-visuera-green/10 border border-visuera-green/20 dark:border-visuera-green/30 rounded-[28px] space-y-4">
+              <label className="text-[10px] font-bold text-visuera-green uppercase tracking-[0.2em] ml-1">Diskrimineringsgrund *</label>
               <div className="flex flex-wrap gap-2">
                 {DISCRIMINATION_GROUNDS.map(ground => (
                   <button
@@ -237,8 +237,8 @@ export const UtredningStep: React.FC<UtredningStepProps> = ({
                     disabled={!canEditMain}
                     className={`px-4 py-2 rounded-xl text-[10px] font-bold transition-all border ${
                       formData.discriminationGround === ground 
-                        ? 'bg-blue-600 text-white border-blue-600 shadow-sm' 
-                        : 'bg-white text-slate-400 border-slate-200 hover:border-blue-300'
+                        ? 'bg-visuera-green text-white border-visuera-green shadow-sm' 
+                        : 'bg-white dark:bg-slate-800 text-slate-400 dark:text-slate-200 border-slate-200 dark:border-slate-700 hover:border-visuera-green/30'
                     } ${!canEditMain ? 'opacity-80 cursor-not-allowed' : ''}`}
                   >
                     {ground}
@@ -261,8 +261,8 @@ export const UtredningStep: React.FC<UtredningStepProps> = ({
                     disabled={!canEditMain}
                     className={`p-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all border ${
                       formData.incidentConfirmed === opt
-                        ? 'bg-slate-900 text-white border-slate-900 shadow-xl'
-                        : 'bg-slate-50 border-transparent text-slate-500 hover:bg-slate-100'
+                        ? 'bg-slate-900 dark:bg-slate-700 text-white border-slate-900 shadow-xl'
+                        : 'bg-slate-50 dark:bg-slate-900 border-transparent text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700'
                     } ${!canEditMain ? 'opacity-80 cursor-not-allowed' : ''}`}
                   >
                     {opt}
@@ -281,7 +281,7 @@ export const UtredningStep: React.FC<UtredningStepProps> = ({
               readOnly={!canEditMain}
               onChange={(e) => updateFormData('investigationAnalysis', e.target.value)}
               placeholder={canEditMain ? "Dokumentera de överväganden som lett till bedömningen..." : "Ingen analys ännu."}
-              className={`w-full h-40 p-6 bg-slate-50 rounded-3xl border-none focus:ring-2 focus:ring-blue-500/10 transition-all resize-none text-sm leading-relaxed text-slate-700 font-medium ${!canEditMain ? 'cursor-not-allowed opacity-80' : ''}`}
+              className={`w-full h-40 p-6 bg-slate-50 dark:bg-slate-900 rounded-3xl border-none focus:ring-2 focus:ring-visuera-green/20 transition-all resize-none text-sm leading-relaxed text-slate-700 dark:text-slate-100 font-medium ${!canEditMain ? 'cursor-not-allowed opacity-80' : ''}`}
             />
           </div>
         </div>

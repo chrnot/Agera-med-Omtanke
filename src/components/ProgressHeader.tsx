@@ -20,7 +20,7 @@ export const ProgressHeader: React.FC<ProgressHeaderProps> = ({
   onStepClick 
 }) => {
   return (
-    <div className="w-full bg-white border-b border-slate-100 px-8 py-4 flex items-center justify-between sticky top-0 z-30 shadow-sm shadow-slate-200/50">
+    <div className="w-full bg-white dark:bg-slate-800 border-b border-slate-100 dark:border-slate-700 px-8 py-4 flex items-center justify-between sticky top-0 z-30 shadow-sm shadow-slate-200/50 dark:shadow-black/20 transition-all duration-500">
       <div className="flex items-center gap-1 overflow-x-auto no-scrollbar max-w-full">
         {steps.map((step, index) => {
           const isCurrent = index === currentStepIndex;
@@ -33,18 +33,18 @@ export const ProgressHeader: React.FC<ProgressHeaderProps> = ({
                 disabled={!isCompleted && !isCurrent}
                 className={`flex items-center gap-2 lg:gap-3 px-3 lg:px-4 py-2 lg:py-2.5 rounded-xl lg:rounded-2xl transition-all whitespace-nowrap group ${
                   isCurrent 
-                    ? 'bg-visuera-dark text-white shadow-lg shadow-visuera-dark/20' 
+                    ? 'bg-visuera-dark dark:bg-slate-100 text-white dark:text-visuera-dark shadow-lg shadow-visuera-dark/20 dark:shadow-slate-900/50' 
                     : isCompleted
-                      ? 'bg-visuera-green/10 text-visuera-green hover:bg-visuera-green/20'
+                      ? 'bg-visuera-green/10 dark:bg-visuera-green/20 text-visuera-green hover:bg-visuera-green/20 dark:hover:bg-visuera-green/30'
                       : 'text-slate-400 opacity-60'
                 }`}
               >
                 <div className={`w-5 h-5 lg:w-6 lg:h-6 rounded-lg lg:rounded-xl flex items-center justify-center transition-colors ${
                   isCurrent 
-                    ? 'bg-white text-visuera-dark' 
+                    ? 'bg-white dark:bg-slate-900 text-visuera-dark dark:text-slate-100' 
                     : isCompleted 
-                      ? 'bg-visuera-green text-white' 
-                      : 'bg-slate-100 text-slate-300'
+                       ? 'bg-visuera-green text-white' 
+                       : 'bg-slate-100 dark:bg-slate-700 text-slate-300 dark:text-slate-500'
                 }`}>
                   {isCompleted ? (
                     <CheckCircle2 size={13} strokeWidth={3} />
@@ -59,7 +59,7 @@ export const ProgressHeader: React.FC<ProgressHeaderProps> = ({
               
               {index < steps.length - 1 && (
                 <div className="flex items-center px-1">
-                   <ChevronRight size={14} className="text-slate-200" />
+                   <ChevronRight size={14} className="text-slate-200 dark:text-slate-700" />
                 </div>
               )}
             </React.Fragment>
@@ -72,7 +72,7 @@ export const ProgressHeader: React.FC<ProgressHeaderProps> = ({
           <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Status</span>
           <div className="flex items-center gap-1.5 mt-0.5">
              <div className="w-1.5 h-1.5 bg-visuera-green rounded-full shadow-[0_0_8px_rgba(5,150,105,0.5)]" />
-             <span className="text-[11px] font-bold text-visuera-dark">Aktiv redigering</span>
+             <span className="text-[11px] font-bold text-visuera-dark dark:text-slate-100">Aktiv redigering</span>
           </div>
         </div>
       </div>

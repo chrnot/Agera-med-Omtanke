@@ -29,7 +29,7 @@ export const AvslutStep: React.FC<AvslutStepProps> = ({
         animate={{ opacity: 1, scale: 1, y: 0 }}
         className="space-y-8"
       >
-        <div className="bg-slate-900 text-white rounded-[40px] p-10 space-y-8 shadow-2xl relative overflow-hidden">
+        <div className="bg-slate-900 dark:bg-slate-950 text-white rounded-[40px] p-10 space-y-8 shadow-2xl relative overflow-hidden">
           {/* Subtle noise/texture overlay would go here if needed */}
           <div className="relative z-10 space-y-8">
             <div className="flex items-center gap-5">
@@ -122,32 +122,32 @@ export const AvslutStep: React.FC<AvslutStepProps> = ({
         <div className="space-y-8 divide-y divide-slate-50">
           <div className="grid grid-cols-2 gap-8 pt-2">
             <div>
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Identifierad Elev</p>
-              <p className="text-sm font-bold text-slate-800">{formData.studentName || '-'}</p>
+              <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1.5 text-left">Identifierad Elev</p>
+              <p className="text-sm font-bold text-slate-800 dark:text-slate-100 text-left">{formData.studentName || '-'}</p>
             </div>
             <div>
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Skolenhet</p>
-              <p className="text-sm font-bold text-slate-800">{formData.school || '-'}</p>
+              <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1.5 text-left">Skolenhet</p>
+              <p className="text-sm font-bold text-slate-800 dark:text-slate-100 text-left">{formData.school || '-'}</p>
             </div>
           </div>
 
           <div className="pt-6">
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Händelseförlopp</p>
-            <p className="text-sm text-slate-600 leading-relaxed font-normal italic">
+            <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2 text-left">Händelseförlopp</p>
+            <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed font-normal italic text-left">
               "{formData.incidentDescription}"
             </p>
             <div className="flex gap-2 flex-wrap mt-3">
               {formData.reportType?.map((t: string) => (
-                <span key={t} className="px-2.5 py-1 bg-slate-100 text-slate-500 rounded-lg text-[9px] font-black uppercase tracking-wider">{t}</span>
+                <span key={t} className="px-2.5 py-1 bg-slate-100 dark:bg-slate-900 text-slate-500 dark:text-slate-400 rounded-lg text-[9px] font-black uppercase tracking-wider">{t}</span>
               ))}
             </div>
           </div>
 
           <div className="pt-6">
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Bedömning & Åtgärder</p>
-            <div className="bg-slate-50 rounded-2xl p-5 border border-slate-100/50">
-              <p className="text-sm font-bold text-slate-800 mb-2">{formData.incidentConfirmed} - {formData.incidentTypes?.join(', ')}</p>
-              <p className="text-sm text-slate-600 leading-relaxed font-normal">
+            <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2 text-left">Bedömning & Åtgärder</p>
+            <div className="bg-slate-50 dark:bg-slate-900 rounded-2xl p-5 border border-slate-100/50 dark:border-slate-700/50 text-left">
+              <p className="text-sm font-bold text-slate-800 dark:text-slate-100 mb-2">{formData.incidentConfirmed} - {formData.incidentTypes?.join(', ')}</p>
+              <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed font-normal">
                 {formData.actionsText}
               </p>
             </div>
@@ -165,20 +165,20 @@ export const AvslutStep: React.FC<AvslutStepProps> = ({
 
             <div className="space-y-3">
               {(formData.involvedParties || []).filter((p: any) => p.type === 'Elev').map((student: any) => (
-                <div key={student.id} className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100 group">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center text-slate-400">
+                <div key={student.id} className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-700 group">
+                  <div className="flex items-center gap-3 text-left">
+                    <div className="w-8 h-8 bg-white dark:bg-slate-800 rounded-lg flex items-center justify-center text-slate-400 dark:text-slate-600">
                       <Users size={16} />
                     </div>
                     <div>
-                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 leading-none mb-1">{student.role}</p>
-                      <p className="text-xs font-bold text-slate-700">{student.name}</p>
+                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 leading-none mb-1">{student.role}</p>
+                      <p className="text-xs font-bold text-slate-700 dark:text-slate-200">{student.name}</p>
                     </div>
                   </div>
                   <button 
                     disabled={isGeneratingPDF}
                     onClick={() => onGenerateAnonymizedReport?.(student.id)}
-                    className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-500 hover:border-emerald-500 hover:text-emerald-600 transition-all shadow-sm"
+                    className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 hover:border-visuera-green hover:text-visuera-green transition-all shadow-sm"
                   >
                     <FileDown size={14} />
                     {isGeneratingPDF ? 'Skapar...' : 'Skapa rapport'}
@@ -187,8 +187,8 @@ export const AvslutStep: React.FC<AvslutStepProps> = ({
               ))}
               
               {(formData.involvedParties || []).filter((p: any) => p.type === 'Elev').length === 0 && (
-                <div className="text-center py-6 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Inga elever i partlistan</p>
+                <div className="text-center py-6 bg-slate-50 dark:bg-slate-900 rounded-2xl border border-dashed border-slate-200 dark:border-slate-700">
+                  <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Inga elever i partlistan</p>
                 </div>
               )}
             </div>
@@ -200,24 +200,24 @@ export const AvslutStep: React.FC<AvslutStepProps> = ({
                <h3 className="text-[11px] font-black uppercase tracking-[0.15em]">Rektors Signering</h3>
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-6 text-left">
               <div className="space-y-2">
-                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Namnförtydligande *</label>
+                <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-1">Namnförtydligande *</label>
                 <input 
                   type="text"
                   value={formData.signatureName}
                   onChange={(e) => updateFormData('signatureName', e.target.value)}
                   placeholder="Signaturs namn..."
-                  className="w-full p-4 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-blue-500/10 transition-all text-sm font-bold text-slate-800"
+                  className="w-full p-4 bg-slate-50 dark:bg-slate-900 rounded-2xl border-none focus:ring-2 focus:ring-visuera-green/20 transition-all text-sm font-bold text-slate-800 dark:text-slate-100"
                 />
               </div>
               <div className="space-y-2">
-                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Datum *</label>
+                <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-1">Datum *</label>
                 <input 
                   type="date"
                   value={formData.signatureDate}
                   onChange={(e) => updateFormData('signatureDate', e.target.value)}
-                  className="w-full p-4 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-blue-500/10 transition-all text-sm font-bold text-slate-800"
+                  className="w-full p-4 bg-slate-50 dark:bg-slate-900 rounded-2xl border-none focus:ring-2 focus:ring-visuera-green/20 transition-all text-sm font-bold text-slate-800 dark:text-slate-100"
                 />
               </div>
             </div>

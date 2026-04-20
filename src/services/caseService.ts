@@ -596,6 +596,25 @@ export const caseService = {
         createdAt: serverTimestamp()
       });
 
+      // Notify investigator
+      const caseDoc = await getDoc(doc(db, 'cases', caseId));
+      const caseData = caseDoc.data();
+      const investigatorUid = caseData?.assignedToUid || caseData?.assignedTeacherUid;
+      const school = caseData?.school || 'Danderyds Skola';
+
+      if (investigatorUid && investigatorUid !== userProfile.uid) {
+        const idDisplay = `ÄRE-${caseId.slice(-4).toUpperCase()}`;
+        await caseService.sendNotification({
+          type: 'INFO',
+          title: 'Ny observation i ärende',
+          message: `${userProfile.name} har lagt till en observation i ärende ${idDisplay}.`,
+          caseId,
+          recipientUid: investigatorUid,
+          school,
+          actionUrl: `/cases/${caseId}`
+        });
+      }
+
       // Audit Log
       await addDoc(collection(db, `cases/${caseId}/audit`), {
         caseId,
