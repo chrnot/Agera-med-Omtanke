@@ -131,7 +131,7 @@ export const NotificationInbox = ({ userId, onOpenCase, onClose }: NotificationI
           {unreadCount > 0 && (
             <button 
               onClick={markAllAsRead}
-              className="text-[10px] font-bold text-visuera-green hover:underline uppercase tracking-widest"
+              className="text-[10px] font-bold text-visuera-green dark:text-emerald-400 hover:underline uppercase tracking-widest"
             >
               Markera alla som lästa
             </button>
@@ -181,7 +181,7 @@ export const NotificationInbox = ({ userId, onOpenCase, onClose }: NotificationI
                     </div>
                     <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed pr-6">{n.message}</p>
                     {n.school && (
-                      <span className="text-[9px] font-black text-visuera-green uppercase bg-visuera-green/10 dark:bg-visuera-green/20 px-2 py-0.5 rounded tracking-widest inline-block mt-2">
+                      <span className="text-[9px] font-black text-visuera-green dark:text-emerald-400 uppercase bg-visuera-green/10 dark:bg-emerald-900/30 px-2 py-0.5 rounded tracking-widest inline-block mt-2 border border-visuera-green/20">
                         {n.school}
                       </span>
                     )}

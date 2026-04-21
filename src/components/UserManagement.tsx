@@ -73,7 +73,7 @@ const AdminTabButton = ({ active, onClick, icon: Icon, label }: any) => (
     onClick={onClick}
     className={`flex items-center gap-3 px-6 py-4 border-b-2 transition-all font-bold text-sm ${
       active 
-        ? 'border-visuera-green text-visuera-green bg-visuera-green/5 dark:bg-visuera-green/10' 
+        ? 'border-visuera-green text-visuera-green dark:text-emerald-400 bg-visuera-green/5 dark:bg-emerald-900/10' 
         : 'border-transparent text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/50'
     }`}
   >
@@ -314,30 +314,6 @@ export const UserManagement = () => {
       });
 
       setSuccess('Danderyds skolor har synkroniserats!');
-      setTimeout(() => setSuccess(null), 3000);
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setIsUpdating(false);
-    }
-  };
-
-  const handleProvisionStaff = async () => {
-    setIsUpdating(true);
-    try {
-      await setupService.provisionEnebybergStaff();
-      await fetchData();
-
-      // Audit log for bulk provision
-      await addDoc(collection(db, 'AuditLog'), {
-        action: 'BULK_IMPORT_PERSONAL',
-        changedByUid: auth.currentUser?.uid || 'unknown',
-        changedByName: auth.currentUser?.displayName || auth.currentUser?.email || 'System',
-        details: 'Import av personal för Enebyberg skola utförd.',
-        timestamp: serverTimestamp()
-      });
-
-      setSuccess('Personal för Enebyberg har importerats!');
       setTimeout(() => setSuccess(null), 3000);
     } catch (e) {
       console.error(e);
@@ -783,13 +759,6 @@ export const UserManagement = () => {
                         className="text-[9px] font-black bg-visuera-green/10 dark:bg-visuera-green/20 text-visuera-green px-3 py-1.5 rounded-lg hover:bg-visuera-green/20 transition-all uppercase tracking-widest disabled:opacity-50"
                       >
                         {isUpdating ? 'Synkar...' : 'Synka Danderyd'}
-                      </button>
-                      <button 
-                        onClick={handleProvisionStaff}
-                        disabled={isUpdating}
-                        className="text-[9px] font-black bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 px-3 py-1.5 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900 transition-all uppercase tracking-widest disabled:opacity-50 ml-2"
-                      >
-                        {isUpdating ? 'Importerar...' : 'Importera Personal (Enebyberg)'}
                       </button>
                     </div>
                     <div className="flex gap-2 mb-6">

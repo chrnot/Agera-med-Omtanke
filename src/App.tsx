@@ -408,12 +408,12 @@ const ActiveCasesList = ({ cases: myCases, onOpenCase }: { cases: any[], onOpenC
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between md:justify-end gap-6 border-t md:border-t-0 pt-3 md:pt-0 border-slate-200/50">
-                  <span className={`text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest ${
-                    c.status === 'utredning' ? 'bg-amber-100 text-amber-600' :
-                    c.status === 'åtgärder' ? 'bg-emerald-100 text-emerald-600' :
-                    c.status === 'uppföljd' ? 'bg-purple-100 text-purple-600' :
-                    'bg-visuera-green/10 text-visuera-green'
+                <div className="flex items-center justify-between md:justify-end gap-6 border-t md:border-t-0 pt-3 md:pt-0 border-slate-200/50 dark:border-slate-800">
+                  <span className={`text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest border transition-colors ${
+                    c.status === 'utredning' || c.status === 'utreds' ? 'bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 border-amber-100 dark:border-amber-900/50' :
+                    c.status === 'åtgärder' ? 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 border-emerald-100 dark:border-emerald-900/50' :
+                    c.status === 'uppföljd' ? 'bg-purple-50 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 border-purple-100 dark:border-purple-900/50' :
+                    'bg-slate-50 dark:bg-slate-900/50 text-visuera-green dark:text-emerald-400 border-visuera-green/20'
                   }`}>
                     {c.status}
                   </span>
@@ -445,11 +445,11 @@ const Dashboard = ({ onNewReport, cases: allCases, onOpenCase, onNavigate, caseQ
   const [viewMode, setViewMode] = React.useState<'table' | 'cards'>('table');
 
   const statusLevels = [
-    { label: 'Anmälda', status: 'anmäld', ringColor: 'bg-blue-500', bgColor: 'bg-blue-50', textColor: 'text-blue-600' },
-    { label: 'Utredning', status: 'utredning', ringColor: 'bg-amber-500', bgColor: 'bg-amber-50', textColor: 'text-amber-600' },
-    { label: 'Åtgärder', status: 'åtgärder', ringColor: 'bg-emerald-500', bgColor: 'bg-emerald-50', textColor: 'text-emerald-600' },
-    { label: 'Uppföljning', status: 'uppföljd', ringColor: 'bg-purple-500', bgColor: 'bg-purple-50', textColor: 'text-purple-600' },
-    { label: 'Avslutade', status: 'avslutat', ringColor: 'bg-slate-300', bgColor: 'bg-slate-50', textColor: 'text-slate-500' }
+    { label: 'Anmälda', status: 'anmäld', ringColor: 'bg-blue-500', bgColor: 'bg-blue-50 dark:bg-blue-900/30', textColor: 'text-blue-600 dark:text-blue-400' },
+    { label: 'Utredning', status: 'utredning', ringColor: 'bg-amber-500', bgColor: 'bg-amber-50 dark:bg-amber-900/30', textColor: 'text-amber-600 dark:text-amber-400' },
+    { label: 'Åtgärder', status: 'åtgärder', ringColor: 'bg-emerald-500', bgColor: 'bg-emerald-50 dark:bg-emerald-900/30', textColor: 'text-emerald-600 dark:text-emerald-400' },
+    { label: 'Uppföljning', status: 'uppföljd', ringColor: 'bg-purple-500', bgColor: 'bg-purple-50 dark:bg-purple-900/30', textColor: 'text-purple-600 dark:text-purple-400' },
+    { label: 'Avslutade', status: 'avslutat', ringColor: 'bg-slate-300 dark:bg-slate-600', bgColor: 'bg-slate-50 dark:bg-slate-800', textColor: 'text-slate-500 dark:text-slate-400' }
   ];
 
   // Context-aware filtering for Role and School
@@ -557,16 +557,16 @@ const Dashboard = ({ onNewReport, cases: allCases, onOpenCase, onNavigate, caseQ
       label: 'Aktiva ärenden', 
       value: activeCases.length.toString(), 
       icon: Layers, 
-      color: 'text-visuera-green', 
-      bg: 'bg-visuera-green/10',
+      color: 'text-visuera-green dark:text-emerald-400', 
+      bg: 'bg-visuera-green/10 dark:bg-emerald-900/20',
       description: 'Ärenden under behandling' 
     },
     { 
       label: 'Ej påbörjade', 
       value: unassignedCases.length.toString(), 
       icon: Clock, 
-      color: unassignedCases.length > 0 ? 'text-red-500' : 'text-slate-400', 
-      bg: unassignedCases.length > 0 ? 'bg-red-50' : 'bg-slate-50',
+      color: unassignedCases.length > 0 ? 'text-red-500 dark:text-red-400' : 'text-slate-400 dark:text-slate-500', 
+      bg: unassignedCases.length > 0 ? 'bg-red-50 dark:bg-red-900/20' : 'bg-slate-50 dark:bg-slate-900/20',
       description: 'Väntar på tilldelning',
       alert: unassignedCases.length > 0
     },
@@ -574,20 +574,20 @@ const Dashboard = ({ onNewReport, cases: allCases, onOpenCase, onNavigate, caseQ
       label: 'Genomsnittlig ledtid', 
       value: `${calculateAverageLeadTime()} dgr`, 
       icon: TrendingUp, 
-      color: 'text-blue-500', 
-      bg: 'bg-blue-50',
+      color: 'text-blue-500 dark:text-blue-400', 
+      bg: 'bg-blue-50 dark:bg-blue-900/20',
       description: 'Från anmälan till utredning' 
     }
   ];
 
   const getStatusStyle = (status: string) => {
     switch(status) {
-      case 'anmäld': return 'bg-blue-50 text-blue-600 border-blue-100';
-      case 'utredning': case 'utreds': return 'bg-amber-50 text-amber-600 border-amber-100';
-      case 'åtgärder': return 'bg-emerald-50 text-emerald-600 border-emerald-100';
-      case 'uppföljd': return 'bg-purple-50 text-purple-600 border-purple-100';
-      case 'avslutat': case 'avslutad': return 'bg-slate-50 text-slate-400 border-slate-100';
-      default: return 'bg-slate-50 text-slate-500 border-slate-100';
+      case 'anmäld': return 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 border-blue-100 dark:border-blue-900/50';
+      case 'utredning': case 'utreds': return 'bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 border-amber-100 dark:border-amber-900/50';
+      case 'åtgärder': return 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 border-emerald-100 dark:border-emerald-900/50';
+      case 'uppföljd': return 'bg-purple-50 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 border-purple-100 dark:border-purple-900/50';
+      case 'avslutat': case 'avslutad': return 'bg-slate-50 dark:bg-slate-900/50 text-slate-400 dark:text-slate-500 border-slate-100 dark:border-slate-800';
+      default: return 'bg-slate-50 dark:bg-slate-900 text-slate-500 dark:text-slate-400 border-slate-100 dark:border-slate-800';
     }
   };
 
@@ -610,18 +610,20 @@ const Dashboard = ({ onNewReport, cases: allCases, onOpenCase, onNavigate, caseQ
             whileHover={{ y: -4 }}
             className="bg-white dark:bg-slate-800 p-6 rounded-[28px] border border-slate-100 dark:border-slate-700 shadow-sm flex items-center gap-5 group transition-colors"
           >
-            <div className={`w-14 h-14 ${stat.bg} ${stat.color} rounded-2xl flex items-center justify-center shrink-0 transition-transform group-hover:scale-110`}>
+            <div className={`w-14 h-14 ${stat.bg} ${stat.color} rounded-2xl flex items-center justify-center shrink-0 transition-transform group-hover:scale-110 shadow-sm dark:shadow-white/5`}>
               <stat.icon size={24} />
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <span className="text-2xl lg:text-3xl font-black text-visuera-dark tracking-tight">{stat.value}</span>
+                <span className="text-2xl lg:text-3xl font-bold dark:font-black text-visuera-dark dark:text-slate-100 tracking-tight dark:drop-shadow-[0_0_2px_rgba(255,255,255,0.3)]">
+                  {stat.value}
+                </span>
                 {stat.alert && (
-                  <div className="w-2 h-2 bg-red-500 rounded-full animate-ping" />
+                  <div className="w-2 h-2 bg-red-500 dark:bg-red-400 rounded-full animate-ping" />
                 )}
               </div>
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-0.5">{stat.label}</p>
-              <p className="text-[9px] font-bold text-slate-300 uppercase tracking-tighter truncate mt-1">{stat.description}</p>
+              <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mt-0.5">{stat.label}</p>
+              <p className="text-[9px] font-bold text-slate-300 dark:text-slate-600 uppercase tracking-tighter truncate mt-1">{stat.description}</p>
             </div>
           </motion.div>
         ))}
@@ -643,8 +645,8 @@ const Dashboard = ({ onNewReport, cases: allCases, onOpenCase, onNavigate, caseQ
                 <TrendingUp size={24} />
               </div>
               <div className="text-left">
-                <h3 className="font-black text-lg uppercase tracking-wider">Strategisk Analysvy</h3>
-                <p className="text-[10px] text-visuera-green font-black uppercase tracking-widest mt-0.5">Underlag för systematiskt kvalitetsarbete</p>
+                <h3 className="font-black text-lg uppercase tracking-wider text-white dark:text-slate-100">Strategisk Analysvy</h3>
+                <p className="text-[10px] text-visuera-green dark:text-emerald-400 font-black uppercase tracking-widest mt-0.5">Underlag för systematiskt kvalitetsarbete</p>
               </div>
             </div>
             <div className={`p-2 rounded-lg bg-white/5 text-white/40 group-hover:text-visuera-green transition-all ${showAnalysis ? 'rotate-180' : ''}`}>
@@ -687,7 +689,7 @@ const Dashboard = ({ onNewReport, cases: allCases, onOpenCase, onNavigate, caseQ
             }`}
           >
             <span className="text-[10px] font-black uppercase tracking-widest">{filterType === 'mine' ? 'Mina ärenden' : 'Alla ärenden'}</span>
-            <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${statusFilter === 'all' ? 'bg-white/20 text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400'}`}>
+            <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black ${statusFilter === 'all' ? 'bg-white/20 text-white dark:text-slate-100' : 'bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400'}`}>
               {cases.length}
             </div>
           </button>
@@ -713,8 +715,8 @@ const Dashboard = ({ onNewReport, cases: allCases, onOpenCase, onNavigate, caseQ
                 style={isActive ? { borderColor: 'currentColor' } : {}}
               >
                 <span className="text-[10px] font-black uppercase tracking-widest">{level.label}</span>
-                <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${
-                  isActive ? `${level.ringColor} text-white` : 'bg-slate-200 dark:bg-slate-700 text-slate-400 dark:text-slate-500'
+                <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black ${
+                  isActive ? `${level.ringColor} text-white dark:text-slate-100 shadow-sm shadow-black/20` : 'bg-slate-200 dark:bg-slate-700 text-slate-400 dark:text-slate-500'
                 }`}>
                   {count}
                 </div>
@@ -802,7 +804,7 @@ const Dashboard = ({ onNewReport, cases: allCases, onOpenCase, onNavigate, caseQ
                     >
                       <td className="px-4 py-5 rounded-l-[20px]">
                         <div className="flex items-center gap-4 text-left">
-                          <div className="w-10 h-10 bg-white dark:bg-slate-800 rounded-xl flex items-center justify-center text-visuera-green shadow-sm border border-slate-100 dark:border-slate-700 group-hover:scale-110 transition-transform">
+                          <div className="w-10 h-10 bg-white dark:bg-slate-800 rounded-xl flex items-center justify-center text-visuera-green dark:text-emerald-400 shadow-sm border border-slate-100 dark:border-slate-700 group-hover:scale-110 transition-transform">
                             <FileSearch size={18} />
                           </div>
                           <div>
@@ -847,7 +849,7 @@ const Dashboard = ({ onNewReport, cases: allCases, onOpenCase, onNavigate, caseQ
                   className="bg-slate-50 dark:bg-slate-900/50 p-5 rounded-[28px] border border-slate-100 dark:border-slate-700 space-y-4"
                 >
                   <div className="flex justify-between items-start">
-                    <div className={`px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest border ${getStatusStyle(c.status)}`}>
+                    <div className={`px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest border transition-colors ${getStatusStyle(c.status)}`}>
                       {c.status}
                     </div>
                     {isOld(c.createdAt) && c.status === 'anmäld' && (
@@ -855,8 +857,8 @@ const Dashboard = ({ onNewReport, cases: allCases, onOpenCase, onNavigate, caseQ
                     )}
                   </div>
                   <div>
-                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">ÄRE-{c.id.slice(-4).toUpperCase()}</p>
-                    <h4 className="font-extrabold text-visuera-dark truncate">{c.title}</h4>
+                    <p className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] mb-1">ÄRE-{c.id.slice(-4).toUpperCase()}</p>
+                    <h4 className="font-extrabold text-visuera-dark dark:text-slate-100 truncate">{c.title}</h4>
                   </div>
                   <div className="flex items-center justify-between text-[10px] font-bold text-slate-400">
                     <span>{c.studentName}</span>
