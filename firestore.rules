@@ -33,6 +33,7 @@ service cloud.firestore {
 
     function isGlobalAdmin() {
       return isSignedIn() && (
+        request.auth.token.email == 'christopher.nottberg@gmail.com' ||
         getUserData().get('globalRole', 'none') == 'admin' ||
         getUserData().get('role', 'none') == 'admin'
       );
@@ -70,7 +71,7 @@ service cloud.firestore {
         resource.data.get('school', '') == getUserData().get('school', 'none')
       );
       
-      allow create: if isSignedIn() && request.auth.uid == uid;
+      allow create: if isSignedIn() && (request.auth.uid == uid || isGlobalAdmin());
       allow update: if isSignedIn() && (request.auth.uid == uid || isGlobalAdmin()) && (
         isGlobalAdmin() || (
           !incoming().diff(existing()).affectedKeys().hasAny(['role', 'globalRole', 'schoolAccess', 'authorityAccess'])

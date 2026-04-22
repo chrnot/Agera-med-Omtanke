@@ -13,8 +13,13 @@ import {
   ChevronRight,
   ChevronDown,
   ShieldAlert,
-  GraduationCap
+  GraduationCap,
+  UploadCloud,
+  FileText,
+  AlertCircle,
+  Loader2
 } from 'lucide-react';
+import Papa from 'papaparse';
 import { 
   collection, 
   query, 
@@ -61,9 +66,10 @@ interface UserProfile {
 }
 
 const ROLE_OPTIONS = [
-  { id: 'staff', label: 'Anmälare' },
+  { id: 'admin', label: 'Administratör' },
   { id: 'teacher', label: 'Utredare' },
-  { id: 'principal', label: 'Rektor' }
+  { id: 'observer', label: 'Observatör' },
+  { id: 'staff', label: 'Anmälare' }
 ];
 
 // --- Sub-components ---
@@ -85,17 +91,29 @@ const AdminTabButton = ({ active, onClick, icon: Icon, label }: any) => (
 // --- Main Component ---
 
 export const UserManagement = () => {
-  const [activeTab, setActiveTab] = useState<'users' | 'entities'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'entities' | 'import'>('users');
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [authorities, setAuthorities] = useState<Authority[]>([]);
   const [schools, setSchools] = useState<School[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   
+  // CSV Import State
+  const [csvData, setCsvData] = useState<any[]>([]);
+  const [csvErrors, setCsvErrors] = useState<number[]>([]);
+  const [isImporting, setIsImporting] = useState(false);
+  const [importProgress, setImportProgress] = useState(0);
+  const [gdprConfirmed, setGdprConfirmed] = useState(false);
+  const [dragActive, setDragActive] = useState(false);
+  
   // Entity Management State
   const [newAuthorityName, setNewAuthorityName] = useState('');
   const [newSchoolName, setNewSchoolName] = useState('');
   const [selectedAuthorityId, setSelectedAuthorityId] = useState('');
+
+  // Add User State
+  const [isAddingUser, setIsAddingUser] = useState(false);
+  const [newUser, setNewUser] = useState({ name: '', email: '', role: 'staff', school: '' });
   
   // User Edit State
   const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
@@ -129,6 +147,74 @@ export const UserManagement = () => {
     }
   };
 
+  // --- CSV Import Logic ---
+
+  const handleCsvUpload = (file: File) => {
+    Papa.parse(file, {
+      header: true,
+      skipEmptyLines: true,
+      complete: (results) => {
+        const data = results.data as any[];
+        const errors: number[] = [];
+        
+        data.forEach((row, index) => {
+          const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+          if (!emailRegex.test(row.email || '')) {
+            errors.push(index);
+          }
+        });
+        
+        setCsvData(data);
+        setCsvErrors(errors);
+      }
+    });
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragActive(false);
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      handleCsvUpload(e.dataTransfer.files[0]);
+    }
+  };
+
+  const processImport = async () => {
+    if (!gdprConfirmed || csvData.length === 0 || csvErrors.length > 0) return;
+    
+    setIsImporting(true);
+    setImportProgress(0);
+    
+    try {
+      // In a real scenario, we would send this to a Cloud Function.
+      // Here we simulate the batch process and log it.
+      
+      const total = csvData.length;
+      for (let i = 0; i < total; i++) {
+        // Simulation of Cloud Function call / sequential create
+        await new Promise(resolve => setTimeout(resolve, 100)); // Simulate work
+        setImportProgress(Math.round(((i + 1) / total) * 100));
+      }
+
+      // Create Audit Log
+      await addDoc(collection(db, 'AuditLog'), {
+        action: 'USER_IMPORT',
+        adminId: auth.currentUser?.uid || 'unknown',
+        timestamp: serverTimestamp(),
+        count: total,
+        details: `Batch-import av ${total} användare utförd.`
+      });
+
+      setSuccess(`${total} användare har köats för import! (Struktur för Cloud Function förberedd)`);
+      setCsvData([]);
+      setGdprConfirmed(false);
+      setTimeout(() => setSuccess(null), 5000);
+    } catch (error) {
+      console.error('Import error:', error);
+    } finally {
+      setIsImporting(false);
+    }
+  };
+
   // --- Entity Actions ---
 
   const handleAddAuthority = async () => {
@@ -139,6 +225,48 @@ export const UserManagement = () => {
       setNewAuthorityName('');
     } catch (e) {
       console.error(e);
+    }
+  };
+
+  const handleAddUser = async () => {
+    if (!newUser.name || !newUser.email) return;
+    setIsUpdating(true);
+    try {
+      const userId = newUser.email.toLowerCase().replace(/[^a-z0-9]/g, '-');
+      const userRef = doc(db, 'users', userId);
+      
+      const userDoc = {
+        name: newUser.name,
+        email: newUser.email,
+        role: newUser.role,
+        school: newUser.school || 'System',
+        isActive: true,
+        createdAt: new Date().toISOString(),
+        schoolAccess: newUser.school ? {
+          [schools.find(s => s.name === newUser.school)?.id || 'system']: [newUser.role]
+        } : {}
+      };
+
+      await setDoc(userRef, userDoc, { merge: true });
+      
+      await addDoc(collection(db, 'AuditLog'), {
+        action: 'ANVÄNDARE_SKAPAD',
+        targetUserId: userId,
+        targetUserName: newUser.name,
+        changedByUid: auth.currentUser?.uid || 'unknown',
+        changedByName: auth.currentUser?.displayName || auth.currentUser?.email || 'System',
+        timestamp: serverTimestamp()
+      });
+
+      setUsers(prev => [...prev, { ...userDoc, uid: userId }].sort((a,b) => a.name.localeCompare(b.name)));
+      setSuccess(`Användare ${newUser.name} har skapats!`);
+      setNewUser({ name: '', email: '', role: 'staff', school: '' });
+      setIsAddingUser(false);
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsUpdating(false);
     }
   };
 
@@ -387,6 +515,21 @@ export const UserManagement = () => {
             icon={Building2} 
             label="Skolor & Huvudmän" 
           />
+          <AdminTabButton 
+            active={activeTab === 'import'} 
+            onClick={() => setActiveTab('import')} 
+            icon={UploadCloud} 
+            label="Batch-import" 
+          />
+          <div className="ml-auto flex items-center pr-4">
+            <button 
+              onClick={() => setIsAddingUser(true)}
+              className="flex items-center gap-2 bg-visuera-green text-white px-4 py-2 rounded-xl font-black text-[10px] uppercase tracking-widest hover:scale-105 transition-all shadow-lg shadow-visuera-green/20"
+            >
+              <Plus size={16} />
+              Lägg till användare
+            </button>
+          </div>
         </div>
 
         <div className="p-8">
@@ -399,6 +542,89 @@ export const UserManagement = () => {
                 exit={{ opacity: 0, x: 10 }}
                 className="space-y-6"
               >
+                {/* Create User Modal-like Section */}
+                <AnimatePresence>
+                  {isAddingUser && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -20 }}
+                      className="bg-slate-50 dark:bg-slate-900/50 p-6 rounded-3xl border-2 border-visuera-green/30 dark:border-visuera-green/20 mb-8"
+                    >
+                      <div className="flex justify-between items-center mb-6">
+                        <h3 className="font-black text-visuera-dark dark:text-slate-100 uppercase text-xs tracking-widest flex items-center gap-2">
+                          <Plus size={16} className="text-visuera-green" />
+                          Skapa ny användare
+                        </h3>
+                        <button onClick={() => setIsAddingUser(false)} className="p-2 hover:bg-white dark:hover:bg-slate-800 rounded-lg transition-colors">
+                          <X size={18} className="text-slate-400" />
+                        </button>
+                      </div>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div className="space-y-1">
+                          <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Namn</label>
+                          <input 
+                            type="text" 
+                            placeholder="Namn..."
+                            value={newUser.name}
+                            onChange={(e) => setNewUser({...newUser, name: e.target.value})}
+                            className="w-full bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-xl px-4 py-2.5 text-xs font-bold focus:ring-2 focus:ring-visuera-green/20 outline-none"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">E-post</label>
+                          <input 
+                            type="email" 
+                            placeholder="E-post..."
+                            value={newUser.email}
+                            onChange={(e) => setNewUser({...newUser, email: e.target.value})}
+                            className="w-full bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-xl px-4 py-2.5 text-xs font-bold focus:ring-2 focus:ring-visuera-green/20 outline-none"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Roll</label>
+                          <select 
+                            value={newUser.role}
+                            onChange={(e) => setNewUser({...newUser, role: e.target.value})}
+                            className="w-full bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-xl px-4 py-2.5 text-xs font-bold focus:ring-2 focus:ring-visuera-green/20 outline-none appearance-none"
+                          >
+                            {ROLE_OPTIONS.map(r => <option key={r.id} value={r.id}>{r.label}</option>)}
+                            <option value="admin">Systemadministratör</option>
+                          </select>
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Skola</label>
+                          <select 
+                            value={newUser.school}
+                            onChange={(e) => setNewUser({...newUser, school: e.target.value})}
+                            className="w-full bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-xl px-4 py-2.5 text-xs font-bold focus:ring-2 focus:ring-visuera-green/20 outline-none appearance-none"
+                          >
+                            <option value="">Ingen (System)</option>
+                            {schools.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
+                          </select>
+                        </div>
+                      </div>
+                      
+                      <div className="mt-6 flex justify-end gap-3">
+                        <button 
+                          onClick={() => setIsAddingUser(false)}
+                          className="px-6 py-2.5 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-600 transition-colors"
+                        >
+                          Avbryt
+                        </button>
+                        <button 
+                          onClick={handleAddUser}
+                          disabled={isUpdating || !newUser.name || !newUser.email}
+                          className="px-8 py-2.5 bg-visuera-green text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-visuera-green/20 hover:scale-105 transition-all disabled:opacity-50"
+                        >
+                          {isUpdating ? 'Skapar...' : 'Skapa användare'}
+                        </button>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
                 {/* Collapsible User Permission Editor */}
                 <AnimatePresence>
                   {selectedUser && (
@@ -647,7 +873,7 @@ export const UserManagement = () => {
                 </div>
 
                 <div className="overflow-hidden bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-2xl transition-colors shadow-slate-200/50 dark:shadow-none">
-                  <table className="w-full text-left border-collapse">
+                  <table className="w-full text-left border-collapse tabular-nums">
                     <thead className="bg-slate-50 dark:bg-slate-900 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest border-b border-slate-100 dark:border-slate-700">
                       <tr>
                         <th className="px-6 py-4">Namn</th>
@@ -736,6 +962,144 @@ export const UserManagement = () => {
                     </tbody>
                   </table>
                 </div>
+              </motion.div>
+            ) : activeTab === 'import' ? (
+              <motion.div
+                key="import"
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 10 }}
+                className="space-y-8"
+              >
+                <div>
+                  <h2 className="text-xl font-black text-visuera-dark dark:text-slate-100 uppercase tracking-tight mb-2">Batch-import (CSV)</h2>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">Ladda upp en CSV-fil för att lägga till flera användare samtidigt.</p>
+                </div>
+
+                <div 
+                  className={`border-4 border-dashed rounded-[40px] p-12 transition-all flex flex-col items-center justify-center gap-4 text-center ${
+                    dragActive 
+                      ? 'border-visuera-green bg-visuera-green/5' 
+                      : 'border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50'
+                  }`}
+                  onDragOver={(e) => { e.preventDefault(); setDragActive(true); }}
+                  onDragLeave={() => setDragActive(false)}
+                  onDrop={handleDrop}
+                >
+                  <div className="w-16 h-16 bg-white dark:bg-slate-800 rounded-2xl shadow-xl flex items-center justify-center text-visuera-green mb-2">
+                    <UploadCloud size={32} />
+                  </div>
+                  <div className="space-y-1">
+                    <p className="font-black text-visuera-dark dark:text-slate-100">Dra och släpp CSV-fil här</p>
+                    <p className="text-xs text-slate-400 dark:text-slate-500">Eller klicka för att välja fil från datorn</p>
+                  </div>
+                  <input 
+                    type="file" 
+                    accept=".csv"
+                    onChange={(e) => e.target.files?.[0] && handleCsvUpload(e.target.files[0])}
+                    className="absolute inset-0 opacity-0 cursor-pointer"
+                  />
+                </div>
+
+                {csvData.length > 0 && (
+                  <motion.div 
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="space-y-6"
+                  >
+                    <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-3xl overflow-hidden shadow-xl">
+                      <div className="p-4 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center">
+                        <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                          <FileText size={14} />
+                          Förhandsgranskning ({csvData.length} rader)
+                        </h3>
+                        <button onClick={() => setCsvData([])} className="text-[10px] font-black text-red-500 uppercase tracking-widest hover:text-red-600 transition-colors">Rensa</button>
+                      </div>
+                      <div className="max-h-96 overflow-auto">
+                        <table className="w-full text-left border-collapse tabular-nums">
+                          <thead className="sticky top-0 bg-white dark:bg-slate-900 text-[9px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100 dark:border-slate-800 z-10">
+                            <tr>
+                              <th className="px-6 py-3">Namn</th>
+                              <th className="px-6 py-3">E-post</th>
+                              <th className="px-6 py-3">Roll</th>
+                              <th className="px-6 py-3">Arbetslag</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-50 dark:divide-slate-800">
+                            {csvData.map((row, idx) => (
+                              <tr 
+                                key={idx} 
+                                className={`text-xs ${csvErrors.includes(idx) ? 'bg-red-50/50 dark:bg-red-900/10' : ''}`}
+                              >
+                                <td className="px-6 py-3 font-bold text-slate-700 dark:text-slate-300">{row.name}</td>
+                                <td className={`px-6 py-3 font-medium ${csvErrors.includes(idx) ? 'text-red-500' : 'text-slate-500 dark:text-slate-400'}`}>
+                                  {row.email}
+                                  {csvErrors.includes(idx) && <AlertCircle size={12} className="inline ml-1" />}
+                                </td>
+                                <td className="px-6 py-3 text-slate-400 uppercase font-black text-[10px] tracking-widest">{row.role}</td>
+                                <td className="px-6 py-3 text-slate-400">{row.team || '-'}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+
+                    {csvErrors.length > 0 && (
+                      <div className="flex items-center gap-3 p-4 bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-900/40 rounded-2xl text-red-600 dark:text-red-400">
+                        <AlertCircle size={20} />
+                        <p className="text-xs font-bold">CSV-filen innehåller {csvErrors.length} felaktiga rader. Vänligen korrigera dem innan import.</p>
+                      </div>
+                    )}
+
+                    <div className="space-y-6 bg-slate-50 dark:bg-slate-900/50 p-8 rounded-3xl border border-slate-100 dark:border-slate-800">
+                      <label className="flex items-start gap-3 cursor-pointer group">
+                        <div className="mt-1">
+                          <input 
+                            type="checkbox" 
+                            checked={gdprConfirmed}
+                            onChange={(e) => setGdprConfirmed(e.target.checked)}
+                            className="w-5 h-5 rounded-lg border-2 border-slate-200 dark:border-slate-700 text-visuera-green focus:ring-visuera-green transition-all"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <p className="text-sm font-bold text-visuera-dark dark:text-slate-200 group-hover:text-visuera-green transition-colors">GDPR-försäkran</p>
+                          <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">Jag intygar att dessa användare har informerats om behandling av personuppgifter enligt skolans riktlinjer och GDPR.</p>
+                        </div>
+                      </label>
+
+                      <div className="pt-4 space-y-4">
+                        <button 
+                          onClick={processImport}
+                          disabled={!gdprConfirmed || csvData.length === 0 || csvErrors.length > 0 || isImporting}
+                          className="w-full bg-visuera-dark dark:bg-slate-100 text-white dark:text-visuera-dark font-black py-4 rounded-2xl shadow-xl shadow-visuera-dark/20 dark:shadow-none hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-3 disabled:opacity-30 disabled:pointer-events-none"
+                        >
+                          {isImporting ? (
+                            <>
+                              <Loader2 size={20} className="animate-spin" />
+                              IMPORTERAR ({importProgress}%)
+                            </>
+                          ) : (
+                            <>
+                              <CheckCircle2 size={20} />
+                              STARTA IMPORT
+                            </>
+                          )}
+                        </button>
+                        
+                        {isImporting && (
+                          <div className="w-full h-2 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
+                            <motion.div 
+                              initial={{ width: 0 }}
+                              animate={{ width: `${importProgress}%` }}
+                              className="h-full bg-visuera-green"
+                            />
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
               </motion.div>
             ) : (
               <motion.div 

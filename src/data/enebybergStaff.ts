@@ -83,5 +83,6 @@ export const ENEBYBERG_STAFF = [
   { name: 'Maria Wilhelmine Fosnes', email: 'Maria.Fosnes@danderyd.se', team: 'Övriga', role: 'staff' },
   { name: 'Charlotta Skarelius', email: 'Charlotta.Skarelius@danderyd.se', team: 'Övriga', role: 'principal' },
   { name: 'Teresa de la Puente Estremadoyro', email: 'Teresa.DeLaPuenteEstremadoyro@danderyd.se', team: 'Övriga', role: 'teacher' },
-  { name: 'Dragisa Saula', email: 'Dragisa.Saula@danderyd.se', team: 'Övriga', role: 'staff' }
+  { name: 'Dragisa Saula', email: 'Dragisa.Saula@danderyd.se', team: 'Övriga', role: 'staff' },
+  { name: 'Ricardo Banegas', email: 'ricardo@frontend.nu', team: 'Utveckling', role: 'admin' }
 ];

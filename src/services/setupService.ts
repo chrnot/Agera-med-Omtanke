@@ -44,6 +44,21 @@ export const setupService = {
       });
 
       await batch.commit();
+
+      // Provision specific requested user Ricardo Banegas
+      const ricardoId = 'ricardo-frontend-nu';
+      const ricardoRef = doc(db, 'users', ricardoId);
+      await setDoc(ricardoRef, {
+        name: 'Ricardo Banegas',
+        email: 'ricardo@frontend.nu',
+        role: 'admin',
+        globalRole: 'admin',
+        school: 'System',
+        isActive: true,
+        createdAt: new Date().toISOString(),
+        team: 'Utveckling'
+      }, { merge: true });
+
       console.log('Synchronization completed successfully.');
     } catch (error) {
       console.error('Error synchronizing data:', error);
