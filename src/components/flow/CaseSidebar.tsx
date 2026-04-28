@@ -9,7 +9,8 @@ import {
   Info,
   AlertCircle,
   Layers,
-  ArrowRight
+  ArrowRight,
+  Users
 } from 'lucide-react';
 import { motion } from 'motion/react';
 
@@ -20,6 +21,8 @@ interface CaseSidebarProps {
   onShowOriginal?: () => void;
   onShowAudit?: () => void;
   onGoToUtredning?: () => void;
+  onClone?: () => void;
+  canClone?: boolean;
 }
 
 export const CaseSidebar: React.FC<CaseSidebarProps> = ({ 
@@ -28,7 +31,9 @@ export const CaseSidebar: React.FC<CaseSidebarProps> = ({
   currentStepTitle,
   onShowOriginal,
   onShowAudit,
-  onGoToUtredning
+  onGoToUtredning,
+  onClone,
+  canClone
 }) => {
   const incidentDate = formData.incidentDate ? new Date(formData.incidentDate) : null;
   const createdAt = formData.createdAt ? (formData.createdAt.seconds ? new Date(formData.createdAt.seconds * 1000) : new Date(formData.createdAt)) : null;
@@ -177,6 +182,21 @@ export const CaseSidebar: React.FC<CaseSidebarProps> = ({
               </div>
               <ExternalLink size={12} className="text-slate-300 dark:text-slate-600" />
             </button>
+
+            {canClone && onClone && (
+              <button 
+                onClick={onClone}
+                className="flex items-center justify-between p-2 text-xs font-medium text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20 rounded-lg transition-colors border border-transparent hover:border-amber-100 dark:hover:border-amber-900/30"
+              >
+                <div className="flex items-center gap-2">
+                  <div className="w-6 h-6 rounded bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center text-amber-600">
+                    <Layers size={14} />
+                  </div>
+                  <span>Klona utredning</span>
+                </div>
+                <Users size={12} className="text-amber-300 dark:text-amber-600" />
+              </button>
+            )}
 
             {onGoToUtredning && (
               <button 

@@ -698,6 +698,77 @@ export const caseService = {
     }
   },
 
+  cloneCase: async (originalCaseId: string, newStudentName: string, newStudentSSN?: string) => {
+    try {
+      const originalDoc = await getDoc(doc(db, 'cases', originalCaseId));
+      const originalData = originalDoc.data();
+      if (!originalData) throw new Error('Originalärendet hittades inte.');
+
+      const oldStudentName = originalData.studentName;
+      
+      // Helper to replace old name with new name in text fields for GDPR safety
+      const sanitize = (val: any): any => {
+        if (typeof val === 'string' && oldStudentName) {
+           // Replace old name with new name. Use a regex for case-insensitive replacement if needed
+           return val.split(oldStudentName).join(newStudentName);
+        }
+        if (Array.isArray(val)) {
+          return val.map(v => sanitize(v));
+        }
+        if (typeof val === 'object' && val !== null && !(val instanceof Timestamp)) {
+          const cleaned: any = {};
+          for (const key in val) {
+            cleaned[key] = sanitize(val[key]);
+          }
+          return cleaned;
+        }
+        return val;
+      };
+
+      // Define fields to exclude from clone (to ensure fresh start where needed)
+      const excludeFields = [
+        'id', 'createdAt', 'updatedAt', 'isClosed', 'signatureName', 
+        'signatureDate', 'signatureRole', 'incidentId', 'audit', 
+        'investigationStartedAt', 'needsRevision', 'revisionComment'
+      ];
+
+      const clonedData: any = {};
+      for (const key in originalData) {
+        if (!excludeFields.includes(key)) {
+          clonedData[key] = sanitize(originalData[key]);
+        }
+      }
+
+      // Set new student specific data
+      clonedData.studentName = newStudentName;
+      if (newStudentSSN) clonedData.studentSSN = newStudentSSN;
+      clonedData.status = 'utredning'; // Start at investigation stage for the new student
+      clonedData.clonedFromId = originalCaseId;
+      clonedData.clonedAt = serverTimestamp();
+      clonedData.clonedByUid = auth.currentUser?.uid;
+      clonedData.clonedByName = auth.currentUser?.displayName;
+
+      // Create the new case
+      const newCaseId = await caseService.createCase(clonedData);
+
+      // Audit original case
+      await addDoc(collection(db, `cases/${originalCaseId}/audit`), {
+        caseId: originalCaseId,
+        userId: auth.currentUser?.uid || 'system',
+        userName: auth.currentUser?.displayName || 'System',
+        action: 'CLONED_TO_NEW_CASE',
+        newCaseId,
+        newStudentName,
+        timestamp: serverTimestamp()
+      });
+
+      return newCaseId;
+    } catch (error) {
+       console.error('Error cloning case:', error);
+       throw error;
+    }
+  },
+
   subscribeToContributions: (caseId: string, callback: (contributions: any[]) => void) => {
     const path = `cases/${caseId}/contributions`;
     const q = query(collection(db, path));

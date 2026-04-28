@@ -168,6 +168,9 @@ export const TrygghetsFlow = ({ isQuickReport = false, onSuccess, initialCaseId,
   const [auditLog, setAuditLog] = React.useState<any[]>([]);
   const [selectedActivities, setSelectedActivities] = React.useState<string[]>([]);
   const [successToast, setSuccessToast] = React.useState<{message: string, visible: boolean}>({ message: '', visible: false });
+  const [showCloneModal, setShowCloneModal] = React.useState(false);
+  const [cloneStudentName, setCloneStudentName] = React.useState('');
+  const [cloneStudentSSN, setCloneStudentSSN] = React.useState('');
 
   const [userProfile, setUserProfile] = React.useState<any>(null);
   const [authorities, setAuthorities] = React.useState<any[]>([]);
@@ -453,6 +456,10 @@ export const TrygghetsFlow = ({ isQuickReport = false, onSuccess, initialCaseId,
   });
 
   const currentStep = steps[currentStepIndex];
+
+  const isPrincipalOrAdmin = userProfile?.role === 'principal' || userProfile?.role === 'admin' || userProfile?.globalRole === 'admin';
+  const isPrimaryInvestigator = formData.investigators?.some((i: any) => i.uid === auth.currentUser?.uid && i.role === 'primary');
+  const canClone = isPrincipalOrAdmin || isPrimaryInvestigator;
 
   const [showClosingSummary, setShowClosingSummary] = React.useState(false);
   const [isGeneratingPDF, setIsGeneratingPDF] = React.useState(false);
@@ -767,6 +774,32 @@ export const TrygghetsFlow = ({ isQuickReport = false, onSuccess, initialCaseId,
     }
   };
 
+  const handleCloneCase = async () => {
+    if (!activeCaseId || !cloneStudentName.trim()) return;
+    
+    setIsProcessing(true);
+    try {
+      const newCaseId = await caseService.cloneCase(activeCaseId, cloneStudentName.trim(), cloneStudentSSN.trim());
+      setSuccessToast({ message: `Ärendet har klonats till ett nytt ärende för ${cloneStudentName}`, visible: true });
+      setTimeout(() => setSuccessToast(prev => ({ ...prev, visible: false })), 5000);
+      
+      setShowCloneModal(false);
+      setCloneStudentName('');
+      setCloneStudentSSN('');
+      
+      // Navigate to the new case
+      if (onSuccess) {
+        onSuccess(newCaseId);
+      } else {
+        setActiveCaseId(newCaseId);
+      }
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   const isStepValid = () => {
     switch (currentStepIndex) {
       case 0: // Anmälan
@@ -1051,6 +1084,8 @@ export const TrygghetsFlow = ({ isQuickReport = false, onSuccess, initialCaseId,
                         setCurrentStepIndex(2);
                         setShowMobileSidebar(false);
                       } : undefined}
+                      onClone={() => setShowCloneModal(true)}
+                      canClone={canClone}
                     />
                   </div>
                 </motion.div>
@@ -1276,6 +1311,8 @@ export const TrygghetsFlow = ({ isQuickReport = false, onSuccess, initialCaseId,
                                 setShowStats(true);
                               }}
                               onGoToUtredning={currentStepIndex === 3 ? () => setCurrentStepIndex(2) : undefined}
+                              onClone={() => setShowCloneModal(true)}
+                              canClone={canClone}
                             />
                           </div>
                         </motion.div>
@@ -1537,6 +1574,87 @@ export const TrygghetsFlow = ({ isQuickReport = false, onSuccess, initialCaseId,
                 >
                   Stäng
                 </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+
+        {showCloneModal && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowCloneModal(false)}
+              className="absolute inset-0 bg-visuera-dark/40 dark:bg-black/80 backdrop-blur-md"
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="relative w-full max-w-lg bg-white dark:bg-slate-900 rounded-[40px] shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-800"
+            >
+              <div className="bg-visuera-green p-8 text-white relative">
+                <button 
+                  onClick={() => setShowCloneModal(false)}
+                  className="absolute top-6 right-6 p-2 bg-white/10 hover:bg-white/20 rounded-xl transition-all"
+                >
+                  <X size={20} />
+                </button>
+                <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center mb-4">
+                  <Layers size={24} />
+                </div>
+                <h3 className="text-xl font-bold uppercase tracking-widest leading-none mb-2">Klona utredning</h3>
+                <p className="text-[10px] text-white/80 font-bold uppercase tracking-widest leading-none">Skapa en individuell kopia av ärendet</p>
+              </div>
+
+              <div className="p-8 space-y-6">
+                <div className="p-4 bg-amber-50 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-800/20 rounded-2xl flex gap-3">
+                  <AlertCircle size={18} className="text-amber-500 shrink-0" />
+                  <p className="text-[10px] text-amber-700 dark:text-amber-400 font-medium leading-relaxed italic">
+                    Vid kloning kopieras all utredningsdata till ett nytt separat ärende. Det ursprungliga elevnamnet rensas och ersätts för att bibehålla integritet och GDPR-efterlevnad.
+                  </p>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Ny elevs namn *</label>
+                    <input 
+                      type="text"
+                      value={cloneStudentName}
+                      onChange={(e) => setCloneStudentName(e.target.value)}
+                      placeholder="Ange fullständigt namn..."
+                      className="w-full px-6 py-4 bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800 rounded-2xl text-sm font-bold focus:ring-4 focus:ring-visuera-green/10 outline-none transition-all"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Personnummer (valfritt)</label>
+                    <input 
+                      type="text"
+                      value={cloneStudentSSN}
+                      onChange={(e) => setCloneStudentSSN(e.target.value)}
+                      placeholder="ÅÅÅÅMMDD-XXXX"
+                      className="w-full px-6 py-4 bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800 rounded-2xl text-sm font-bold focus:ring-4 focus:ring-visuera-green/10 outline-none transition-all"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex gap-3 pt-4">
+                  <button 
+                    disabled={!cloneStudentName.trim() || isProcessing}
+                    onClick={handleCloneCase}
+                    className="flex-1 py-4 bg-visuera-green text-white font-black text-[10px] uppercase tracking-[0.25em] rounded-2xl hover:bg-emerald-600 transition-all disabled:opacity-50 shadow-xl shadow-visuera-green/20"
+                  >
+                    {isProcessing ? 'Skapar kopia...' : 'Bekräfta Kloning'}
+                  </button>
+                  <button 
+                    onClick={() => setShowCloneModal(false)}
+                    className="px-8 py-4 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-black text-[10px] uppercase tracking-[0.2em] rounded-2xl hover:bg-slate-200 dark:hover:bg-slate-700 transition-all"
+                  >
+                    Avbryt
+                  </button>
+                </div>
               </div>
             </motion.div>
           </div>
