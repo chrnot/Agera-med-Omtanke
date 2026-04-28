@@ -6,6 +6,7 @@ import { StudentVoiceModule } from '../../StudentVoiceModule';
 import { LEGAL_HELP_TEXTS, DISCRIMINATION_GROUNDS } from '../../../constants/guidanceContent';
 import { motion, AnimatePresence } from 'motion/react';
 import { TeamContributions } from '../TeamContributions';
+import { CollaboratorAssignment } from '../CollaboratorAssignment';
 
 interface UtredningStepProps {
   formData: any;
@@ -15,6 +16,8 @@ interface UtredningStepProps {
   setQuickMessage: (val: string) => void;
   handleSendQuickMessage: (text: string) => void;
   updateFormData: (field: string, value: any) => void;
+  availableStaff: any[];
+  availableTeams: string[];
 }
 
 export const UtredningStep: React.FC<UtredningStepProps> = ({
@@ -24,17 +27,62 @@ export const UtredningStep: React.FC<UtredningStepProps> = ({
   quickMessage,
   setQuickMessage,
   handleSendQuickMessage,
-  updateFormData
+  updateFormData,
+  availableStaff,
+  availableTeams
 }) => {
   const [showInterviewGuide, setShowInterviewGuide] = React.useState(false);
 
-  const isInvestigator = userProfile?.uid === (formData.assignedToUid || formData.assignedTeacherUid);
+  const isInvestigator = formData.investigatorUids?.includes(userProfile?.uid) || userProfile?.uid === (formData.assignedToUid || formData.assignedTeacherUid);
   const isTeamMember = userProfile?.team === formData.assignedTeam;
   const isAdmin = userProfile?.globalRole === 'admin' || userProfile?.role === 'admin' || userProfile?.role === 'principal';
   const canEditMain = isInvestigator || isAdmin;
 
   return (
     <div className="space-y-8">
+      {/* Revision Alert */}
+      {formData.needsRevision && (
+        <motion.div 
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-900/50 rounded-[32px] p-8 space-y-4"
+        >
+          <div className="flex items-center gap-4 text-amber-600 dark:text-amber-400">
+            <div className="w-12 h-12 bg-amber-100 dark:bg-amber-900/40 rounded-2xl flex items-center justify-center">
+              <Zap size={24} />
+            </div>
+            <div>
+              <h4 className="text-sm font-black uppercase tracking-widest">BEGÄRAN OM KOMPLETTERING</h4>
+              <p className="text-[10px] font-bold opacity-80 uppercase tracking-wider">Ärendet har skickats tillbaka för mer information</p>
+            </div>
+          </div>
+          <div className="bg-white/50 dark:bg-black/20 p-6 rounded-2xl border border-amber-100 dark:border-amber-900/30">
+            <p className="text-[11px] font-bold text-amber-800 dark:text-amber-200 mb-2 uppercase tracking-widest leading-none">Rektors kommentar:</p>
+            <p className="text-sm text-amber-700 dark:text-amber-300 leading-relaxed font-medium italic">
+              "{formData.revisionComment}"
+            </p>
+          </div>
+          <p className="text-[10px] text-amber-600/60 dark:text-amber-400/60 font-medium italic">
+            * Uppdatera informationen och spara för att gå vidare till åtgärder och nytt avslut.
+          </p>
+        </motion.div>
+      )}
+
+      {/* Search/Invite Collaborators Card */}
+      {canEditMain && (
+        <StepCard title="UTREDNINGSTEAM & SAMARBETE" icon={Users}>
+          <CollaboratorAssignment 
+            formData={formData}
+            updateFormData={updateFormData}
+            availableStaff={availableStaff}
+            availableTeams={availableTeams}
+            title="BJUD IN TILL UTREDNING"
+            description="Lägg till kollegor för att utreda ärendet tillsammans."
+            roleType="investigator"
+          />
+        </StepCard>
+      )}
+
       {activeCaseId && (
         <TeamContributions
           activeCaseId={activeCaseId}

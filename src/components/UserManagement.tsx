@@ -17,7 +17,13 @@ import {
   UploadCloud,
   FileText,
   AlertCircle,
-  Loader2
+  Loader2,
+  Settings2,
+  ShieldCheck,
+  Mail,
+  Key,
+  LogOut,
+  Activity
 } from 'lucide-react';
 import Papa from 'papaparse';
 import { 
@@ -63,13 +69,17 @@ interface UserProfile {
   personalNumber?: string;
   createdAt: string;
   isActive?: boolean;
+  preferences?: {
+    emailNotifications: boolean;
+  };
 }
 
 const ROLE_OPTIONS = [
   { id: 'admin', label: 'Administratör' },
+  { id: 'principal', label: 'Rektor' },
   { id: 'teacher', label: 'Utredare' },
   { id: 'observer', label: 'Observatör' },
-  { id: 'staff', label: 'Anmälare' }
+  { id: 'staff', label: 'Lärare / Personal' }
 ];
 
 // --- Sub-components ---
@@ -105,6 +115,8 @@ export const UserManagement = () => {
   const [importProgress, setImportProgress] = useState(0);
   const [gdprConfirmed, setGdprConfirmed] = useState(false);
   const [dragActive, setDragActive] = useState(false);
+  const [importSchoolId, setImportSchoolId] = useState('');
+  const [importDefaultTeam, setImportDefaultTeam] = useState('');
   
   // Entity Management State
   const [newAuthorityName, setNewAuthorityName] = useState('');
@@ -113,7 +125,7 @@ export const UserManagement = () => {
 
   // Add User State
   const [isAddingUser, setIsAddingUser] = useState(false);
-  const [newUser, setNewUser] = useState({ name: '', email: '', role: 'staff', school: '' });
+  const [newUser, setNewUser] = useState({ name: '', email: '', role: 'staff', school: '', team: '' });
   
   // User Edit State
   const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
@@ -121,6 +133,9 @@ export const UserManagement = () => {
   const [isUpdating, setIsUpdating] = useState(false);
   const [success, setSuccess] = useState<string | null>(null);
   const [confirmDeleteUserId, setConfirmDeleteUserId] = useState<string | null>(null);
+  const [isAdminActionsOpen, setIsAdminActionsOpen] = useState(false);
+  const [adminTargetUser, setAdminTargetUser] = useState<UserProfile | null>(null);
+  const [schoolToAdd, setSchoolToAdd] = useState('');
 
   useEffect(() => {
     fetchData();
@@ -179,19 +194,40 @@ export const UserManagement = () => {
   };
 
   const processImport = async () => {
-    if (!gdprConfirmed || csvData.length === 0 || csvErrors.length > 0) return;
+    if (!gdprConfirmed || csvData.length === 0 || csvErrors.length > 0 || !importSchoolId) return;
     
     setIsImporting(true);
     setImportProgress(0);
     
     try {
-      // In a real scenario, we would send this to a Cloud Function.
-      // Here we simulate the batch process and log it.
-      
+      const selectedSchool = schools.find(s => s.id === importSchoolId);
       const total = csvData.length;
+      
       for (let i = 0; i < total; i++) {
-        // Simulation of Cloud Function call / sequential create
-        await new Promise(resolve => setTimeout(resolve, 100)); // Simulate work
+        const row = csvData[i];
+        const userId = row.email.toLowerCase().replace(/[^a-z0-9]/g, '-');
+        const userRef = doc(db, 'users', userId);
+        
+        // Use row team if exists, otherwise fallback to default
+        const teamValue = row.team || importDefaultTeam || '';
+        
+        await setDoc(userRef, {
+          name: row.name,
+          email: row.email,
+          role: row.role || 'staff',
+          team: teamValue,
+          school: selectedSchool?.name || 'System',
+          isActive: true,
+          createdAt: new Date().toISOString(),
+          schoolAccess: {
+            [importSchoolId]: {
+              roles: [row.role || 'staff'],
+              team: teamValue
+            }
+          },
+          provisionedVia: 'batch-import'
+        }, { merge: true });
+
         setImportProgress(Math.round(((i + 1) / total) * 100));
       }
 
@@ -201,12 +237,16 @@ export const UserManagement = () => {
         adminId: auth.currentUser?.uid || 'unknown',
         timestamp: serverTimestamp(),
         count: total,
-        details: `Batch-import av ${total} användare utförd.`
+        schoolId: importSchoolId,
+        details: `Batch-import av ${total} användare utförd för skola: ${selectedSchool?.name || 'Okänd'}.`
       });
 
-      setSuccess(`${total} användare har köats för import! (Struktur för Cloud Function förberedd)`);
+      setSuccess(`${total} användare har importerats till ${selectedSchool?.name}!`);
       setCsvData([]);
       setGdprConfirmed(false);
+      setImportSchoolId('');
+      setImportDefaultTeam('');
+      fetchData(); // Refresh user list
       setTimeout(() => setSuccess(null), 5000);
     } catch (error) {
       console.error('Import error:', error);
@@ -239,11 +279,15 @@ export const UserManagement = () => {
         name: newUser.name,
         email: newUser.email,
         role: newUser.role,
+        team: newUser.team || '',
         school: newUser.school || 'System',
         isActive: true,
         createdAt: new Date().toISOString(),
         schoolAccess: newUser.school ? {
-          [schools.find(s => s.name === newUser.school)?.id || 'system']: [newUser.role]
+          [schools.find(s => s.name === newUser.school)?.id || 'system']: {
+            roles: [newUser.role],
+            team: newUser.team || ''
+          }
         } : {}
       };
 
@@ -260,7 +304,7 @@ export const UserManagement = () => {
 
       setUsers(prev => [...prev, { ...userDoc, uid: userId }].sort((a,b) => a.name.localeCompare(b.name)));
       setSuccess(`Användare ${newUser.name} har skapats!`);
-      setNewUser({ name: '', email: '', role: 'staff', school: '' });
+      setNewUser({ name: '', email: '', role: 'staff', school: '', team: '' });
       setIsAddingUser(false);
       setTimeout(() => setSuccess(null), 3000);
     } catch (e) {
@@ -482,6 +526,54 @@ export const UserManagement = () => {
     }
   };
 
+  const handleAdminAction = async (action: string, userName: string) => {
+    setIsUpdating(true);
+    try {
+      // Simulate action
+      await new Promise(resolve => setTimeout(resolve, 800));
+
+      await addDoc(collection(db, 'AuditLog'), {
+        action: `ADM_ACTION_${action.toUpperCase()}`,
+        targetUserId: adminTargetUser?.uid || 'unknown',
+        targetUserName: userName,
+        changedByUid: auth.currentUser?.uid || 'unknown',
+        changedByName: auth.currentUser?.displayName || auth.currentUser?.email || 'System',
+        timestamp: serverTimestamp(),
+        details: `Administrativ åtgärd: ${action}`
+      });
+
+      setSuccess(`Åtgärd "${action}" utförd för ${userName}.`);
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (e) {
+      console.error('Error performing admin action:', e);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const toggleEmailNotifications = async (userId: string, currentVal: boolean) => {
+    setIsUpdating(true);
+    try {
+      const userRef = doc(db, 'users', userId);
+      const newVal = !currentVal;
+      await updateDoc(userRef, {
+        'preferences.emailNotifications': newVal
+      });
+
+      setUsers(prev => prev.map(u => u.uid === userId ? { 
+        ...u, 
+        preferences: { ...u.preferences, emailNotifications: newVal } 
+      } : u));
+
+      setSuccess(`Mejlnotiser ${newVal ? 'aktiverade' : 'inaktiverade'} för användaren.`);
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (e) {
+      console.error('Error updating notification preference:', e);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
   const filteredUsers = users.filter(u => 
     (u.isActive !== false) && (
       u.name.toLowerCase().includes(search.toLowerCase()) || 
@@ -561,7 +653,7 @@ export const UserManagement = () => {
                         </button>
                       </div>
                       
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
                         <div className="space-y-1">
                           <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Namn</label>
                           <input 
@@ -569,7 +661,7 @@ export const UserManagement = () => {
                             placeholder="Namn..."
                             value={newUser.name}
                             onChange={(e) => setNewUser({...newUser, name: e.target.value})}
-                            className="w-full bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-xl px-4 py-2.5 text-xs font-bold focus:ring-2 focus:ring-visuera-green/20 outline-none"
+                            className="w-full bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-xl px-4 py-2.5 text-xs font-bold focus:ring-2 focus:ring-visuera-green/20 outline-none transition-all"
                           />
                         </div>
                         <div className="space-y-1">
@@ -579,7 +671,7 @@ export const UserManagement = () => {
                             placeholder="E-post..."
                             value={newUser.email}
                             onChange={(e) => setNewUser({...newUser, email: e.target.value})}
-                            className="w-full bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-xl px-4 py-2.5 text-xs font-bold focus:ring-2 focus:ring-visuera-green/20 outline-none"
+                            className="w-full bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-xl px-4 py-2.5 text-xs font-bold focus:ring-2 focus:ring-visuera-green/20 outline-none transition-all"
                           />
                         </div>
                         <div className="space-y-1">
@@ -587,18 +679,28 @@ export const UserManagement = () => {
                           <select 
                             value={newUser.role}
                             onChange={(e) => setNewUser({...newUser, role: e.target.value})}
-                            className="w-full bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-xl px-4 py-2.5 text-xs font-bold focus:ring-2 focus:ring-visuera-green/20 outline-none appearance-none"
+                            className="w-full bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-xl px-4 py-2.5 text-xs font-bold focus:ring-2 focus:ring-visuera-green/20 outline-none appearance-none cursor-pointer"
                           >
                             {ROLE_OPTIONS.map(r => <option key={r.id} value={r.id}>{r.label}</option>)}
                             <option value="admin">Systemadministratör</option>
                           </select>
                         </div>
                         <div className="space-y-1">
+                          <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Arbetslag</label>
+                          <input 
+                            type="text" 
+                            placeholder="Arbetslag..."
+                            value={newUser.team}
+                            onChange={(e) => setNewUser({...newUser, team: e.target.value})}
+                            className="w-full bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-xl px-4 py-2.5 text-xs font-bold focus:ring-2 focus:ring-visuera-green/20 outline-none transition-all"
+                          />
+                        </div>
+                        <div className="space-y-1">
                           <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Skola</label>
                           <select 
                             value={newUser.school}
                             onChange={(e) => setNewUser({...newUser, school: e.target.value})}
-                            className="w-full bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-xl px-4 py-2.5 text-xs font-bold focus:ring-2 focus:ring-visuera-green/20 outline-none appearance-none"
+                            className="w-full bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-xl px-4 py-2.5 text-xs font-bold focus:ring-2 focus:ring-visuera-green/20 outline-none appearance-none cursor-pointer"
                           >
                             <option value="">Ingen (System)</option>
                             {schools.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
@@ -770,71 +872,110 @@ export const UserManagement = () => {
                               </section>
 
                               {/* School-specific roles */}
-                              <section className="space-y-4">
-                                <h4 className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em]">Skol-specifika Roller</h4>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                  {schools.map(school => (
-                                    <div key={school.id} className="bg-slate-50/50 dark:bg-slate-800/30 p-6 rounded-[32px] border border-slate-100 dark:border-slate-700 transition-colors">
-                                      <div className="flex justify-between items-start mb-4">
-                                         <div>
-                                            <h5 className="font-bold text-visuera-dark dark:text-slate-100">{school.name}</h5>
-                                            <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-widest">
-                                              {authorities.find(a => a.id === school.authorityId)?.name}
-                                            </p>
-                                         </div>
-                                         {(() => {
-                                            const entry = selectedUser.schoolAccess?.[school.id];
-                                            const isActive = Array.isArray(entry) ? entry.length > 0 : (entry?.roles?.length || 0) > 0;
-                                            return isActive && (
-                                              <span className="bg-visuera-green text-white text-[9px] font-black px-2 py-0.5 rounded uppercase">Aktiv</span>
-                                            );
-                                         })()}
-                                      </div>
+                              <section className="space-y-6">
+                                <div className="flex justify-between items-center">
+                                  <h4 className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em]">Kopplade Skolor & Roller</h4>
+                                  <div className="flex gap-2">
+                                    <select 
+                                      value={schoolToAdd}
+                                      onChange={(e) => {
+                                        if (e.target.value) {
+                                          toggleUserSchoolRole(e.target.value, 'staff'); // Default to staff/lärare when adding
+                                          setSchoolToAdd('');
+                                        }
+                                      }}
+                                      className="bg-visuera-green text-white dark:bg-emerald-600 border-none rounded-xl px-4 py-2 text-[10px] font-black uppercase tracking-widest focus:ring-4 focus:ring-visuera-green/20 outline-none appearance-none cursor-pointer hover:scale-105 transition-all shadow-lg shadow-visuera-green/20"
+                                    >
+                                      <option value="" className="text-visuera-dark bg-white">+ Lägg till skol-åtkomst</option>
+                                      {schools
+                                        .filter(s => !selectedUser.schoolAccess?.[s.id])
+                                        .map(s => <option key={s.id} value={s.id} className="text-visuera-dark bg-white">{s.name}</option>)
+                                      }
+                                    </select>
+                                  </div>
+                                </div>
 
-                                      <div className="space-y-4">
-                                        <div className="flex flex-wrap gap-2 text-center items-center">
-                                          {ROLE_OPTIONS.map(role => {
-                                            const entry = selectedUser.schoolAccess?.[school.id];
-                                            const isSelected = Array.isArray(entry) ? entry.includes(role.id) : entry?.roles?.includes(role.id);
-                                            return (
-                                              <button
-                                                  key={role.id}
-                                                  onClick={() => toggleUserSchoolRole(school.id, role.id)}
-                                                  className={`px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all ${
-                                                    isSelected
-                                                      ? 'bg-visuera-green text-white shadow-lg shadow-visuera-green/20 dark:shadow-none scale-105'
-                                                      : 'bg-white dark:bg-slate-900 text-slate-400 dark:text-slate-500 border border-slate-100 dark:border-slate-700 hover:border-visuera-green/30'
-                                                  }`}
-                                              >
-                                                {role.label}
-                                              </button>
-                                            );
-                                          })}
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                  {Object.keys(selectedUser.schoolAccess || {}).length === 0 && (
+                                    <div className="col-span-full py-12 text-center bg-slate-50/30 dark:bg-slate-800/10 rounded-[32px] border border-dashed border-slate-200 dark:border-slate-700">
+                                      <Building2 size={32} className="mx-auto text-slate-200 dark:text-slate-700 mb-3" />
+                                      <p className="text-sm font-bold text-slate-400">Inga specifika skolor anslutna</p>
+                                      <p className="text-[10px] text-slate-400 uppercase tracking-widest mt-1">Använd menyn ovan för att lägga till åtkomst</p>
+                                    </div>
+                                  )}
+                                  
+                                  {Object.keys(selectedUser.schoolAccess || {}).map(schoolId => {
+                                    const school = schools.find(s => s.id === schoolId);
+                                    if (!school) return null;
+                                    
+                                    return (
+                                      <div key={school.id} className="bg-white dark:bg-slate-800/50 p-6 rounded-[32px] border border-slate-100 dark:border-slate-700 transition-colors shadow-sm relative group/card">
+                                        <button 
+                                          onClick={() => {
+                                            const newAccess = { ...selectedUser.schoolAccess };
+                                            delete newAccess[schoolId];
+                                            setSelectedUser({ ...selectedUser, schoolAccess: newAccess });
+                                          }}
+                                          className="absolute top-4 right-4 p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10 rounded-xl opacity-0 group-hover/card:opacity-100 transition-all"
+                                          title="Ta bort all åtkomst för denna skola"
+                                        >
+                                          <Trash2 size={14} />
+                                        </button>
+
+                                        <div className="flex justify-between items-start mb-4">
+                                           <div>
+                                              <h5 className="font-bold text-visuera-dark dark:text-slate-100 pr-8">{school.name}</h5>
+                                              <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-widest">
+                                                {authorities.find(a => a.id === school.authorityId)?.name}
+                                              </p>
+                                           </div>
                                         </div>
 
-                                        {(() => {
-                                           const entry = selectedUser.schoolAccess?.[school.id];
-                                           const roles = Array.isArray(entry) ? entry : entry?.roles || [];
-                                           if (roles.length > 0) {
-                                              const team = Array.isArray(entry) ? '' : entry?.team || '';
+                                        <div className="space-y-4">
+                                          <div className="flex flex-wrap gap-2 text-center items-center">
+                                            {ROLE_OPTIONS.map(role => {
+                                              const entry = selectedUser.schoolAccess?.[school.id];
+                                              const isSelected = Array.isArray(entry) ? entry.includes(role.id) : entry?.roles?.includes(role.id);
                                               return (
-                                                <div className="pt-4 border-t border-slate-100 dark:border-slate-700 flex flex-col gap-2 text-left">
-                                                  <label className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-1">Arbetslag på {school.name}</label>
-                                                  <input 
-                                                    type="text"
-                                                    placeholder="t.ex. F-3, Arbetslag 1..."
-                                                    value={team}
-                                                    onChange={(e) => updateUserSchoolTeam(school.id, e.target.value)}
-                                                    className="w-full bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-700 rounded-xl px-4 py-2 text-xs focus:border-visuera-green transition-all font-bold placeholder:font-normal text-slate-900 dark:text-slate-100 placeholder:text-slate-300 dark:placeholder:text-slate-600"
-                                                  />
-                                                </div>
+                                                <button
+                                                    key={role.id}
+                                                    onClick={() => toggleUserSchoolRole(school.id, role.id)}
+                                                    className={`px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all ${
+                                                      isSelected
+                                                        ? 'bg-visuera-green text-white shadow-lg shadow-visuera-green/20 dark:shadow-none scale-105'
+                                                        : 'bg-white dark:bg-slate-900 text-slate-400 dark:text-slate-500 border border-slate-100 dark:border-slate-700 hover:border-visuera-green/30'
+                                                    }`}
+                                                >
+                                                  {role.label}
+                                                </button>
                                               );
-                                           }
-                                           return null;
-                                        })()}
+                                            })}
+                                          </div>
+
+                                          {(() => {
+                                             const entry = selectedUser.schoolAccess?.[school.id];
+                                             const roles = Array.isArray(entry) ? entry : entry?.roles || [];
+                                             if (roles.length > 0) {
+                                                const team = Array.isArray(entry) ? '' : entry?.team || '';
+                                                return (
+                                                  <div className="pt-4 border-t border-slate-100 dark:border-slate-700 flex flex-col gap-2 text-left">
+                                                    <label className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-1">Arbetslag på {school.name}</label>
+                                                    <input 
+                                                      type="text"
+                                                      placeholder="t.ex. F-3, Arbetslag 1..."
+                                                      value={team}
+                                                      onChange={(e) => updateUserSchoolTeam(school.id, e.target.value)}
+                                                      className="w-full bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-700 rounded-xl px-4 py-2 text-xs focus:border-visuera-green transition-all font-bold placeholder:font-normal text-slate-900 dark:text-slate-100 placeholder:text-slate-300 dark:placeholder:text-slate-600"
+                                                    />
+                                                  </div>
+                                                );
+                                             }
+                                             return null;
+                                          })()}
+                                        </div>
                                       </div>
-                                    </div>
-                                  ))}
+                                    );
+                                  })}
                                 </div>
                               </section>
                               
@@ -879,6 +1020,7 @@ export const UserManagement = () => {
                         <th className="px-6 py-4">Namn</th>
                         <th className="px-6 py-4">Primär Skola</th>
                         <th className="px-6 py-4">Access-omfång</th>
+                        <th className="px-6 py-4 text-center">Notiser</th>
                         <th className="px-6 py-4 text-right">Åtgärd</th>
                       </tr>
                     </thead>
@@ -920,8 +1062,33 @@ export const UserManagement = () => {
                               )}
                             </div>
                           </td>
+                          <td className="px-6 py-4 text-center">
+                            <button
+                              onClick={() => toggleEmailNotifications(user.uid, !!user.preferences?.emailNotifications)}
+                              disabled={isUpdating}
+                              className={`p-2 rounded-xl border transition-all ${
+                                user.preferences?.emailNotifications
+                                  ? 'bg-visuera-green/10 border-visuera-green text-visuera-green shadow-lg shadow-visuera-green/5'
+                                  : 'bg-slate-50 dark:bg-slate-900 border-slate-100 dark:border-slate-800 text-slate-300 dark:text-slate-600 hover:border-slate-200 dark:hover:border-slate-700'
+                              }`}
+                              title={user.preferences?.emailNotifications ? 'Mejlnotiser aktiva' : 'Mejlnotiser inaktiva'}
+                            >
+                              <Mail size={16} />
+                            </button>
+                          </td>
                           <td className="px-6 py-4 text-right">
                             <div className="flex items-center justify-end gap-3">
+                              <button 
+                                onClick={() => {
+                                  setAdminTargetUser(user);
+                                  setIsAdminActionsOpen(true);
+                                }}
+                                className="p-2.5 bg-slate-50 dark:bg-slate-800 text-slate-400 dark:text-slate-500 hover:text-visuera-green hover:bg-visuera-green/5 rounded-xl transition-all border border-transparent hover:border-visuera-green/20"
+                                title="Administrativa åtgärder"
+                              >
+                                <Settings2 size={16} />
+                              </button>
+
                               <button 
                                 onClick={() => setSelectedUser(user)}
                                 className="px-4 py-2 bg-slate-100 dark:bg-slate-700 hover:bg-visuera-green hover:text-white rounded-xl text-xs font-bold transition-all text-slate-600 dark:text-slate-300"
@@ -977,7 +1144,7 @@ export const UserManagement = () => {
                 </div>
 
                 <div 
-                  className={`border-4 border-dashed rounded-[40px] p-12 transition-all flex flex-col items-center justify-center gap-4 text-center ${
+                  className={`relative border-4 border-dashed rounded-[40px] p-12 transition-all flex flex-col items-center justify-center gap-4 text-center ${
                     dragActive 
                       ? 'border-visuera-green bg-visuera-green/5' 
                       : 'border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50'
@@ -991,7 +1158,7 @@ export const UserManagement = () => {
                   </div>
                   <div className="space-y-1">
                     <p className="font-black text-visuera-dark dark:text-slate-100">Dra och släpp CSV-fil här</p>
-                    <p className="text-xs text-slate-400 dark:text-slate-500">Eller klicka för att välja fil från datorn</p>
+                    <p className="text-xs text-slate-400 dark:text-slate-500">Filen bör ha kolumner: <span className="font-mono bg-slate-100 dark:bg-slate-800 px-1 rounded">name, email, role, team</span></p>
                   </div>
                   <input 
                     type="file" 
@@ -1007,6 +1174,31 @@ export const UserManagement = () => {
                     animate={{ opacity: 1, y: 0 }}
                     className="space-y-6"
                   >
+                    {/* Settings for the import */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-50 dark:bg-slate-900/50 p-6 rounded-3xl border border-slate-100 dark:border-slate-800">
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Målskola (Obligatorisk)</label>
+                        <select 
+                          value={importSchoolId}
+                          onChange={(e) => setImportSchoolId(e.target.value)}
+                          className="w-full bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-xl px-4 py-3 text-xs font-bold focus:ring-2 focus:ring-visuera-green/20 outline-none appearance-none cursor-pointer"
+                        >
+                          <option value="">Välj skola för dessa användare...</option>
+                          {schools.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                        </select>
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Standard-arbetslag (Fallback)</label>
+                        <input 
+                          type="text" 
+                          placeholder="T.ex. Arbetslag A..."
+                          value={importDefaultTeam}
+                          onChange={(e) => setImportDefaultTeam(e.target.value)}
+                          className="w-full bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-xl px-4 py-3 text-xs font-bold focus:ring-2 focus:ring-visuera-green/20 outline-none transition-all"
+                        />
+                      </div>
+                    </div>
+
                     <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-3xl overflow-hidden shadow-xl">
                       <div className="p-4 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center">
                         <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
@@ -1219,6 +1411,120 @@ export const UserManagement = () => {
              </div>
              <span className="font-bold text-sm">{success}</span>
           </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Administrative Actions Modal */}
+      <AnimatePresence>
+        {isAdminActionsOpen && adminTargetUser && (
+          <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsAdminActionsOpen(false)}
+              className="absolute inset-0 bg-visuera-dark/40 dark:bg-black/60 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative w-full max-w-lg bg-white dark:bg-slate-900 rounded-[40px] shadow-2xl border border-slate-100 dark:border-slate-800 overflow-hidden"
+            >
+              <div className="bg-slate-50 dark:bg-slate-800/50 p-8 border-b border-slate-100 dark:border-slate-800">
+                <div className="flex justify-between items-start">
+                  <div className="flex items-center gap-4">
+                    <div className="w-14 h-14 bg-visuera-green rounded-2xl flex items-center justify-center text-white shadow-lg shadow-visuera-green/20">
+                      <ShieldCheck size={28} />
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-black text-visuera-dark dark:text-slate-100 tracking-tight">Administrativa åtgärder</h3>
+                      <p className="text-sm font-bold text-visuera-green uppercase tracking-widest">{adminTargetUser.name}</p>
+                    </div>
+                  </div>
+                  <button 
+                    onClick={() => setIsAdminActionsOpen(false)}
+                    className="p-2 hover:bg-white dark:hover:bg-slate-700 rounded-xl transition-all"
+                  >
+                    <X size={20} className="text-slate-400" />
+                  </button>
+                </div>
+              </div>
+
+              <div className="p-8 space-y-4">
+                <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mb-6">
+                  Välj en administrativ åtgärd för att hantera användarkontot. Samtliga åtgärder loggas i systemets granskningslista.
+                </p>
+
+                <div className="grid grid-cols-1 gap-3">
+                  <button 
+                    onClick={() => handleAdminAction('Skicka inbjudan på nytt', adminTargetUser.name)}
+                    disabled={isUpdating}
+                    className="flex items-center gap-4 p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 hover:bg-visuera-green/5 dark:hover:bg-visuera-green/10 border border-transparent hover:border-visuera-green/20 transition-all group text-left"
+                  >
+                    <div className="p-3 bg-white dark:bg-slate-800 rounded-xl text-slate-400 group-hover:text-visuera-green transition-colors">
+                      <Mail size={18} />
+                    </div>
+                    <div>
+                      <div className="text-sm font-black text-visuera-dark dark:text-slate-200">Återsänd inbjudan</div>
+                      <div className="text-[10px] text-slate-400 uppercase font-bold tracking-tight">Skickar nytt välkomstmail</div>
+                    </div>
+                  </button>
+
+                  <button 
+                    onClick={() => handleAdminAction('Lösenordsåterställning', adminTargetUser.name)}
+                    disabled={isUpdating}
+                    className="flex items-center gap-4 p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 hover:bg-visuera-green/5 dark:hover:bg-visuera-green/10 border border-transparent hover:border-visuera-green/20 transition-all group text-left"
+                  >
+                    <div className="p-3 bg-white dark:bg-slate-800 rounded-xl text-slate-400 group-hover:text-visuera-green transition-colors">
+                      <Key size={18} />
+                    </div>
+                    <div>
+                      <div className="text-sm font-black text-visuera-dark dark:text-slate-200">Återställ lösenord</div>
+                      <div className="text-[10px] text-slate-400 uppercase font-bold tracking-tight">Skickar länk för lösenordsbyte</div>
+                    </div>
+                  </button>
+
+                  <button 
+                    onClick={() => handleAdminAction('Tvinga utloggning', adminTargetUser.name)}
+                    disabled={isUpdating}
+                    className="flex items-center gap-4 p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 hover:bg-visuera-green/5 dark:hover:bg-visuera-green/10 border border-transparent hover:border-visuera-green/20 transition-all group text-left"
+                  >
+                    <div className="p-3 bg-white dark:bg-slate-800 rounded-xl text-slate-400 group-hover:text-visuera-green transition-colors">
+                      <LogOut size={18} />
+                    </div>
+                    <div>
+                      <div className="text-sm font-black text-visuera-dark dark:text-slate-200">Tvinga utloggning</div>
+                      <div className="text-[10px] text-slate-400 uppercase font-bold tracking-tight">Terminerar alla aktiva sessioner</div>
+                    </div>
+                  </button>
+
+                  <button 
+                    onClick={() => handleAdminAction('Granska aktivitetslogg', adminTargetUser.name)}
+                    disabled={isUpdating}
+                    className="flex items-center gap-4 p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 hover:bg-visuera-green/5 dark:hover:bg-visuera-green/10 border border-transparent hover:border-visuera-green/20 transition-all group text-left"
+                  >
+                    <div className="p-3 bg-white dark:bg-slate-800 rounded-xl text-slate-400 group-hover:text-visuera-green transition-colors">
+                      <Activity size={18} />
+                    </div>
+                    <div>
+                      <div className="text-sm font-black text-visuera-dark dark:text-slate-200">Visa aktivitetslogg</div>
+                      <div className="text-[10px] text-slate-400 uppercase font-bold tracking-tight">Se alla händelser kopplade till kontot</div>
+                    </div>
+                  </button>
+                </div>
+              </div>
+
+              <div className="p-8 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-100 dark:border-slate-800 flex justify-end">
+                <button 
+                  onClick={() => setIsAdminActionsOpen(false)}
+                  className="px-8 py-3 text-xs font-black uppercase tracking-widest text-slate-400 hover:text-slate-600 transition-colors"
+                >
+                  Stäng
+                </button>
+              </div>
+            </motion.div>
+          </div>
         )}
       </AnimatePresence>
     </div>

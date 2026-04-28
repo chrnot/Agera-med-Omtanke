@@ -82,8 +82,21 @@ export const CaseSidebar: React.FC<CaseSidebarProps> = ({
               <p className="text-sm font-medium text-slate-700 dark:text-slate-300 capitalize">{formData.assignedToName || 'Ej tilldelad'}</p>
             </div>
             <div>
-              <p className="text-[10px] text-slate-400 uppercase tracking-tighter">Ansvarig utredare</p>
-              <p className="text-sm font-medium text-slate-700 dark:text-slate-300 capitalize">{formData.assignedTeacher || 'Ej tilldelad'}</p>
+              <p className="text-[10px] text-slate-400 uppercase tracking-tighter">Utredare</p>
+              <div className="space-y-1 mt-0.5">
+                {formData.investigators && formData.investigators.length > 0 ? (
+                  formData.investigators.map((inv: any) => (
+                    <div key={inv.uid} className="flex items-center gap-1.5">
+                      <p className={`text-sm font-medium capitalize ${inv.role === 'primary' ? 'text-slate-900 dark:text-slate-100 font-bold' : 'text-slate-500 dark:text-slate-400'}`}>
+                        {inv.name}
+                      </p>
+                      {inv.role === 'primary' && <Shield size={10} className="text-visuera-green" />}
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-sm font-medium text-slate-400 italic">Ej tilldelad</p>
+                )}
+              </div>
             </div>
             <div>
               <p className="text-[10px] text-slate-400 uppercase tracking-tighter">Skola</p>

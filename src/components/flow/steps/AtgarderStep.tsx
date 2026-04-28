@@ -1,24 +1,48 @@
 import React from 'react';
-import { ShieldCheck, Layers, Calendar, User, Info, FileText } from 'lucide-react';
+import { ShieldCheck, Layers, Calendar, User, Info, FileText, Users } from 'lucide-react';
 import { StepCard } from '../../ui/StepCard';
 import { InfoPopover } from '../../ui/InfoPopover';
 import { ACTION_TEMPLATES } from '../../../constants/guidanceContent';
+import { CollaboratorAssignment } from '../CollaboratorAssignment';
 
 interface AtgarderStepProps {
   formData: any;
   updateFormData: (field: string, value: any) => void;
   selectedActivities: string[];
   toggleActivity: (activity: string) => void;
+  availableStaff: any[];
+  availableTeams: string[];
+  userProfile: any;
 }
 
 export const AtgarderStep: React.FC<AtgarderStepProps> = ({
   formData,
   updateFormData,
   selectedActivities,
-  toggleActivity
+  toggleActivity,
+  availableStaff,
+  availableTeams,
+  userProfile
 }) => {
+  const isInvestigator = formData.investigatorUids?.includes(userProfile?.uid) || userProfile?.role === 'admin' || userProfile?.role === 'principal';
+
   return (
     <div className="space-y-8">
+      {/* Search/Invite Collaborators Card */}
+      {isInvestigator && (
+        <StepCard title="SAMARBETE & ÅTGÄRDSANSVAR" icon={Users}>
+          <CollaboratorAssignment 
+            formData={formData}
+            updateFormData={updateFormData}
+            availableStaff={availableStaff}
+            availableTeams={availableTeams}
+            title="BJUD IN TILL ÅTGÄRDSARBETE"
+            description="Lägg till kollegor eller medlemmar från arbetslaget för att samskapa åtgärder."
+            roleType="measure_collaborator"
+          />
+        </StepCard>
+      )}
+
       {/* Card 1: Individuellt */}
       <StepCard title="INDIVIDUELLA ÅTGÄRDER" icon={User}>
         <div className="space-y-6">

@@ -73,6 +73,7 @@ import { TrygghetsFlow } from './components/TrygghetsFlow';
 import { UserManagement } from './components/UserManagement';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { NotificationInbox } from './components/NotificationInbox';
+import { UserProfile } from './components/UserProfile.tsx';
 import { caseService } from './services/caseService';
 import { setupService } from './services/setupService';
 import { onSnapshot, collection, query, orderBy, limit, where, getDocs } from 'firebase/firestore';
@@ -93,6 +94,28 @@ interface UserProfile {
   isActive?: boolean;
   migratedTo?: string;
 }
+
+const getStatusProgress = (status: string) => {
+  switch(status) {
+    case 'anmäld': return { percent: 15, color: 'bg-blue-500' };
+    case 'utredning': case 'utreds': return { percent: 40, color: 'bg-amber-500' };
+    case 'åtgärder': return { percent: 65, color: 'bg-emerald-500' };
+    case 'uppföljd': return { percent: 85, color: 'bg-purple-500' };
+    case 'avslutat': case 'avslutad': return { percent: 100, color: 'bg-slate-400' };
+    default: return { percent: 0, color: 'bg-slate-200' };
+  }
+};
+
+const getStatusStyle = (status: string) => {
+  switch(status) {
+    case 'anmäld': return 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 border-blue-100 dark:border-blue-900/50';
+    case 'utredning': case 'utreds': return 'bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 border-amber-100 dark:border-amber-900/50';
+    case 'åtgärder': return 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 border-emerald-100 dark:border-emerald-900/50';
+    case 'uppföljd': return 'bg-purple-50 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 border-purple-100 dark:border-purple-900/50';
+    case 'avslutat': case 'avslutad': return 'bg-slate-50 dark:bg-slate-900/50 text-slate-400 dark:text-slate-500 border-slate-100 dark:border-slate-800';
+    default: return 'bg-slate-50 dark:bg-slate-900 text-slate-500 dark:text-slate-400 border-slate-100 dark:border-slate-800';
+  }
+};
 
 const BankIDModal = ({ isOpen, onClose, onAuthenticated }: { isOpen: boolean, onClose: () => void, onAuthenticated: (pnr: string) => void }) => {
   const [step, setStep] = useState<'input' | 'waiting' | 'success'>('input');
@@ -464,8 +487,9 @@ const Dashboard = ({ onNewReport, cases: allCases, onOpenCase, onNavigate, caseQ
     return filtered;
   }, [allCases, userProfile]);
 
-  const activeCases = cases.filter(c => c.status !== 'avslutat' && c.status !== 'avslutan');
-  const unassignedCases = cases.filter(c => c.status === 'anmäld' && !c.assignedToUid);
+  const activeCases = cases.filter(c => !['avslutat', 'avslutad', 'arkiverad'].includes(c.status));
+  const notStartedCases = cases.filter(c => c.status === 'anmäld');
+  const unassignedCases = cases.filter(c => c.status === 'anmäld' && (!c.assignedToUid && (!c.investigatorUids || c.investigatorUids.length === 0)));
   
   const displayCases = React.useMemo(() => {
     let filtered = cases;
@@ -481,6 +505,7 @@ const Dashboard = ({ onNewReport, cases: allCases, onOpenCase, onNavigate, caseQ
       filtered = filtered.filter(c => 
         c.assignedToUid === userProfile.uid || 
         c.reporterUid === userProfile.uid ||
+        (Array.isArray(c.investigatorUids) && c.investigatorUids.includes(userProfile.uid)) ||
         (c.assignedTeam && c.assignedTeam === userProfile.team)
       );
     }
@@ -501,10 +526,19 @@ const Dashboard = ({ onNewReport, cases: allCases, onOpenCase, onNavigate, caseQ
   const calculateAverageLeadTime = () => {
     const durations: number[] = [];
     cases.forEach(c => {
-      if ((c.investigationStartedAt || c.status !== 'anmäld') && c.createdAt) {
-        const start = c.investigationStartedAt?.seconds ? c.investigationStartedAt.seconds * 1000 : (c.investigationStartedAt ? new Date(c.investigationStartedAt).getTime() : (c.updatedAt?.seconds ? c.updatedAt.seconds * 1000 : (c.updatedAt ? new Date(c.updatedAt).getTime() : Date.now())));
+      // We only calculate lead time for cases that have actually moved past initial report
+      if (c.investigationStartedAt && c.createdAt) {
+        const start = c.investigationStartedAt?.seconds ? c.investigationStartedAt.seconds * 1000 : new Date(c.investigationStartedAt).getTime();
         const created = c.createdAt?.seconds ? c.createdAt.seconds * 1000 : new Date(c.createdAt).getTime();
-        durations.push(start - created);
+        
+        const diff = start - created;
+        if (diff > 0) durations.push(diff);
+      } else if (c.status !== 'anmäld' && c.createdAt && c.updatedAt) {
+        // Fallback for older cases or status changes where investigationStartedAt might be missing
+        const start = c.updatedAt?.seconds ? c.updatedAt.seconds * 1000 : new Date(c.updatedAt).getTime();
+        const created = c.createdAt?.seconds ? c.createdAt.seconds * 1000 : new Date(c.createdAt).getTime();
+        const diff = start - created;
+        if (diff > 0) durations.push(diff);
       }
     });
 
@@ -559,19 +593,19 @@ const Dashboard = ({ onNewReport, cases: allCases, onOpenCase, onNavigate, caseQ
       icon: Layers, 
       color: 'text-visuera-green dark:text-emerald-400', 
       bg: 'bg-visuera-green/10 dark:bg-emerald-900/20',
-      description: 'Ärenden under behandling' 
+      description: 'Under behandling' 
     },
     { 
       label: 'Ej påbörjade', 
-      value: unassignedCases.length.toString(), 
+      value: notStartedCases.length.toString(), 
       icon: Clock, 
-      color: unassignedCases.length > 0 ? 'text-red-500 dark:text-red-400' : 'text-slate-400 dark:text-slate-500', 
-      bg: unassignedCases.length > 0 ? 'bg-red-50 dark:bg-red-900/20' : 'bg-slate-50 dark:bg-slate-900/20',
-      description: 'Väntar på tilldelning',
+      color: unassignedCases.length > 0 ? 'text-red-500 dark:text-red-400' : (notStartedCases.length > 0 ? 'text-amber-500' : 'text-slate-400'), 
+      bg: unassignedCases.length > 0 ? 'bg-red-50 dark:bg-red-900/20' : (notStartedCases.length > 0 ? 'bg-amber-50' : 'bg-slate-50'),
+      description: unassignedCases.length > 0 ? `${unassignedCases.length} saknar utredare` : 'Väntar på utredning',
       alert: unassignedCases.length > 0
     },
     { 
-      label: 'Genomsnittlig ledtid', 
+      label: 'Snitt-ledtid', 
       value: `${calculateAverageLeadTime()} dgr`, 
       icon: TrendingUp, 
       color: 'text-blue-500 dark:text-blue-400', 
@@ -579,17 +613,6 @@ const Dashboard = ({ onNewReport, cases: allCases, onOpenCase, onNavigate, caseQ
       description: 'Från anmälan till utredning' 
     }
   ];
-
-  const getStatusStyle = (status: string) => {
-    switch(status) {
-      case 'anmäld': return 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 border-blue-100 dark:border-blue-900/50';
-      case 'utredning': case 'utreds': return 'bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 border-amber-100 dark:border-amber-900/50';
-      case 'åtgärder': return 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 border-emerald-100 dark:border-emerald-900/50';
-      case 'uppföljd': return 'bg-purple-50 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 border-purple-100 dark:border-purple-900/50';
-      case 'avslutat': case 'avslutad': return 'bg-slate-50 dark:bg-slate-900/50 text-slate-400 dark:text-slate-500 border-slate-100 dark:border-slate-800';
-      default: return 'bg-slate-50 dark:bg-slate-900 text-slate-500 dark:text-slate-400 border-slate-100 dark:border-slate-800';
-    }
-  };
 
   return (
     <div className="space-y-6 lg:space-y-8 pb-32 lg:pb-12">
@@ -822,9 +845,18 @@ const Dashboard = ({ onNewReport, cases: allCases, onOpenCase, onNavigate, caseQ
                         <span className="text-xs font-bold text-slate-600 dark:text-slate-300">{c.studentName}</span>
                       </td>
                       <td className="px-4 py-5 text-left">
-                        <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border ${getStatusStyle(c.status)}`}>
-                          {c.status}
-                        </span>
+                        <div className="flex flex-col gap-1.5 w-32">
+                          <span className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest border self-start ${getStatusStyle(c.status)}`}>
+                            {c.status}
+                          </span>
+                          <div className="w-full h-1 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                            <motion.div 
+                              initial={{ width: 0 }}
+                              animate={{ width: `${getStatusProgress(c.status).percent}%` }}
+                              className={`h-full ${getStatusProgress(c.status).color} transition-all duration-1000 ease-out`}
+                            />
+                          </div>
+                        </div>
                       </td>
                       <td className="px-4 py-5 font-bold text-xs text-slate-500 dark:text-slate-400 text-left">
                         {formatDate(c.createdAt)}
@@ -849,11 +881,20 @@ const Dashboard = ({ onNewReport, cases: allCases, onOpenCase, onNavigate, caseQ
                   className="bg-slate-50 dark:bg-slate-900/50 p-5 rounded-[28px] border border-slate-100 dark:border-slate-700 space-y-4"
                 >
                   <div className="flex justify-between items-start">
-                    <div className={`px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest border transition-colors ${getStatusStyle(c.status)}`}>
-                      {c.status}
+                    <div className="flex flex-col gap-2 w-full">
+                       <div className={`self-start px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest border transition-colors ${getStatusStyle(c.status)}`}>
+                         {c.status}
+                       </div>
+                       <div className="w-full h-1 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                          <motion.div 
+                            initial={{ width: 0 }}
+                            animate={{ width: `${getStatusProgress(c.status).percent}%` }}
+                            className={`h-full ${getStatusProgress(c.status).color} transition-all duration-1000 ease-out`}
+                          />
+                       </div>
                     </div>
                     {isOld(c.createdAt) && c.status === 'anmäld' && (
-                      <AlertTriangle size={14} className="text-red-500 animate-pulse" />
+                      <AlertTriangle size={14} className="text-red-500 animate-pulse shrink-0 ml-2" />
                     )}
                   </div>
                   <div>
@@ -892,7 +933,7 @@ const App = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'cases' | 'report' | 'flow' | 'users' | 'active-list'>(
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'cases' | 'report' | 'flow' | 'users' | 'active-list' | 'profile'>(
     (localStorage.getItem('lastActiveTab') as any) || 'dashboard'
   );
   const [selectedCaseId, setSelectedCaseId] = useState<string | null>(
@@ -1370,6 +1411,7 @@ const App = () => {
                     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
                     { id: 'cases', label: 'Alla ärenden', icon: FileSearch },
                     { id: 'flow', label: 'Aktiva ärenden', icon: Layers },
+                    { id: 'profile', label: 'Min profil', icon: UserIcon },
                     ...(userProfile?.role === 'admin' ? [{ id: 'users', label: 'Användare', icon: Users }] : [])
                   ].map((item) => (
                     <button
@@ -1445,6 +1487,7 @@ const App = () => {
               { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
               { id: 'cases', label: 'Alla ärenden', icon: FileSearch },
               { id: 'flow', label: 'Aktiva ärenden', icon: Layers },
+              { id: 'profile', label: 'Min profil', icon: UserIcon },
               ...(userProfile?.role === 'admin' ? [{ id: 'users', label: 'Användare', icon: Users }] : [])
             ].map((item) => (
               <button
@@ -1634,7 +1677,14 @@ const App = () => {
                             </button>
                           </div>
 
-                          <button className="w-full flex items-center justify-center gap-2 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-all">
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setActiveTab('profile');
+                              setIsProfileOpen(false);
+                            }}
+                            className="w-full flex items-center justify-center gap-2 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-all"
+                          >
                             <UserIcon size={14} /> Visa Profil
                           </button>
                         </div>
@@ -1872,16 +1922,20 @@ const App = () => {
                                  </div>
                               </div>
                            </div>
-                           <div className="flex items-center justify-between md:justify-end gap-x-4 lg:gap-x-6 border-t md:border-t-0 pt-4 md:pt-0 border-slate-100 dark:border-slate-700">
-                              <span className={`text-[9px] font-black px-2 py-1 rounded uppercase tracking-wider ${
-                                c.status === 'anmäld' ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400' :
-                                c.status === 'utredning' ? 'bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400' :
-                                c.status === 'avslutat' ? 'bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-400' :
-                                'bg-visuera-green/10 text-visuera-green dark:bg-visuera-green/20 dark:text-visuera-green'
-                              }`}>
-                                {c.status}
-                              </span>
-                              <div className="flex items-center gap-4">
+                           <div className="flex flex-col md:flex-row items-center justify-between md:justify-end gap-x-4 lg:gap-x-6 border-t md:border-t-0 pt-4 md:pt-0 border-slate-100 dark:border-slate-700 min-w-[200px]">
+                              <div className="flex flex-col gap-1.5 w-32">
+                                <span className={`self-start text-[9px] font-black px-2 py-0.5 rounded uppercase tracking-wider border ${getStatusStyle(c.status)}`}>
+                                  {c.status}
+                                </span>
+                                <div className="w-full h-1 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                                  <motion.div 
+                                    initial={{ width: 0 }}
+                                    animate={{ width: `${getStatusProgress(c.status).percent}%` }}
+                                    className={`h-full ${getStatusProgress(c.status).color} transition-all duration-1000 ease-out`}
+                                  />
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-4 mt-4 md:mt-0">
                                 <button className="text-visuera-green font-bold text-xs uppercase hover:underline">Hantera</button>
                                 
                                 {userProfile?.role === 'admin' && (
@@ -1941,6 +1995,7 @@ const App = () => {
             )}
             {activeTab === 'flow' && <TrygghetsFlow initialCaseId={selectedCaseId || undefined} cases={cases} />}
             {activeTab === 'users' && <UserManagement />}
+            {activeTab === 'profile' && <UserProfile user={user} profile={userProfile} />}
           </div>
         </main>
       </div>

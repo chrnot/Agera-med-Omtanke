@@ -231,8 +231,22 @@ export const caseService = {
         timestamp: serverTimestamp()
       });
 
-      // TRIGGER: Investigator Assigned
-      if (updateData.assignedToUid && updateData.assignedToUid !== oldData?.assignedToUid) {
+      // TRIGGER: Investigator Assigned (Support for multiple)
+      if (updateData.investigators && Array.isArray(updateData.investigators)) {
+        const oldInvUids = Array.isArray(oldData?.investigatorUids) ? oldData.investigatorUids : [];
+        const newInvUids = updateData.investigatorUids || updateData.investigators.map((i: any) => i.uid);
+        
+        const addedInvUids = newInvUids.filter((uid: string) => !oldInvUids.includes(uid));
+        
+        for (const uid of addedInvUids) {
+          const template = caseService.getNotificationTemplate('assigned', { caseId, schoolName: oldData?.school || 'Danderyds Skola' });
+          await caseService.sendNotification({
+            ...template,
+            caseId,
+            recipientUid: uid
+          });
+        }
+      } else if (updateData.assignedToUid && updateData.assignedToUid !== oldData?.assignedToUid) {
         const template = caseService.getNotificationTemplate('assigned', { caseId, schoolName: oldData?.school || 'Danderyds Skola' });
         await caseService.sendNotification({
           ...template,
@@ -302,8 +316,11 @@ export const caseService = {
     // If not admin and we have specific user filters, use OR logic for personal visibility
     if (!filters?.isAdmin && (filters?.assignedToUid || filters?.reporterUid || filters?.reporterEmail || filters?.assignedTeam)) {
       const visibilityFilters = [];
-      if (filters.assignedToUid) visibilityFilters.push(where('assignedToUid', '==', filters.assignedToUid));
-      if (filters.assignedToUid) visibilityFilters.push(where('assignedTeacherUid', '==', filters.assignedToUid));
+      if (filters.assignedToUid) {
+        visibilityFilters.push(where('assignedToUid', '==', filters.assignedToUid));
+        visibilityFilters.push(where('assignedTeacherUid', '==', filters.assignedToUid));
+        visibilityFilters.push(where('investigatorUids', 'array-contains', filters.assignedToUid));
+      }
       if (filters.reporterUid) visibilityFilters.push(where('reporterUid', '==', filters.reporterUid));
       if (filters.reporterEmail) visibilityFilters.push(where('reporterEmail', '==', filters.reporterEmail));
       if (filters.assignedTeam) visibilityFilters.push(where('assignedTeam', '==', filters.assignedTeam));
@@ -355,8 +372,9 @@ export const caseService = {
       const caseDoc = await getDoc(doc(db, 'cases', caseId));
       const caseData = caseDoc.data();
       
-      const investigatorUid = caseData?.assignedToUid || caseData?.assignedTeacherUid;
-      if (!caseData || !investigatorUid) {
+      const investigatorUids = caseData?.investigatorUids || (caseData?.assignedToUid ? [caseData.assignedToUid] : (caseData?.assignedTeacherUid ? [caseData.assignedTeacherUid] : []));
+      
+      if (!caseData || investigatorUids.length === 0) {
         throw new Error('Ärendet saknar tilldelad utredare.');
       }
 
@@ -365,12 +383,14 @@ export const caseService = {
         schoolName: caseData.school || 'Danderyds Skola' 
       });
 
-      await caseService.sendNotification({
-        ...template,
-        caseId,
-        recipientUid: investigatorUid,
-        school: caseData.school
-      });
+      for (const investigatorUid of investigatorUids) {
+        await caseService.sendNotification({
+          ...template,
+          caseId,
+          recipientUid: investigatorUid,
+          school: caseData.school
+        });
+      }
 
       // Audit Log
       await addDoc(collection(db, `cases/${caseId}/audit`), {
@@ -392,23 +412,26 @@ export const caseService = {
       const caseDoc = await getDoc(doc(db, 'cases', caseId));
       const caseData = caseDoc.data();
       
-      const investigatorUid = caseData?.assignedToUid || caseData?.assignedTeacherUid;
-      if (!caseData || !investigatorUid) {
+      const investigatorUids = caseData?.investigatorUids || (caseData?.assignedToUid ? [caseData.assignedToUid] : (caseData?.assignedTeacherUid ? [caseData.assignedTeacherUid] : []));
+      
+      if (!caseData || investigatorUids.length === 0) {
         throw new Error('Ärendet saknar tilldelad utredare.');
       }
 
       const senderName = auth.currentUser?.displayName || 'Rektor';
 
-      await caseService.sendNotification({
-        type: 'DIRECT_MESSAGE',
-        title: 'Fråga från rektor',
-        message: messageText,
-        caseId,
-        recipientUid: investigatorUid,
-        senderName,
-        actionUrl: `/cases/${caseId}`,
-        school: caseData.school
-      });
+      for (const investigatorUid of investigatorUids) {
+        await caseService.sendNotification({
+          type: 'DIRECT_MESSAGE',
+          title: 'Fråga från rektor',
+          message: messageText,
+          caseId,
+          recipientUid: investigatorUid,
+          senderName,
+          actionUrl: `/cases/${caseId}`,
+          school: caseData.school
+        });
+      }
 
       // Logga även i AuditLog för att behålla spårbarhet enligt GDPR
       await addDoc(collection(db, `cases/${caseId}/audit`), {
@@ -596,23 +619,25 @@ export const caseService = {
         createdAt: serverTimestamp()
       });
 
-      // Notify investigator
+      // Notify all investigators
       const caseDoc = await getDoc(doc(db, 'cases', caseId));
       const caseData = caseDoc.data();
-      const investigatorUid = caseData?.assignedToUid || caseData?.assignedTeacherUid;
+      const investigatorUids = caseData?.investigatorUids || (caseData?.assignedToUid ? [caseData.assignedToUid] : (caseData?.assignedTeacherUid ? [caseData.assignedTeacherUid] : []));
       const school = caseData?.school || 'Danderyds Skola';
 
-      if (investigatorUid && investigatorUid !== userProfile.uid) {
-        const idDisplay = `ÄRE-${caseId.slice(-4).toUpperCase()}`;
-        await caseService.sendNotification({
-          type: 'INFO',
-          title: 'Ny observation i ärende',
-          message: `${userProfile.name} har lagt till en observation i ärende ${idDisplay}.`,
-          caseId,
-          recipientUid: investigatorUid,
-          school,
-          actionUrl: `/cases/${caseId}`
-        });
+      for (const investigatorUid of investigatorUids) {
+        if (investigatorUid !== userProfile.uid) {
+          const idDisplay = `ÄRE-${caseId.slice(-4).toUpperCase()}`;
+          await caseService.sendNotification({
+            type: 'INFO',
+            title: 'Ny observation i ärende',
+            message: `${userProfile.name} har lagt till en observation i ärende ${idDisplay}.`,
+            caseId,
+            recipientUid: investigatorUid,
+            school,
+            actionUrl: `/cases/${caseId}`
+          });
+        }
       }
 
       // Audit Log
@@ -625,6 +650,51 @@ export const caseService = {
       });
     } catch (error) {
       handleFirestoreError(error, OperationType.CREATE, path);
+    }
+  },
+
+  sendBackForRevision: async (caseId: string, messageText: string) => {
+    try {
+      const caseDoc = await getDoc(doc(db, 'cases', caseId));
+      const caseData = caseDoc.data();
+      if (!caseData) throw new Error('Ärendet hittades inte.');
+
+      await updateDoc(doc(db, 'cases', caseId), {
+        status: 'utredning',
+        needsRevision: true,
+        revisionComment: messageText,
+        updatedAt: serverTimestamp()
+      });
+
+      const investigatorUids = caseData.investigatorUids || (caseData.assignedToUid ? [caseData.assignedToUid] : (caseData.assignedTeacherUid ? [caseData.assignedTeacherUid] : []));
+      const school = caseData.school || 'Okänd skola';
+      const senderName = auth.currentUser?.displayName || 'Rektor';
+
+      for (const uid of investigatorUids) {
+        await caseService.sendNotification({
+          type: 'ACTION_REQUIRED',
+          title: 'Ärende återskickat för komplettering',
+          message: `Rektor har skickat tillbaka ärende ÄRE-${caseId.slice(-4).toUpperCase()} för komplettering: ${messageText}`,
+          caseId,
+          recipientUid: uid,
+          senderName,
+          school,
+          actionUrl: `/cases/${caseId}`
+        });
+      }
+
+      // Audit Log
+      await addDoc(collection(db, `cases/${caseId}/audit`), {
+        caseId,
+        userId: auth.currentUser?.uid || 'system',
+        userName: senderName,
+        action: 'SENT_BACK_FOR_REVISION',
+        message: messageText,
+        timestamp: serverTimestamp()
+      });
+    } catch (error) {
+      console.error('Error sending back for revision:', error);
+      throw error;
     }
   },
 

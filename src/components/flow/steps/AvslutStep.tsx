@@ -11,6 +11,7 @@ interface AvslutStepProps {
   activeCaseId: string | null;
   onGenerateAnonymizedReport?: (studentId: string) => void;
   isGeneratingPDF?: boolean;
+  onSendBack?: (comment: string) => void;
 }
 
 export const AvslutStep: React.FC<AvslutStepProps> = ({
@@ -20,8 +21,12 @@ export const AvslutStep: React.FC<AvslutStepProps> = ({
   setShowClosingSummary,
   activeCaseId,
   onGenerateAnonymizedReport,
-  isGeneratingPDF
+  isGeneratingPDF,
+  onSendBack
 }) => {
+  const [isSendingBack, setIsSendingBack] = React.useState(false);
+  const [returnComment, setReturnComment] = React.useState('');
+
   if (showClosingSummary) {
     return (
       <motion.div 
@@ -65,36 +70,86 @@ export const AvslutStep: React.FC<AvslutStepProps> = ({
               </div>
             </div>
 
-            <div className="space-y-4">
-              <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Metadata för arkiv</p>
-              <div className="bg-slate-950 rounded-2xl p-6 font-mono text-[10px] text-slate-400 border border-slate-800/50">
-                <pre className="whitespace-pre-wrap leading-relaxed">
-                  {JSON.stringify({
-                    id: activeCaseId,
-                    type: "SAFE_REACTION_ARCHIVE",
-                    legalRef: "Skollagen 6 kap. 10 §",
-                    gdprStatus: "Compliant - Encryption At Rest",
-                    timestamp: new Date().toISOString(),
-                    user: formData.signatureName,
-                    status: "FINALIZED"
-                  }, null, 2)}
-                </pre>
+            {isSendingBack ? (
+              <motion.div 
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                className="space-y-4 bg-slate-800 p-6 rounded-3xl border border-amber-500/30"
+              >
+                <div className="flex items-center gap-2 mb-2">
+                  <AlertTriangle size={16} className="text-amber-500" />
+                  <p className="text-xs font-bold text-amber-500 uppercase tracking-widest">Skicka tillbaka för komplettering</p>
+                </div>
+                <textarea 
+                  value={returnComment}
+                  onChange={(e) => setReturnComment(e.target.value)}
+                  placeholder="Beskriv vad som behöver kompletteras..."
+                  className="w-full h-32 bg-slate-900 border border-slate-700 rounded-2xl p-4 text-sm text-white focus:ring-2 focus:ring-amber-500/50 outline-none transition-all placeholder:text-slate-600"
+                />
+                <div className="flex gap-3">
+                  <button 
+                    onClick={() => {
+                      if (returnComment.trim()) {
+                        onSendBack?.(returnComment);
+                        setIsSendingBack(false);
+                      }
+                    }}
+                    className="flex-1 py-3 bg-amber-500 hover:bg-amber-600 text-slate-900 font-black text-[10px] uppercase tracking-[0.2em] rounded-xl transition-all"
+                  >
+                    Bekräfta och skicka tillbaka
+                  </button>
+                  <button 
+                    onClick={() => setIsSendingBack(false)}
+                    className="px-6 py-3 bg-slate-700 hover:bg-slate-600 text-white font-black text-[10px] uppercase tracking-[0.2em] rounded-xl transition-all"
+                  >
+                    Avbryt
+                  </button>
+                </div>
+              </motion.div>
+            ) : (
+              <div className="space-y-4">
+                <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Metadata för arkiv</p>
+                <div className="bg-slate-950 rounded-2xl p-6 font-mono text-[10px] text-slate-400 border border-slate-800/50">
+                  <pre className="whitespace-pre-wrap leading-relaxed">
+                    {JSON.stringify({
+                      id: activeCaseId,
+                      type: "SAFE_REACTION_ARCHIVE",
+                      legalRef: "Skollagen 6 kap. 10 §",
+                      gdprStatus: "Compliant - Encryption At Rest",
+                      timestamp: new Date().toISOString(),
+                      user: formData.signatureName,
+                      status: "FINALIZED"
+                    }, null, 2)}
+                  </pre>
+                </div>
               </div>
-            </div>
+            )}
 
-            <div className="flex items-start gap-4 p-5 bg-blue-500/10 rounded-2xl border border-blue-500/20">
-              <AlertTriangle className="text-blue-400 shrink-0 mt-0.5" size={18} />
-              <p className="text-[11px] text-blue-100 leading-relaxed font-medium">
-                Genom att signera intygar jag att skolan fullgjort sin utrednings- och åtgärdsskyldighet enligt gällande lagstiftning. Handlingen kommer att arkiveras och låsas för framtida redigering.
-              </p>
-            </div>
+            {!isSendingBack && (
+              <div className="flex items-start gap-4 p-5 bg-blue-500/10 rounded-2xl border border-blue-500/20">
+                <AlertTriangle className="text-blue-400 shrink-0 mt-0.5" size={18} />
+                <p className="text-[11px] text-blue-100 leading-relaxed font-medium">
+                  Genom att signera intygar jag att skolan fullgjort sin utrednings- och åtgärdsskyldighet enligt gällande lagstiftning. Handlingen kommer att arkiveras och låsas för framtida redigering.
+                </p>
+              </div>
+            )}
 
-            <button 
-              onClick={() => setShowClosingSummary(false)}
-              className="w-full text-center text-xs font-bold text-slate-500 hover:text-white transition-colors uppercase tracking-widest py-2"
-            >
-              Avbryt och återgå till redigering
-            </button>
+            <div className="flex flex-col gap-2 pt-4">
+              {!isSendingBack && (
+                <button 
+                  onClick={() => setIsSendingBack(true)}
+                  className="w-full text-center text-xs font-bold text-amber-500 hover:text-amber-400 transition-colors uppercase tracking-widest py-2 border border-amber-500/20 rounded-xl hover:bg-amber-500/5"
+                >
+                  Skicka tillbaka för komplettering
+                </button>
+              )}
+              <button 
+                onClick={() => setShowClosingSummary(false)}
+                className="w-full text-center text-xs font-bold text-slate-500 hover:text-white transition-colors uppercase tracking-widest py-2"
+              >
+                Avbryt och återgå till redigering
+              </button>
+            </div>
           </div>
         </div>
       </motion.div>
@@ -194,7 +249,7 @@ export const AvslutStep: React.FC<AvslutStepProps> = ({
             </div>
           </div>
 
-          <div className="pt-8 pt-8">
+          <div className="pt-8">
             <div className="flex items-center gap-3 mb-6">
                <PenTool size={16} className="text-blue-600" />
                <h3 className="text-[11px] font-black uppercase tracking-[0.15em]">Rektors Signering</h3>
@@ -222,35 +277,81 @@ export const AvslutStep: React.FC<AvslutStepProps> = ({
               </div>
             </div>
 
-            <div className={`p-6 rounded-[28px] border-2 transition-all flex items-center justify-between group ${
-              formData.isClosed ? 'bg-slate-900 border-slate-900 text-white shadow-xl' : 'bg-slate-50 border-slate-100 text-slate-500 hover:border-slate-300'
-            }`}
-            onClick={() => {
-              if (formData.signatureName && formData.signatureDate) {
-                updateFormData('isClosed', !formData.isClosed);
-              }
-            }}
-            >
-              <div className="flex items-center gap-4">
-                <div className={`w-8 h-8 rounded-xl border-2 flex items-center justify-center transition-all ${
-                  formData.isClosed ? 'bg-blue-500 border-blue-500 scale-110 shadow-lg shadow-blue-500/20' : 'bg-white border-slate-200 group-hover:border-slate-300'
-                }`}>
-                  {formData.isClosed ? <ShieldCheck size={18} className="text-white" /> : <div className="w-1.5 h-1.5 rounded-full bg-slate-300" />}
+            <div className="flex flex-col gap-4">
+              <div className={`p-6 rounded-[28px] border-2 transition-all flex items-center justify-between group ${
+                formData.isClosed ? 'bg-slate-900 border-slate-900 text-white shadow-xl' : 'bg-slate-50 border-slate-100 text-slate-500 hover:border-slate-300'
+              }`}
+              onClick={() => {
+                if (formData.signatureName && formData.signatureDate) {
+                  updateFormData('isClosed', !formData.isClosed);
+                }
+              }}
+              >
+                <div className="flex items-center gap-4">
+                  <div className={`w-8 h-8 rounded-xl border-2 flex items-center justify-center transition-all ${
+                    formData.isClosed ? 'bg-blue-500 border-blue-500 scale-110 shadow-lg shadow-blue-500/20' : 'bg-white border-slate-200 group-hover:border-slate-300'
+                  }`}>
+                    {formData.isClosed ? <ShieldCheck size={18} className="text-white" /> : <div className="w-1.5 h-1.5 rounded-full bg-slate-300" />}
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-black uppercase tracking-widest leading-none mb-1">
+                      {formData.isClosed ? 'Signerat med BankID' : 'Signera digitalt'}
+                    </p>
+                    <p className="text-[10px] opacity-60 font-medium">
+                      {formData.isClosed ? 'Handlingen är arkiverad och juridiskt bindande' : 'Kräver giltigt tjänste-legg/BankID'}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-[10px] font-black uppercase tracking-widest leading-none mb-1">
-                    {formData.isClosed ? 'Signerat med BankID' : 'Signera digitalt'}
-                  </p>
-                  <p className="text-[10px] opacity-60 font-medium">
-                    {formData.isClosed ? 'Handlingen är arkiverad och juridiskt bindande' : 'Kräver giltigt tjänste-legg/BankID'}
-                  </p>
-                </div>
+                {!formData.isClosed && (
+                  <div className="flex items-center gap-2 px-3 py-1.5 bg-white rounded-xl shadow-sm border border-slate-100 group-hover:shadow-md transition-all">
+                    <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
+                    <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Väntar...</span>
+                  </div>
+                )}
               </div>
-              {!formData.isClosed && (
-                <div className="flex items-center gap-2 px-3 py-1.5 bg-white rounded-xl shadow-sm border border-slate-100 group-hover:shadow-md transition-all">
-                  <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
-                  <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Väntar...</span>
+
+              {/* Send Back Option in Main View */}
+              {isSendingBack ? (
+                <div className="mt-2 space-y-4 bg-amber-50 dark:bg-amber-900/10 p-6 rounded-3xl border border-amber-500/20">
+                  <div className="flex items-center gap-2 mb-1">
+                    <AlertTriangle size={14} className="text-amber-500" />
+                    <p className="text-[10px] font-black text-amber-500 uppercase tracking-widest">Begär komplettering</p>
+                  </div>
+                  <textarea 
+                    value={returnComment}
+                    onChange={(e) => setReturnComment(e.target.value)}
+                    placeholder="Vad behöver utredaren komplettera eller förtydliga?"
+                    className="w-full h-24 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 text-xs font-bold focus:ring-2 focus:ring-amber-500/30 outline-none transition-all placeholder:text-slate-400"
+                  />
+                  <div className="flex gap-2">
+                    <button 
+                      onClick={() => {
+                        if (returnComment.trim()) {
+                          onSendBack?.(returnComment);
+                          setIsSendingBack(false);
+                        }
+                      }}
+                      className="flex-1 py-3 bg-amber-500 text-white font-black text-[9px] uppercase tracking-widest rounded-xl shadow-lg shadow-amber-500/20"
+                    >
+                      Skicka tillbaka
+                    </button>
+                    <button 
+                      onClick={() => setIsSendingBack(false)}
+                      className="px-6 py-3 bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 font-black text-[9px] uppercase tracking-widest rounded-xl"
+                    >
+                      Avbryt
+                    </button>
+                  </div>
                 </div>
+              ) : (
+                !formData.isClosed && (
+                  <button 
+                    onClick={() => setIsSendingBack(true)}
+                    className="w-full text-center text-[10px] font-black text-amber-500 hover:text-amber-600 transition-colors uppercase tracking-[0.2em] py-4 border-2 border-dashed border-amber-500/20 rounded-[28px] hover:bg-amber-500/5"
+                  >
+                    Skicka tillbaka för komplettering
+                  </button>
+                )
               )}
             </div>
           </div>

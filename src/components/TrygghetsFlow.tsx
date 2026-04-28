@@ -122,6 +122,8 @@ const DEFAULT_FORM_DATA = {
   assignedTeacher: '',
   assignedTeacherUid: '',
   assignedToUid: '',
+  investigators: [] as { uid: string, name: string, role: 'primary' | 'co-investigator', assignedAt: string }[],
+  investigatorUids: [] as string[],
   // Step 3 & 4 fields
   studentSSN: '',
   guardianContactStatus: '',
@@ -746,12 +748,31 @@ export const TrygghetsFlow = ({ isQuickReport = false, onSuccess, initialCaseId,
     }
   };
 
+  const handleSendBack = async (comment: string) => {
+    if (!activeCaseId) return;
+    setIsProcessing(true);
+    try {
+      await caseService.sendBackForRevision(activeCaseId, comment);
+      setSuccessToast({ message: "Ärendet har skickats tillbaka för komplettering.", visible: true });
+      setTimeout(() => setSuccessToast(prev => ({ ...prev, visible: false })), 5000);
+      
+      // Navigate away or back to cases list since the flow might be invalid now for the current user (if they are principal)
+      // Or just reset the view
+      setShowClosingSummary(false);
+      // Optional: Redirect to dashboard or cases list
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   const isStepValid = () => {
     switch (currentStepIndex) {
       case 0: // Anmälan
         return !!(formData.studentName && formData.incidentDate && formData.incidentDescription && formData.school);
       case 1: // Tilldelning
-        return !!formData.assignedTeacherUid;
+        return (formData.investigators?.length || 0) > 0;
       case 2: // Utredning
         const needsDiscriminationGround = formData.incidentTypes?.includes('diskriminering');
         const hasDiscriminationGround = !!formData.discriminationGround;
@@ -1133,6 +1154,8 @@ export const TrygghetsFlow = ({ isQuickReport = false, onSuccess, initialCaseId,
                         setQuickMessage={setQuickMessage}
                         handleSendQuickMessage={handleSendQuickMessage}
                         updateFormData={updateFormData}
+                        availableStaff={availableStaff}
+                        availableTeams={availableTeams}
                       />
                     )}
                     {currentStep.id === 4 && (
@@ -1141,6 +1164,9 @@ export const TrygghetsFlow = ({ isQuickReport = false, onSuccess, initialCaseId,
                         updateFormData={updateFormData}
                         selectedActivities={selectedActivities}
                         toggleActivity={toggleActivity}
+                        availableStaff={availableStaff}
+                        availableTeams={availableTeams}
+                        userProfile={userProfile}
                       />
                     )}
                     {currentStep.id === 5 && (
@@ -1158,6 +1184,7 @@ export const TrygghetsFlow = ({ isQuickReport = false, onSuccess, initialCaseId,
                         activeCaseId={activeCaseId}
                         onGenerateAnonymizedReport={handleGenerateAnonymizedReport}
                         isGeneratingPDF={isGeneratingPDF}
+                        onSendBack={handleSendBack}
                       />
                     )}
 
