@@ -62,6 +62,36 @@ export const TilldelningStep: React.FC<TilldelningStepProps> = ({
     setShowSearch(false);
   };
 
+  const handleAddTeam = (teamName: string) => {
+    const teamMembers = availableStaff.filter(staff => 
+      (staff.activeTeam === teamName || staff.team === teamName) && 
+      !investigatorUids.includes(staff.uid)
+    );
+
+    if (teamMembers.length === 0) return;
+
+    const newCollaborators = teamMembers.map((staff, index) => ({
+      uid: staff.uid,
+      name: staff.name,
+      role: (investigators.length === 0 && index === 0) ? 'primary' : 'co-investigator',
+      assignedAt: new Date().toISOString(),
+      team: teamName
+    }));
+
+    const newInvestigators = [...investigators, ...newCollaborators];
+    const newUids = [...investigatorUids, ...teamMembers.map(s => s.uid)];
+
+    updateFormData('investigators', newInvestigators);
+    updateFormData('investigatorUids', newUids);
+
+    const primary = newInvestigators.find((i: any) => i.role === 'primary');
+    if (primary) {
+      updateFormData('assignedTeacher', primary.name);
+      updateFormData('assignedTeacherUid', primary.uid);
+      updateFormData('assignedToUid', primary.uid);
+    }
+  };
+
   const handleRemoveInvestigator = (uid: string) => {
     const newInvestigators = investigators.filter((i: any) => i.uid !== uid);
     const newUids = investigatorUids.filter((id: string) => id !== uid);
@@ -239,6 +269,42 @@ export const TilldelningStep: React.FC<TilldelningStepProps> = ({
               </div>
             )}
           </div>
+
+          {availableTeams.length > 0 && (
+            <div className="flex flex-wrap gap-2 py-1">
+              <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest w-full mb-1">Lägg till helt arbetslag</span>
+              {availableTeams.map(team => {
+                const totalInTeam = availableStaff.filter(staff => staff.activeTeam === team || staff.team === team).length;
+                const notYetAdded = availableStaff.filter(staff => 
+                  (staff.activeTeam === team || staff.team === team) && 
+                  !investigatorUids.includes(staff.uid)
+                ).length;
+                const isAllAdded = notYetAdded === 0 && totalInTeam > 0;
+                
+                return (
+                  <button
+                    key={team}
+                    type="button"
+                    disabled={isAllAdded}
+                    onClick={() => handleAddTeam(team)}
+                    className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border text-[10px] font-bold transition-all ${
+                      isAllAdded
+                        ? 'bg-slate-50 dark:bg-slate-900 border-slate-100 dark:border-slate-800 text-slate-300 cursor-not-allowed opacity-50'
+                        : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-visuera-dark dark:text-slate-200 hover:border-visuera-green hover:text-visuera-green hover:shadow-sm'
+                    }`}
+                  >
+                    <Users size={12} />
+                    {team}
+                    {!isAllAdded && (
+                      <span className="ml-1 px-1.5 py-0.5 bg-slate-100 dark:bg-slate-700 rounded-md text-[8px] text-slate-400">
+                        +{notYetAdded}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          )}
 
           <div className="p-6 bg-emerald-50 dark:bg-emerald-900/10 rounded-[32px] border border-emerald-100 dark:border-emerald-900/20 flex items-start gap-4">
             <div className="w-10 h-10 rounded-xl bg-visuera-green text-white flex items-center justify-center shrink-0 shadow-lg shadow-visuera-green/20">

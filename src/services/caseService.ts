@@ -155,7 +155,7 @@ export const caseService = {
         ...caseData,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
-        status: 'anmäld'
+        status: caseData.status || 'anmäld'
       });
       
       const caseId = docRef.id;
@@ -170,30 +170,57 @@ export const caseService = {
       });
       
       // TRIGGER: Notify Principals and Authorities
-      const school = caseData.school || 'Danderyds Skola';
-      const usersRef = collection(db, 'users');
-      
-      // Find principals at this school
-      const principalsQuery = query(usersRef, where('role', '==', 'principal'), where('school', '==', school));
-      const authoritiesQuery = query(usersRef, where('globalRole', '==', 'admin')); // Simplified authority check
-      
-      const [principalsSnap, authoritiesSnap] = await Promise.all([
-        getDocs(principalsQuery),
-        getDocs(authoritiesQuery)
-      ]);
+      // Wrap in try-catch to ensure case creation succeeds even if notifications fail
+      // and check auth since anonymous users cannot query users or send notifications
+      if (auth.currentUser) {
+        try {
+          const school = caseData.school || 'Danderyds Skola';
+          const usersRef = collection(db, 'users');
+          
+          // Find principals at this school
+          const principalsQuery = query(usersRef, where('role', '==', 'principal'), where('school', '==', school));
+          
+          // Only attempt to find authorities if user is an admin or we know we have access
+          // Otherwise, just notify school principals
+          const principalsSnap = await getDocs(principalsQuery);
+          
+          const recipients = new Set<string>();
+          principalsSnap.forEach(d => recipients.add(d.id));
 
-      const recipients = new Set<string>();
-      principalsSnap.forEach(d => recipients.add(d.id));
-      authoritiesSnap.forEach(d => recipients.add(d.id));
+          // Try to get authorities only if user might have permission
+          try {
+            const authoritiesQuery = query(usersRef, where('globalRole', '==', 'admin'));
+            const authoritiesSnap = await getDocs(authoritiesQuery);
+            authoritiesSnap.forEach(d => recipients.add(d.id));
+          } catch (ae) {
+            console.warn('Could not query global authorities for notification:', ae);
+          }
 
-      for (const uid of recipients) {
-        const template = caseService.getNotificationTemplate('new_case', { caseId, schoolName: school });
-        await caseService.sendNotification({
-          ...template,
-          caseId,
-          recipientUid: uid,
-          school
-        });
+          for (const uid of recipients) {
+            const template = caseService.getNotificationTemplate('new_case', { caseId, schoolName: school });
+            await caseService.sendNotification({
+              ...template,
+              caseId,
+              recipientUid: uid,
+              school
+            });
+          }
+        } catch (notifError) {
+          console.error('Notification trigger failed:', notifError);
+        }
+
+        // Global Audit Log - only if signed in
+        try {
+          await addDoc(collection(db, 'AuditLog'), {
+            action: 'ÄRENDE_SKAPAT',
+            caseId,
+            userId: auth.currentUser?.uid,
+            userName: auth.currentUser?.displayName || 'Användare',
+            timestamp: serverTimestamp()
+          });
+        } catch (auditError) {
+          console.error('Global audit log failed:', auditError);
+        }
       }
 
       return caseId;
@@ -729,7 +756,8 @@ export const caseService = {
       const excludeFields = [
         'id', 'createdAt', 'updatedAt', 'isClosed', 'signatureName', 
         'signatureDate', 'signatureRole', 'incidentId', 'audit', 
-        'investigationStartedAt', 'needsRevision', 'revisionComment'
+        'investigationStartedAt', 'needsRevision', 'revisionComment',
+        'involvedParties'
       ];
 
       const clonedData: any = {};
@@ -742,6 +770,18 @@ export const caseService = {
       // Set new student specific data
       clonedData.studentName = newStudentName;
       if (newStudentSSN) clonedData.studentSSN = newStudentSSN;
+      
+      // Initialize involvedParties with only the new student as requested
+      clonedData.involvedParties = [
+        {
+          id: Date.now().toString(),
+          name: newStudentName,
+          class: originalData.studentClass || '',
+          role: 'Utsatt',
+          description: 'Huvudperson i detta klonade ärende.'
+        }
+      ];
+
       clonedData.status = 'utredning'; // Start at investigation stage for the new student
       clonedData.clonedFromId = originalCaseId;
       clonedData.clonedAt = serverTimestamp();

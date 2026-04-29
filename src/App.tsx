@@ -1981,7 +1981,14 @@ const App = () => {
                    <p className="text-sm text-slate-500 dark:text-slate-400 mt-2">Anmälan ska göras skyndsamt och helst inom 24h</p>
                 </div>
                 {/* We'll use the Step 1 of TrygghetsFlow as the simplified reporter view */}
-                <TrygghetsFlow isQuickReport={true} cases={cases} />
+                <TrygghetsFlow 
+                  isQuickReport={true} 
+                  cases={cases} 
+                  onSuccess={(id) => {
+                    setSelectedCaseId(id);
+                    setActiveTab('flow');
+                  }}
+                />
               </div>
             )}
             {activeTab === 'active-list' && (

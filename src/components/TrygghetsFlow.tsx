@@ -779,20 +779,15 @@ export const TrygghetsFlow = ({ isQuickReport = false, onSuccess, initialCaseId,
     
     setIsProcessing(true);
     try {
-      const newCaseId = await caseService.cloneCase(activeCaseId, cloneStudentName.trim(), cloneStudentSSN.trim());
-      setSuccessToast({ message: `Ärendet har klonats till ett nytt ärende för ${cloneStudentName}`, visible: true });
+      await caseService.cloneCase(activeCaseId, cloneStudentName.trim(), cloneStudentSSN.trim());
+      setSuccessToast({ message: `Ärendet har klonats med ${cloneStudentName}`, visible: true });
       setTimeout(() => setSuccessToast(prev => ({ ...prev, visible: false })), 5000);
       
       setShowCloneModal(false);
       setCloneStudentName('');
       setCloneStudentSSN('');
       
-      // Navigate to the new case
-      if (onSuccess) {
-        onSuccess(newCaseId);
-      } else {
-        setActiveCaseId(newCaseId);
-      }
+      // We no longer navigate away, we stay in the current view as requested
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -976,7 +971,22 @@ export const TrygghetsFlow = ({ isQuickReport = false, onSuccess, initialCaseId,
         }
       }
     } catch (err: any) {
-      setError(err.message);
+      console.error("Error in handleNextStep:", err);
+      let errorMessage = err.message || "Ett fel uppstod";
+      
+      try {
+        if (typeof errorMessage === 'string' && errorMessage.startsWith('{')) {
+          const parsed = JSON.parse(errorMessage);
+          errorMessage = parsed.error || errorMessage;
+          if (errorMessage.includes('Missing or insufficient permissions')) {
+            errorMessage = "Du saknar behörighet att utföra denna åtgärd (Säkerhetsregler).";
+          }
+        }
+      } catch (e) {
+        // Not JSON
+      }
+      
+      setError(errorMessage);
     } finally {
       setIsProcessing(false);
     }
@@ -1007,6 +1017,18 @@ export const TrygghetsFlow = ({ isQuickReport = false, onSuccess, initialCaseId,
           >
             Gör en till anmälan
           </button>
+          
+          {auth.currentUser && activeCaseId && (
+            <button 
+              onClick={() => {
+                setIsSubmitted(false);
+                if (onSuccess) onSuccess(activeCaseId);
+              }}
+              className="w-full py-4 bg-white dark:bg-slate-700 text-visuera-dark dark:text-slate-100 border border-slate-200 dark:border-slate-600 rounded-2xl font-bold hover:bg-slate-50 dark:hover:bg-slate-600 transition-all flex items-center justify-center gap-2"
+            >
+              Visa anmälan <ArrowRight size={18} />
+            </button>
+          )}
         </div>
       </motion.div>
     );

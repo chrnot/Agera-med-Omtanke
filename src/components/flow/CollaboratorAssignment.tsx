@@ -58,6 +58,30 @@ export const CollaboratorAssignment: React.FC<CollaboratorAssignmentProps> = ({
     setShowSearch(false);
   };
 
+  const handleAddTeam = (teamName: string) => {
+    const teamMembers = availableStaff.filter(staff => 
+      (staff.activeTeam === teamName || staff.team === teamName) && 
+      !investigatorUids.includes(staff.uid)
+    );
+
+    if (teamMembers.length === 0) return;
+
+    const newCollaborators = teamMembers.map(staff => ({
+      uid: staff.uid,
+      name: staff.name,
+      role: 'co-investigator',
+      assignedAt: new Date().toISOString(),
+      team: teamName,
+      invitedType: roleType
+    }));
+
+    const newInvestigators = [...investigators, ...newCollaborators];
+    const newUids = [...investigatorUids, ...teamMembers.map(s => s.uid)];
+
+    updateFormData('investigators', newInvestigators);
+    updateFormData('investigatorUids', newUids);
+  };
+
   const handleRemoveCollaborator = (uid: string) => {
     // Prevent removing the primary investigator if possible, but the UI should handle that
     const collaborator = investigators.find((i: any) => i.uid === uid);
@@ -107,6 +131,43 @@ export const CollaboratorAssignment: React.FC<CollaboratorAssignmentProps> = ({
           </button>
         )}
       </div>
+
+      {availableTeams.length > 0 && (
+        <div className="flex flex-wrap gap-2 py-1">
+          <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest w-full mb-1">Lägg till helt arbetslag</span>
+          {availableTeams.map(team => {
+            const teamMembersInCurrent = investigators.filter((inv: any) => inv.team === team).length;
+            const totalInTeam = availableStaff.filter(staff => staff.activeTeam === team || staff.team === team).length;
+            const notYetAdded = availableStaff.filter(staff => 
+              (staff.activeTeam === team || staff.team === team) && 
+              !investigatorUids.includes(staff.uid)
+            ).length;
+            const isAllAdded = notYetAdded === 0 && totalInTeam > 0;
+            
+            return (
+              <button
+                key={team}
+                type="button"
+                disabled={isAllAdded}
+                onClick={() => handleAddTeam(team)}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border text-[10px] font-bold transition-all ${
+                  isAllAdded
+                    ? 'bg-slate-50 dark:bg-slate-900 border-slate-100 dark:border-slate-800 text-slate-300 cursor-not-allowed opacity-50'
+                    : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-visuera-dark dark:text-slate-200 hover:border-visuera-green hover:text-visuera-green hover:shadow-sm'
+                }`}
+              >
+                <Users size={12} />
+                {team}
+                {!isAllAdded && (
+                  <span className="ml-1 px-1.5 py-0.5 bg-slate-100 dark:bg-slate-700 rounded-md text-[8px] text-slate-400">
+                    +{notYetAdded}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       {showSearch && (
         <div className="bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-3xl shadow-xl max-h-60 overflow-y-auto no-scrollbar border-t-0 -mt-2 animate-in slide-in-from-top-2 duration-300 relative z-20">
